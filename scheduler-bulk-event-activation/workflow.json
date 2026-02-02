@@ -1,0 +1,660 @@
+{
+  "name": "Set Scheduler Events to Active copy",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "Set Scheduler Events to Active",
+        "formDescription": "Please enter the ID of the Schedule that you would like to set the Events active for.\nDo not close this window after submitting form, progress update will be displayed here shortly",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "ScheduleID",
+              "fieldType": "number",
+              "placeholder": "123",
+              "requiredField": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.3,
+      "position": [
+        -1296,
+        -160
+      ],
+      "id": "962a05ec-f227-474b-8c09-148543a77ae5",
+      "name": "On Form Submission",
+      "webhookId": "20cf5010-9b28-4fb3-a44b-0da4dbc45e67"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "5c989dda-0c11-400b-926c-baba5ff7a44c",
+              "name": "ScheduleID",
+              "value": "=Plan:{{ $json['ScheduleID'] }} ",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1056,
+        -160
+      ],
+      "id": "2b5abc95-240b-4d97-bf8c-eb626a526dd1",
+      "name": "Retrieve Plan ID"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "488a83a2-b743-4633-a538-cadbbfea82c0",
+              "name": "EncodedId",
+              "value": "={{ $json['ScheduleID'].trim().base64Encode() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -816,
+        -160
+      ],
+      "id": "dbb74fff-b90a-44ac-a40c-687d0b92026a",
+      "name": "Convert Plan ID to Base64"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "data.plans.edges[0].node.eventNeeds",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        16,
+        -368
+      ],
+      "id": "6a451a47-8fe5-47b8-9dd3-35f344f3f04c",
+      "name": "Split Events to Separate Items"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://morrison.administrateapp.com/graphql",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "=query events {\n  events (filters:[{field: id, operation: eq, value: \"{{ $json.data.event.update.event.id }}\" }]) {     \n    edges {       \n      node {         \n        id         \n        lifecycleState         \n        sessions {           \n          pageInfo {             \n            totalRecords             \n            hasPreviousPage             \n            hasNextPage             \n            startCursor             \n            endCursor           \n          }           \n          edges {             \n            node {               \n              id               \n              lifecycleState             \n            }           \n          }         \n        }       \n      }     \n    }   \n  } \n} "
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1136,
+        -336
+      ],
+      "id": "84660631-0371-4b6e-82a9-714ab1718070",
+      "name": "GraphQL Query to get Sessions",
+      "credentials": {
+        "oAuth2Api": {
+          "id": "i5zIXhgNojGzASs4",
+          "name": "Morrison - Colin"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://morrison.administrateapp.com/graphql",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "=query scheduler {\n  plans (filters:{field: id, operation: eq, value: \"{{ $json.EncodedId }}\"}){\n    edges {\n      node {\n        id\n        legacyId\n        name\n        status{\n          lifecycleState\n        }\n        eventNeeds {\n          scheduledEvent {\n            id\n            lifecycleState\n          }\n        }\n      }\n    }\n  }\n}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -592,
+        -160
+      ],
+      "id": "6b991ad1-4f43-4d1a-b19a-4f291a67437f",
+      "name": "GraphQL Query on Schedule",
+      "alwaysOutputData": false,
+      "credentials": {
+        "oAuth2Api": {
+          "id": "i5zIXhgNojGzASs4",
+          "name": "Morrison - Colin"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "07fc6a9c-ab0e-40b4-b9ce-57c76705b805",
+              "leftValue": "={{ $json.data.plans.edges[0].node.status.lifecycleState }}",
+              "rightValue": "SCHEDULED",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "54ac1c68-f07e-4730-b064-073bf3d19e2f",
+              "leftValue": "={{ $json.data.plans.edges[0].node.eventNeeds }}",
+              "rightValue": "",
+              "operator": {
+                "type": "array",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -352,
+        -160
+      ],
+      "id": "c3074fe7-2268-4aa1-983a-d1fbc684b3bc",
+      "name": "If Schedule Published and Events Exist"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://morrison.administrateapp.com/graphql",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "=mutation PublishEvent {\n  event{\n    update(\n      eventId: \"{{ $('Split Events to Separate Items').item.json.scheduledEvent.id }}\"\n      input:{\n        lifecycleState: published\n      }\n    ) {\n      event{\n        id \n        legacyId\n        lifecycleState\n      }\n      errors{\n        label \n        message \n        value\n      }\n    }\n  }\n}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        576,
+        -368
+      ],
+      "id": "950c5047-0b2b-45b2-baf9-7eb9a6529c34",
+      "name": "Set Events to Active",
+      "credentials": {
+        "oAuth2Api": {
+          "id": "i5zIXhgNojGzASs4",
+          "name": "Morrison - Colin"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://morrison.administrateapp.com/graphql",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "=mutation PublishSession {\n  session{\n    update(\n      sessionId: \"{{ $json.node.id }}\"\n      input:{\n        lifecycleState: published\n      }\n    ) {\n      session{\n        id \n        legacyId\n        lifecycleState\n      }\n      errors{\n        label \n        message \n        value\n      }\n    }\n  }\n}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        2944,
+        -480
+      ],
+      "id": "38bd8a0c-7535-470a-9c94-cd122e7f5681",
+      "name": "Set Sessions to Active",
+      "credentials": {
+        "oAuth2Api": {
+          "id": "i5zIXhgNojGzASs4",
+          "name": "Morrison - Colin"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## To Do \nOnly get sessions for events that are active so that we are not setting sessions to active on events that are not.\n\nHandle pagination of sessions to ensure we get ALL sessions for each event.",
+        "height": 480,
+        "width": 192
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1088,
+        -592
+      ],
+      "typeVersion": 1,
+      "id": "eddc41e2-e30c-497a-8ec0-26f68bf9056a",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "88365490-911c-431e-894e-9f1a7a765bdc",
+              "leftValue": "={{ $json.scheduledEvent.lifecycleState }}",
+              "rightValue": "draft",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [
+        272,
+        -368
+      ],
+      "id": "6b29b749-e3db-4249-8ea1-e871473d4bc3",
+      "name": "Filter out Cancelled & Active Events"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c4a84b0c-e349-43ad-afb7-aaf060f4ce5c",
+              "leftValue": "={{ $json.node.lifecycleState }}",
+              "rightValue": "draft",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [
+        2576,
+        -480
+      ],
+      "id": "64ef1bb4-4f9f-4439-93b7-c61f5a11a921",
+      "name": "Filter out Cancelled and Active Sessions"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get all incoming items\nconst items = $input.all();\n\nconst output = [];\n\n// Loop through all incoming items\nfor (const item of items) {\n  const events = item.json.data.events.edges;\n\n  // Loop through each event\n  for (const event of events) {\n    const sessions = event.node.sessions.edges;\n\n    for (const session of sessions) {\n      Object.assign(session.node, {parentId: event.node.id});\n    }\n\n    // Push each session as its own output item\n    for (const session of sessions) {\n      output.push({\n        json: session,\n      });\n    }\n  }\n}\n\nreturn output;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2064,
+        -496
+      ],
+      "id": "20b58fe6-b405-48cd-ac4d-cff75a3160a8",
+      "name": "Get all Sessions from all Events1"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "9de2cafc-8dd3-43ec-b63a-5eddd7b14638",
+              "name": "message",
+              "value": "=Event from Schedule {{ $('GraphQL Query on Schedule').item.json.data.plans.edges[0].node.name }} Processed. EventID: {{ $json.data.event.update.event.id }}",
+              "type": "string"
+            },
+            {
+              "id": "912ed95c-a8ef-458e-934a-f865fbfa2fe5",
+              "name": "payload",
+              "value": "=Schedule:  {{ $('GraphQL Query on Schedule').item.json.data.plans.edges[0].node.legacyId }}, Event: {{ $('Set Events to Active').item.json.data.event.update.event.id }}, LifecycleState: {{ $('Set Events to Active').item.json.data.event.update.event.lifecycleState }}",
+              "type": "string"
+            },
+            {
+              "id": "f88fa072-09d8-4106-9c6f-05adf0610ac7",
+              "name": "status",
+              "value": "success",
+              "type": "string"
+            },
+            {
+              "id": "4bb7424e-56ce-4725-8056-51825bdc5c73",
+              "name": "nodeId",
+              "value": "={{ $json.data.event.update.event.id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1744,
+        64
+      ],
+      "id": "e748d5aa-7fc9-4642-b328-ed0e63d69f04",
+      "name": "Prepare Integration Logs"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://morrison.administrateapp.com/graphql",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "=mutation addExternalLog {\n  externalLog {\n    createExternalIntegrationLogs(input:{\n      originIdentifier: \"Event Updated by Scheduler. N8N ID: {{ $workflow.id }}\"\n      nodeId: \"{{ $json.nodeId }}\"\n      message:\"{{ $json.message }}\"\n      status: {{ $json.status }}\n      payload: {{ $json.payload.toJsonString() }}\n    }){\n      errors{\n        label\n        message\n        value\n      }\n      entityIds\n    }\n  }\n}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        2336,
+        64
+      ],
+      "id": "3bfc5c10-abd0-4814-8d3e-7a33a1030657",
+      "name": "HTTP Request",
+      "credentials": {
+        "oAuth2Api": {
+          "id": "i5zIXhgNojGzASs4",
+          "name": "Morrison - Colin"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## External Logs\nTaking this from the Event, as running it from the 'Set Sessions to Active' node would create an entry for every single session. Schedule ID is not an available entity in external logs, so this will create a log for every Event updated",
+        "height": 576,
+        "width": 1056
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1584,
+        -80
+      ],
+      "typeVersion": 1,
+      "id": "12c60146-e2ee-4358-ad93-ebef1588642e",
+      "name": "Sticky Note8"
+    },
+    {
+      "parameters": {
+        "operation": "completion",
+        "completionTitle": "No Events to Update",
+        "completionMessage": "=This Schedule has no Draft Events to update to Active.</br></br>\nThis could be because the Schedule has not yet been solved, and no events have been created; or the Events have already been set to Active.\n</br></br>\nYou can close this window now.",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.form",
+      "typeVersion": 2.3,
+      "position": [
+        16,
+        160
+      ],
+      "id": "1ae09358-0663-4e9f-9c3a-a7cc9b5efbf6",
+      "name": "Form end for 'no events to update'",
+      "webhookId": "ff9222c4-55cd-4f28-9c15-51449b89f966"
+    },
+    {
+      "parameters": {
+        "operation": "completion",
+        "completionTitle": "Events Updated",
+        "completionMessage": "=Event Activation complete for Schedule</br></br>\nPlease check the Integration logs in the Control Panel to see a full list of the Events that have been updated.</br></br>\nYou can now close this window.",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.form",
+      "typeVersion": 2.3,
+      "position": [
+        3152,
+        -480
+      ],
+      "id": "b323a7d5-058a-4308-8a2d-53288cba9610",
+      "name": "Form ending for successful event update",
+      "webhookId": "2d2b8d0e-9388-4749-8ba3-4eeb2a0ddb7a"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "On Form Submission": {
+      "main": [
+        [
+          {
+            "node": "Retrieve Plan ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Retrieve Plan ID": {
+      "main": [
+        [
+          {
+            "node": "Convert Plan ID to Base64",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert Plan ID to Base64": {
+      "main": [
+        [
+          {
+            "node": "GraphQL Query on Schedule",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Events to Separate Items": {
+      "main": [
+        [
+          {
+            "node": "Filter out Cancelled & Active Events",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GraphQL Query to get Sessions": {
+      "main": [
+        [
+          {
+            "node": "Get all Sessions from all Events1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GraphQL Query on Schedule": {
+      "main": [
+        [
+          {
+            "node": "If Schedule Published and Events Exist",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If Schedule Published and Events Exist": {
+      "main": [
+        [
+          {
+            "node": "Split Events to Separate Items",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Form end for 'no events to update'",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Events to Active": {
+      "main": [
+        [
+          {
+            "node": "GraphQL Query to get Sessions",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Prepare Integration Logs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Sessions to Active": {
+      "main": [
+        [
+          {
+            "node": "Form ending for successful event update",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter out Cancelled & Active Events": {
+      "main": [
+        [
+          {
+            "node": "Set Events to Active",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter out Cancelled and Active Sessions": {
+      "main": [
+        [
+          {
+            "node": "Set Sessions to Active",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get all Sessions from all Events1": {
+      "main": [
+        [
+          {
+            "node": "Filter out Cancelled and Active Sessions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Integration Logs": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        []
+      ]
+    },
+    "Form end for 'no events to update'": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "51f27764-963b-449b-a468-f276c4c482f0",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "83919d4354bbaff95da762969bebefe1aea3d522c874fd7a5e6f2d100311439b"
+  },
+  "id": "pKs0xQHKftcKDe38",
+  "tags": []
+}

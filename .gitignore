@@ -1,0 +1,35 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+
+# Environment files (if used for testing)
+.env
+.env.local
+
+# Temporary files
+*.tmp
+temp/
+tmp/
+
+# Node modules (if you add any tooling)
+node_modules/
+
+# Personal notes
+notes.md
+TODO.md

@@ -1,0 +1,866 @@
+{
+  "name": "dev-portal_Instructor-jump-ball",
+  "nodes": [
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "=<html lang=\"en\">\n<head>\n    <meta charset=\"UTF-8\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n    <title></title>\n    <link href=\"https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css\" rel=\"stylesheet\">\n</head>\n<body>\n    <div class=\"container py-5\">\n        <div class=\"row justify-content-center\">\n            <div class=\"col-md-8\">\n\n                <div class=\"card shadow-lg rounded-4\">\n                    <div class=\"card-body\">\n                        <h1 class=\"card-title text-center mb-4\">{{ $json.data.events.edges[0].node.title }}</h1>\n\n                        <p class=\"text-muted text-center mb-1\">Event Code: <strong></strong>{{ $json.data.events.edges[0].node.code }}</p>\n                        <p class=\"text-center mb-4\"><strong>Date:</strong>{{ $json.data.events.edges[0].node.start }} -- {{ $json.data.events.edges[0].node.end }} </p>\n<p class=\"text-center\"><strong>Timezone:</strong> {{ $json.data.events.edges[0].node.timeZoneName }} </p>\n                      \n                      <hr>\n                        <p class=\"text-center\">Would you like to teach this event?</p>\n                        <p class=\"text-center\">\n                            <a href=\"https://n8n.administratehq.com/webhook/instructor-response?type=accept&eventId={{ $json.data.events.edges[0].node.id }}&instructor={{ $('When this URL is hit').item.json.query.instructor }}\" class=\"btn btn-success btn-lg fw-semibold\">\n                                Yes\n                            </a>\n\n                            <a href=\"https://n8n.administratehq.com/webhook/instructor-response?type=decline&eventId={{ $json.data.events.edges[0].node.id }}&instructor={{ $('When this URL is hit').item.json.query.instructor }}\" class=\"btn btn-danger btn-lg fw-semibold\">\n                                No\n                            </a>\n\n\n                        </p>\n                    </div>\n                </div>\n\n            </div>\n        </div>\n    </div>\n\n    <script src=\"https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js\"></script>\n</body>\n</html>",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/html; charset=UTF-8"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        -640,
+        -480
+      ],
+      "id": "93179250-4ec5-44b5-a328-3b8845aa1098",
+      "name": "Respond to Webhook",
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.getadministrate.com/graphql",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "staff",
+              "value": "={{ $json.query.instructor }}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {}
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "=query ev {\n  events(filters: [{field: id, operation: eq, value: \"{{ $json.query.eventId }}\"}], orderBy: [{field: code, direction: asc}, {field: timeZonedStart, direction: asc}]) {\n    edges {\n      node {\n        id\n        code\n        title\n        learningMode\n        start\n        end\n        timeZoneName\n        staff {\n          edges {\n            node {\n              id\n            }\n          }\n        }\n      }\n    }\n  }\n}"
+            },
+            {
+              "name": "operationName",
+              "value": "ev"
+            },
+            {
+              "name": "staff",
+              "value": "={{ $json.query.instructor }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "92d0e99a-7589-49c2-8429-4874ab6b19be",
+      "name": "HTTP Request",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1232,
+        -480
+      ],
+      "credentials": {
+        "oAuth2Api": {
+          "id": "19gMum2Wjtry5IFj",
+          "name": "Masterdemo - Prod"
+        },
+        "administrateOAuth2Api": {
+          "id": "XZKfav7qnhvO4m7U",
+          "name": "Administrate account 5"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "=type {{ $json.query.type }} {{ $json.query.type }}",
+                    "rightValue": "request",
+                    "operator": {
+                      "type": "string",
+                      "operation": "contains"
+                    },
+                    "id": "c08970f3-2ddf-4c2e-8499-72ea6aa2f3d8"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "d9e65219-495b-46f8-8d6c-8cb218200d9c",
+                    "leftValue": "=type {{ $json.query.type }} {{ $json.query.type }}",
+                    "rightValue": "invite",
+                    "operator": {
+                      "type": "string",
+                      "operation": "contains"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -1616,
+        -320
+      ],
+      "id": "df506ec0-eeed-4942-bc0e-089f4e45580f",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON of each one\nfunction formatDate(dateString) {\n  const d = new Date(dateString);\n  const day = String(d.getDate()).padStart(2, '0');\n  const month = String(d.getMonth() + 1).padStart(2, '0'); // months are 0-indexed\n  const year = d.getFullYear();\n\n  let hours = d.getHours();\n  const minutes = String(d.getMinutes()).padStart(2, '0');\n  const ampm = hours >= 12 ? 'PM' : 'AM';\n\n  hours = hours % 12;\n  hours = hours ? hours : 12; // 0 = 12 AM\n\n  return `${day}/${month}/${year} ${hours}:${minutes} ${ampm}`;\n}\n\nfor (const item of $input.all()) {\n  item.json.myNewField = 1;\n  item.json.data.events.edges[0].node.start = formatDate(item.json.data.events.edges[0].node.start);\n  item.json.data.events.edges[0].node.end = formatDate(item.json.data.events.edges[0].node.end);\n  \n}\n\nreturn $input.all();"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -928,
+        -480
+      ],
+      "id": "f60f937f-23ad-48d9-90b2-978a768b5896",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "path": "instructor-response",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -1968,
+        112
+      ],
+      "id": "42449b16-37a7-4357-a371-214e6a39e6d6",
+      "name": "Webhook1",
+      "webhookId": "0e587122-a49e-4b05-bd42-c41bbefef8b1"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Webhook1').item.json.query.type }}",
+                    "rightValue": "accept",
+                    "operator": {
+                      "type": "string",
+                      "operation": "contains"
+                    },
+                    "id": "c08970f3-2ddf-4c2e-8499-72ea6aa2f3d8"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "d9e65219-495b-46f8-8d6c-8cb218200d9c",
+                    "leftValue": "={{ $('Webhook1').item.json.query.type }}",
+                    "rightValue": "decline",
+                    "operator": {
+                      "type": "string",
+                      "operation": "contains"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -1200,
+        112
+      ],
+      "id": "a7a246da-2fc4-4d85-bfa4-fa9e37a40b82",
+      "name": "Switch1"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "<html lang=\"en\">\n<head>\n    <meta charset=\"UTF-8\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n    <title></title>\n    <link href=\"https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css\" rel=\"stylesheet\">\n</head>\n<body>\n    <div class=\"container py-5\">\n        <div class=\"row justify-content-center\">\n            <div class=\"col-md-8\">\n\n                <div class=\"card shadow-lg rounded-4\">\n                    <div class=\"card-body\">\n                        <p class=\"text-center\">Thank You.</p>\n                    </div>\n                </div>\n\n            </div>\n        </div>\n    </div>\n\n    <script src=\"https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js\"></script>\n</body>\n</html>",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/html; charset=UTF-8"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        -128,
+        -112
+      ],
+      "id": "561247be-a478-408a-9fcb-b70e454be278",
+      "name": "Respond to Webhook2"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "<html lang=\"en\">\n<head>\n    <meta charset=\"UTF-8\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n    <title></title>\n    <link href=\"https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css\" rel=\"stylesheet\">\n</head>\n<body>\n    <div class=\"container py-5\">\n        <div class=\"row justify-content-center\">\n            <div class=\"col-md-8\">\n\n                <div class=\"card shadow-lg rounded-4\">\n                    <div class=\"card-body\">\n                        <p class=\"text-center\">Thank You.</p>\n                    </div>\n                </div>\n\n            </div>\n        </div>\n    </div>\n\n    <script src=\"https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js\"></script>\n</body>\n</html>",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/html; charset=UTF-8"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        -320,
+        256
+      ],
+      "id": "e0720fce-7dd9-4829-8c11-87482995a2c8",
+      "name": "Respond to Webhook3"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.getadministrate.com/graphql",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {}
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {}
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "=query instructors{\n\tcontacts(filters:[{field:id,operation:eq,value:\"{{ $json.query.instructor }}\"}]){\n    edges{\n      node{\n        id\n        firstName\n        lastName\n      }\n    }\n  }\n}"
+            },
+            {
+              "name": "operationName",
+              "value": "instructors"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "1eb547de-5612-4416-8380-f5f3e7c42418",
+      "name": "HTTP Request1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1728,
+        112
+      ],
+      "credentials": {
+        "oAuth2Api": {
+          "id": "19gMum2Wjtry5IFj",
+          "name": "Masterdemo - Prod"
+        },
+        "administrateOAuth2Api": {
+          "id": "XZKfav7qnhvO4m7U",
+          "name": "Administrate account 5"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.getadministrate.com/graphql",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {}
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {}
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "=mutation EventUpdate{\n  event{\n    update(\n      eventId:\"{{ $json.data.events.edges[0].node.id }}\",\n      input:{\n      internalNotes:\"{{ $json.newnote }}\",\n      \n      \n    }){\n      errors{\n        label\n      }\n      event{\n        id\n      }\n    }\n  }\n}"
+            },
+            {
+              "name": "operationName",
+              "value": "EventUpdate"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "684d0d32-3339-427a-b347-a008e31a2287",
+      "name": "HTTP Request2",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -672,
+        -112
+      ],
+      "credentials": {
+        "oAuth2Api": {
+          "id": "19gMum2Wjtry5IFj",
+          "name": "Masterdemo - Prod"
+        },
+        "administrateOAuth2Api": {
+          "id": "XZKfav7qnhvO4m7U",
+          "name": "Administrate account 5"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON of each one\nfunction formatDate(dateString) {\n  const d = new Date(dateString);\n  const day = String(d.getDate()).padStart(2, '0');\n  const month = String(d.getMonth() + 1).padStart(2, '0'); // months are 0-indexed\n  const year = d.getFullYear();\n\n  let hours = d.getHours();\n  const minutes = String(d.getMinutes()).padStart(2, '0');\n  const ampm = hours >= 12 ? 'PM' : 'AM';\n\n  hours = hours % 12;\n  hours = hours ? hours : 12; // 0 = 12 AM\n\n  return `${day}/${month}/${year} ${hours}:${minutes} ${ampm}`;\n}\n\nfunction internalNotesAppend(notes,newNotes){\n  notes = newNotes+'<br>'+notes;\n  return notes;\n}\n\nfor (const item of $input.all()) {\n  const now = new Date();\n  item.json.datetime = formatDate(now.toISOString());\n  let newnotes = '<strong>'+$('HTTP Request1').first().json.data.contacts.edges[0].node.firstName + ' '+ $('HTTP Request1').first().json.data.contacts.edges[0].node.lastName +'</strong> accepted on '+ item.json.datetime; \n  item.json.newnote = internalNotesAppend($input.first().json.data.events.edges[0].node.internalNotes,newnotes)\n}\n\nreturn $input.all();"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -864,
+        -112
+      ],
+      "id": "85795984-8907-4cd2-bb88-0f8f3b1bdc2d",
+      "name": "Code1"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.getadministrate.com/graphql",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {}
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {}
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "=query ev {\n  events(filters: [{field: id, operation: eq, value: \"{{ $('Webhook1').item.json.query.eventId }}\"}], orderBy: [{field: code, direction: asc}, {field: timeZonedStart, direction: asc}]) {\n    edges {\n      node {\n        id\n        code\n        title\n        learningMode\n        start\n        end\n        internalNotes\n        timeZoneName\n        staff {\n          edges {\n            node {\n              id\n            }\n          }\n        }\n      }\n    }\n  }\n}"
+            },
+            {
+              "name": "operationName",
+              "value": "ev"
+            },
+            {
+              "name": "staff",
+              "value": "={{ $json.query.staff }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "dfca9eb0-569b-4ae8-b8b3-b1061dcb85c8",
+      "name": "HTTP Request3",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1472,
+        112
+      ],
+      "credentials": {
+        "oAuth2Api": {
+          "id": "19gMum2Wjtry5IFj",
+          "name": "Masterdemo - Prod"
+        },
+        "administrateOAuth2Api": {
+          "id": "XZKfav7qnhvO4m7U",
+          "name": "Administrate account 5"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON of each one\nfunction formatDate(dateString) {\n  const d = new Date(dateString);\n  const day = String(d.getDate()).padStart(2, '0');\n  const month = String(d.getMonth() + 1).padStart(2, '0'); // months are 0-indexed\n  const year = d.getFullYear();\n\n  let hours = d.getHours();\n  const minutes = String(d.getMinutes()).padStart(2, '0');\n  const ampm = hours >= 12 ? 'PM' : 'AM';\n\n  hours = hours % 12;\n  hours = hours ? hours : 12; // 0 = 12 AM\n\n  return `${day}/${month}/${year} ${hours}:${minutes} ${ampm}`;\n}\n\nfunction internalNotesAppend(notes,newNotes){\n  notes = newNotes+'<br>'+notes;\n  return notes;\n}\n\nfor (const item of $input.all()) {\n  const now = new Date();\n  item.json.datetime = formatDate(now.toISOString());\n  let newnotes = '<strong>'+$('HTTP Request1').first().json.data.contacts.edges[0].node.firstName + ' '+ $('HTTP Request1').first().json.data.contacts.edges[0].node.lastName +'</strong> declined on '+ item.json.datetime; \n  item.json.newnote = internalNotesAppend($input.first().json.data.events.edges[0].node.internalNotes,newnotes)\n}\n\nreturn $input.all();"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -864,
+        256
+      ],
+      "id": "52b5b010-e759-4ee7-8d0c-d4b7bdea8866",
+      "name": "Code2"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.getadministrate.com/graphql",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {}
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {}
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "=mutation EventUpdate($eventId: ID!, $notes: String!) {\n  event {\n    update(\n      eventId: $eventId,\n      input: {\n        internalNotes: $notes\n      }\n    ) {\n      event{\n        id\n      }\n    }\n  }\n}"
+            },
+            {
+              "name": "variables",
+              "value": "={\n  \"eventId\": \"{{ $json.data.events.edges[0].node.id }}\",\n  \"notes\": \"{{ $json.newnote }}\"\n}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "c230ffac-6803-464f-828c-5f69237cee25",
+      "name": "HTTP Request6",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -672,
+        256
+      ],
+      "credentials": {
+        "oAuth2Api": {
+          "id": "19gMum2Wjtry5IFj",
+          "name": "Masterdemo - Prod"
+        },
+        "administrateOAuth2Api": {
+          "id": "XZKfav7qnhvO4m7U",
+          "name": "Administrate account 5"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.getadministrate.com/graphql",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {}
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {}
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "=mutation addMultipleStaffToEvent {\n  event {\n    addStaffBulk(\n      input: {\n        eventId: \"{{ $('Webhook1').item.json.query.eventId }}\"\n        contactId: \"{{ $('Webhook1').item.json.query.instructor }}\"\n        staffType: instructor\n        notes:\"added via workflow\"\n      }\n    ) {\n      events {\n        id\n        __typename\n      }\n      errors {\n        message\n        __typename\n      }\n      __typename\n    }\n    __typename\n  }\n}"
+            },
+            {
+              "name": "operationName",
+              "value": "addMultipleStaffToEvent"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "5a3076ed-9709-4b4b-ad68-91895404ef51",
+      "name": "HTTP Request4",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -400,
+        -112
+      ],
+      "credentials": {
+        "oAuth2Api": {
+          "id": "19gMum2Wjtry5IFj",
+          "name": "Masterdemo - Prod"
+        },
+        "administrateOAuth2Api": {
+          "id": "XZKfav7qnhvO4m7U",
+          "name": "Administrate account 5"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "path": "instructor-invite",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -1984,
+        -320
+      ],
+      "id": "98372e45-9620-40d6-a62a-07c0f13ac81c",
+      "name": "When this URL is hit",
+      "webhookId": "0e587122-a49e-4b05-bd42-c41bbefef8b1"
+    },
+    {
+      "parameters": {
+        "content": "## Change your PATH URL  to:  <instance>-instructor-invite. Example:\n\nmyinstance-instructor-invite",
+        "height": 288,
+        "width": 432
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -2208,
+        -448
+      ],
+      "typeVersion": 1,
+      "id": "88bdcc3a-fc39-4707-bbd8-f50cd474fea1",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "## Set your Administrate OAuth Credential",
+        "height": 288,
+        "width": 432
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1472,
+        -608
+      ],
+      "typeVersion": 1,
+      "id": "387a4375-ec20-4595-98df-eebec8f1340d",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "## Update the URL in each of the <a> tags to point to the URL you defined in the webhook node ex: myinstance-instructor-response",
+        "height": 288,
+        "width": 432
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -704,
+        -624
+      ],
+      "typeVersion": 1,
+      "id": "3f576ea4-569e-4563-9ae2-9454f973a806",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "content": "## Change your PATH URL  to:  <instance>-instructor-invite. Example:\n\nmyinstance-instructor-response",
+        "height": 288,
+        "width": 432
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -2272,
+        -32
+      ],
+      "typeVersion": 1,
+      "id": "18d8cb7c-1533-4a3e-bfd1-6a17c34ab0f7",
+      "name": "Sticky Note4"
+    },
+    {
+      "parameters": {
+        "content": "## Set your Administrate OAuth Credential",
+        "height": 288,
+        "width": 464
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1792,
+        -16
+      ],
+      "typeVersion": 1,
+      "id": "8d114a67-1061-4bf0-8cb8-4587f50c70c5",
+      "name": "Sticky Note5"
+    },
+    {
+      "parameters": {
+        "content": "## Set your Administrate OAuth Credential",
+        "height": 288,
+        "width": 432
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -704,
+        -240
+      ],
+      "typeVersion": 1,
+      "id": "f02dec69-56f6-4b0a-ac6e-6cec7dad67f4",
+      "name": "Sticky Note6"
+    },
+    {
+      "parameters": {
+        "content": "## Set your Administrate OAuth Credential",
+        "height": 288,
+        "width": 304
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -736,
+        128
+      ],
+      "typeVersion": 1,
+      "id": "f7d41920-14eb-4b3c-aef4-b5072c0c8e59",
+      "name": "Sticky Note7"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook1": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch1": {
+      "main": [
+        [
+          {
+            "node": "Code1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Code2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request1": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request2": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code1": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request3": {
+      "main": [
+        [
+          {
+            "node": "Switch1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code2": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request6",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request6": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request4": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When this URL is hit": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "18df5337-16d4-4bf8-89f2-5b0817636eb0",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "83919d4354bbaff95da762969bebefe1aea3d522c874fd7a5e6f2d100311439b"
+  },
+  "id": "tjKmg7iCKBaNzXqO",
+  "tags": []
+}
