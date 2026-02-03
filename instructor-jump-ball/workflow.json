@@ -595,108 +595,131 @@
     },
     {
       "parameters": {
-        "content": "## Change your PATH URL  to:  <instance>-instructor-invite. Example:\n\nmyinstance-instructor-invite",
-        "height": 288,
-        "width": 432
+        "content": "## Usage\nActivate the workflow.\nSend an ad hoc email to invite instructors to teach. \nInstructors receive the email and click the link. They land on a page where they select Yes or No. Instructors assigned to the Event accordingly with a log in the internal notes.\n\n## Requirements\n1. Create a communications template\n2. Set the audience to Contacts.\n3. Include the invitation URL in the email.\n4. Send the email. (You can use the ad-hoc emailer from the Event Screen)\n\n\n## Invitation URL\nhttps://n8n.administratehq.com/webhook/<instance>-instructor-invite?type=request&eventId={{ event.encoded_id }}&instructor={{ contact.encoded_id }}\n\n",
+        "height": 416,
+        "width": 624,
+        "color": 4
       },
       "type": "n8n-nodes-base.stickyNote",
-      "position": [
-        -2208,
-        -448
-      ],
       "typeVersion": 1,
-      "id": "88bdcc3a-fc39-4707-bbd8-f50cd474fea1",
+      "position": [
+        -3040,
+        -320
+      ],
+      "id": "6a10c5c9-5573-467f-86cf-43374c41d901",
+      "name": "Sticky Note8"
+    },
+    {
+      "parameters": {
+        "content": "## Update Me\n\nChange your PATH URL to: <instance>-instructor-invite. Example:\n\nmyinstance-instructor-invite\n",
+        "height": 416,
+        "width": 416,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -2240,
+        -592
+      ],
+      "id": "48c6c376-5c65-410f-be0a-f8359a0e8fac",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "## Update Me\nSet your credentials\n",
+        "height": 272,
+        "width": 304,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -1360,
+        -576
+      ],
+      "id": "798cd013-edf3-4c64-beff-0397a9d941fe",
       "name": "Sticky Note"
     },
     {
       "parameters": {
-        "content": "## Set your Administrate OAuth Credential",
-        "height": 288,
-        "width": 432
+        "content": "## Update Me\nSet your credentials\n",
+        "height": 352,
+        "width": 496,
+        "color": 6
       },
       "type": "n8n-nodes-base.stickyNote",
-      "position": [
-        -1472,
-        -608
-      ],
       "typeVersion": 1,
-      "id": "387a4375-ec20-4595-98df-eebec8f1340d",
+      "position": [
+        -1792,
+        -64
+      ],
+      "id": "65570b4f-f187-462c-9df2-883009a865a7",
       "name": "Sticky Note2"
     },
     {
       "parameters": {
-        "content": "## Update the URL in each of the <a> tags to point to the URL you defined in the webhook node ex: myinstance-instructor-response",
+        "content": "## Update Me\nSet your credentials\n",
         "height": 288,
-        "width": 432
+        "width": 496,
+        "color": 6
       },
       "type": "n8n-nodes-base.stickyNote",
-      "position": [
-        -704,
-        -624
-      ],
       "typeVersion": 1,
-      "id": "3f576ea4-569e-4563-9ae2-9454f973a806",
-      "name": "Sticky Note3"
-    },
-    {
-      "parameters": {
-        "content": "## Change your PATH URL  to:  <instance>-instructor-invite. Example:\n\nmyinstance-instructor-response",
-        "height": 288,
-        "width": 432
-      },
-      "type": "n8n-nodes-base.stickyNote",
       "position": [
-        -2272,
-        -32
+        -736,
+        -224
       ],
-      "typeVersion": 1,
-      "id": "18d8cb7c-1533-4a3e-bfd1-6a17c34ab0f7",
-      "name": "Sticky Note4"
-    },
-    {
-      "parameters": {
-        "content": "## Set your Administrate OAuth Credential",
-        "height": 288,
-        "width": 464
-      },
-      "type": "n8n-nodes-base.stickyNote",
-      "position": [
-        -1792,
-        -16
-      ],
-      "typeVersion": 1,
-      "id": "8d114a67-1061-4bf0-8cb8-4587f50c70c5",
+      "id": "593a169d-e2f9-4ea9-9d7c-ae852f9f1ebe",
       "name": "Sticky Note5"
     },
     {
       "parameters": {
-        "content": "## Set your Administrate OAuth Credential",
-        "height": 288,
-        "width": 432
+        "content": "## Update Me\nSet your credentials\n",
+        "height": 272,
+        "width": 256,
+        "color": 6
       },
       "type": "n8n-nodes-base.stickyNote",
-      "position": [
-        -704,
-        -240
-      ],
       "typeVersion": 1,
-      "id": "f02dec69-56f6-4b0a-ac6e-6cec7dad67f4",
+      "position": [
+        -736,
+        144
+      ],
+      "id": "6bed4d65-2dab-47f3-8aa3-227ea99ee068",
       "name": "Sticky Note6"
     },
     {
       "parameters": {
-        "content": "## Set your Administrate OAuth Credential",
-        "height": 288,
-        "width": 304
+        "content": "## Update Me\nUpdate the URL in each of the <a> tags to point to the URL you defined in the webhook node ex: myinstance-instructor-response",
+        "height": 352,
+        "width": 304,
+        "color": 6
       },
       "type": "n8n-nodes-base.stickyNote",
-      "position": [
-        -736,
-        128
-      ],
       "typeVersion": 1,
-      "id": "f7d41920-14eb-4b3c-aef4-b5072c0c8e59",
+      "position": [
+        -704,
+        -688
+      ],
+      "id": "8a50fd57-bb1c-42a3-841c-81803047eb44",
       "name": "Sticky Note7"
+    },
+    {
+      "parameters": {
+        "content": "## Update Me\nChange your PATH URL  to:  <instance>-instructor-response. Example:\n\nmyinstance-instructor-response",
+        "height": 352,
+        "width": 496,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -2304,
+        -64
+      ],
+      "id": "3ab1c082-5695-40d1-b409-5e363456af22",
+      "name": "Sticky Note3"
     }
   ],
   "pinData": {},
@@ -856,7 +879,7 @@
   "settings": {
     "executionOrder": "v1"
   },
-  "versionId": "18df5337-16d4-4bf8-89f2-5b0817636eb0",
+  "versionId": "de6f2607-7b07-477a-9131-9b9e521dcf5d",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "83919d4354bbaff95da762969bebefe1aea3d522c874fd7a5e6f2d100311439b"
