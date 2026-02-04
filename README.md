@@ -24,6 +24,7 @@ For detailed setup instructions, visit the [Automator documentation](https://sup
 |----------|-------------|---------|
 | [Scheduler - Bulk Event Activation](./scheduler-bulk-event-activation) | Activate hundreds or thousands of draft events created by Scheduler in bulk | 1.0.0 |
 | [Instructor Jump Ball](./instructor-jump-ball) | Send RSVP requests to instructors and manage responses for event assignments | 1.0.0 |
+| [Auto Assign Tasks](./auto-assign-tasks) | Automatically redistributes tasks by task type to the Account Owner, Booking Owner, Instructor, and Administrator. | 1.0.0 |
 
 ## How to Import a Workflow
 
