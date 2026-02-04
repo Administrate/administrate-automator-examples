@@ -1,0 +1,1086 @@
+{
+  "name": "Administrate - Auto Assign Event Tasks",
+  "nodes": [
+    {
+      "parameters": {
+        "url": "https://coletraining.administrateapp.com/graphql",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "=query FindTasks {\n  tasks(filters: {field: createdAt, operation: gt, value: \"{{$today.minus({days: 1}).format('yyyy-MM-dd')}}\"}) {\n    edges {\n      node {\n        id\n        type {\n          name\n        }\n        event {\n          registrations {\n            edges {\n              node {\n                sourceOpportunity {\n                  owner {\n                    id\n                  }\n                }\n              }\n            }\n          }\n          bookingAccount {\n            owner {\n              id\n            }\n          }\n          staff {\n            edges {\n              node {\n                id\n                contact {\n                  id\n                }\n                staffType\n                isPrimary\n              }\n            }\n          }\n        }\n        assignee {\n          fullName\n          id\n        }\n      }\n    }\n  }\n}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        80,
+        0
+      ],
+      "id": "3e5ae1d7-daad-482a-b3ea-8b1889e104a1",
+      "name": "Query for task created in the last day",
+      "credentials": {
+        "oAuth2Api": {
+          "id": "4zGZ9WbXS2eV4YZw",
+          "name": "Coletraining - Cole"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json[\"data.tasks.edges\"].node.type.name }}",
+                    "rightValue": "Administrator",
+                    "operator": {
+                      "type": "string",
+                      "operation": "contains"
+                    },
+                    "id": "237276f2-f5c7-47ee-96d8-6ca0dfc7f0fc"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "administrator tasks"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "f1af4ff7-06aa-4b34-bae5-baa8cc6d2f6c",
+                    "leftValue": "={{ $json[\"data.tasks.edges\"].node.type.name }}",
+                    "rightValue": "Instructor",
+                    "operator": {
+                      "type": "string",
+                      "operation": "contains"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "instructor tasks"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "055fdb2d-e988-4cc1-9908-79b415153e9c",
+                    "leftValue": "={{ $json[\"data.tasks.edges\"].node.type.name }}",
+                    "rightValue": "Account Owner",
+                    "operator": {
+                      "type": "string",
+                      "operation": "contains"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "account owner tasks"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "f03a37e1-119d-4ff8-ac96-c98bff133faa",
+                    "leftValue": "={{ $json[\"data.tasks.edges\"].node.type.name }}",
+                    "rightValue": "Opportunity Owner",
+                    "operator": {
+                      "type": "string",
+                      "operation": "contains"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "opportunity owner tasks"
+            }
+          ]
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.3,
+      "position": [
+        496,
+        -32
+      ],
+      "id": "63081d0b-de15-4aca-90d7-f12ec3903449",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {}
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -192,
+        0
+      ],
+      "id": "fa024e58-c8d6-4301-99d3-4f8980647cd8",
+      "name": "Scheduled Trigger"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f8da661f-705e-47ce-8068-c6e933cb2b37",
+              "name": "taskID",
+              "value": "={{ $json[\"data.tasks.edges\"].node.id }}",
+              "type": "string"
+            },
+            {
+              "id": "5d842dee-0c98-4dff-a52a-f793bbcaa8ac",
+              "name": "userID",
+              "value": "={{ $json[\"data.tasks.edges\"].node.event.bookingAccount.owner.id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1152,
+        -48
+      ],
+      "id": "894625ad-bf00-4b54-b88c-5caaae0d9ae0",
+      "name": "Account Owner Branch Set"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f7214757-58a6-4cd4-ad5a-0f7f9867dcac",
+              "name": "taskID",
+              "value": "={{ $json[\"data.tasks.edges\"].node.id }}",
+              "type": "string"
+            },
+            {
+              "id": "d164e774-91af-45f7-a974-df1c1ad7e81a",
+              "name": "userID",
+              "value": "={{ $json[\"data.tasks.edges\"].node.event.registrations.edges[0].node.sourceOpportunity.owner.id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1152,
+        128
+      ],
+      "id": "ca8f267c-93fc-4937-bcb2-8e65ea43c240",
+      "name": "Opportunity Owner Branch Set",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1376,
+        -304
+      ],
+      "id": "c74c2d47-7a27-41cf-90de-0ce5f0e7386c",
+      "name": "Merge",
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "fieldsToMatchString": "contactID",
+        "joinMode": "enrichInput2",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1568,
+        -528
+      ],
+      "id": "8799d4b8-37a0-44fa-881e-7d1ac8496bb8",
+      "name": "Merge1",
+      "alwaysOutputData": true,
+      "executeOnce": false
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "0302a26d-98dc-454d-afdc-c98ba41e9dd7",
+              "name": "taskID",
+              "value": "={{ $json['[\\'data.tasks.edges\\'].node.id'] }}",
+              "type": "string"
+            },
+            {
+              "id": "d07c136f-c267-4362-a1ee-041b276b87f2",
+              "name": "contactID",
+              "value": "={{ $json['[\\'data.tasks.edges\\'].node.event.staff.edges'].node.contact.id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1152,
+        -224
+      ],
+      "id": "79701a89-7e25-4f85-9da5-86ec6ac61a77",
+      "name": "Instructor Branch Set"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f8cc667a-ee2a-4858-924d-eb4ed43edb1f",
+              "name": "taskID",
+              "value": "={{ $json['[\\'data.tasks.edges\\'].node.id'] }}",
+              "type": "string"
+            },
+            {
+              "id": "b6b48d1e-6012-49f1-83b3-924550ad9832",
+              "name": "contactID",
+              "value": "={{ $json['[\\'data.tasks.edges\\'].node.event.staff.edges'].node.contact.id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1152,
+        -384
+      ],
+      "id": "326d682a-7131-4de4-a008-edc9f48380e4",
+      "name": "Administrator Branch Set"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "bb4933c7-68d8-4bf4-b6d5-f6ad10f54e80",
+              "leftValue": "={{ $json['[\\'data.tasks.edges\\'].node.event.staff.edges'].node.isPrimary }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "d8ad8e05-38f7-47ce-ba53-9c8418478e86",
+              "leftValue": "={{ $json['[\\'data.tasks.edges\\'].node.event.staff.edges'].node.staffType }}",
+              "rightValue": "administrator",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        912,
+        -368
+      ],
+      "id": "5bc3212f-df55-42f2-89c4-2ec225330970",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "fae839de-2c9e-47b9-afb8-adb2b60b92d8",
+              "leftValue": "={{ $json['[\\'data.tasks.edges\\'].node.event.staff.edges'].node.isPrimary }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "fea64f02-a98f-456b-853a-818e8c96e89d",
+              "leftValue": "={{ $json['[\\'data.tasks.edges\\'].node.event.staff.edges'].node.staffType }}",
+              "rightValue": "instructor",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        912,
+        -208
+      ],
+      "id": "689cd87f-d83d-41b3-b404-13d4d5ccdd7b",
+      "name": "If1"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "ae63280b-b490-4ef1-8b3a-ceef9fb05469",
+              "leftValue": "={{ $json[\"data.tasks.edges\"].node.event.registrations.edges[0].node.sourceOpportunity.owner.id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        928,
+        144
+      ],
+      "id": "cdcdf7e9-fcda-4735-8b77-dafb810b47ea",
+      "name": "If2"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "eaa2eaea-c151-49a0-818e-a3642de4b0f5",
+              "leftValue": "={{ $json[\"data.tasks.edges\"].node.event.bookingAccount.owner.id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        928,
+        -32
+      ],
+      "id": "71f050df-f732-4584-9589-8a1b0e312fed",
+      "name": "If3"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1392,
+        32
+      ],
+      "id": "3d800202-a367-4010-b40d-a14f21044d0e",
+      "name": "Merge2"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1616,
+        16
+      ],
+      "id": "ed378d40-6705-4ae6-b320-e768e3f9c6a2",
+      "name": "Merge3"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "4c7355d5-d699-4627-8ef1-404270250d9f",
+              "name": "taskID",
+              "value": "={{ $json.taskID }}",
+              "type": "string"
+            },
+            {
+              "id": "43ca92e3-409a-4af1-95ab-aa82a2118267",
+              "name": "userID",
+              "value": "={{ $json.userID }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1776,
+        -528
+      ],
+      "id": "3dcbb0cd-797b-4aec-9401-4287ef1d5fe9",
+      "name": "Edit Fields2"
+    },
+    {
+      "parameters": {
+        "url": "https://coletraining.administrateapp.com/graphql",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "=query FindTasks {\n  tasks(filters: {field: eventId, operation: eq, value: \"{{ $json.payload.node.id }}\"}) {\n    edges {\n      node {\n        id\n        type {\n          name\n        }\n        event {\n          registrations {\n            edges {\n              node {\n                sourceOpportunity {\n                  owner {\n                    id\n                  }\n                }\n              }\n            }\n          }\n          bookingAccount {\n            owner {\n              id\n            }\n          }\n          staff {\n            edges {\n              node {\n                id\n                contact {\n                  id\n                }\n                staffType\n                isPrimary\n              }\n            }\n          }\n        }\n        assignee {\n          fullName\n          id\n        }\n      }\n    }\n  }\n}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -176,
+        -368
+      ],
+      "id": "80bc6dfa-5292-44ca-b8e8-ae03f4694d31",
+      "name": "Query for Event Tasks",
+      "credentials": {
+        "oAuth2Api": {
+          "id": "4zGZ9WbXS2eV4YZw",
+          "name": "Coletraining - Cole"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "events": "V2ViaG9va1R5cGU6bWFudWFsX2V2ZW50",
+        "name": "Auto Sync Tasks"
+      },
+      "type": "CUSTOM.administrateTrigger",
+      "typeVersion": 1,
+      "position": [
+        -464,
+        -544
+      ],
+      "id": "f5178dc2-ca24-4b26-b4fb-a608132bf1a4",
+      "name": "Manual Event Trigger",
+      "webhookId": "7610cc05-e118-4ec9-b7f2-70f595f8d2b5",
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "kVFIfcj1DVtctlL4",
+          "name": "coletraining"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "url": "https://coletraining.administrateapp.com/graphql",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "=query FindUsers {\n  users{\n    edges{\n      node{\n        id\n        fullName\n        contact{\n          id\n        }\n      \n      }\n    }\n  }\n}\n"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        80,
+        -544
+      ],
+      "id": "4ae69b81-dcc5-4724-bce3-70878265eb8a",
+      "name": "Get Users",
+      "credentials": {
+        "oAuth2Api": {
+          "id": "4zGZ9WbXS2eV4YZw",
+          "name": "Coletraining - Cole"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "data.users.edges",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        368,
+        -544
+      ],
+      "id": "06ad3001-b070-49a1-97a3-789266786a0b",
+      "name": "Split User Data"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c11d8afc-dfd6-4f27-af27-e8a309950425",
+              "name": "userID",
+              "value": "={{ $json.node.id }}",
+              "type": "string"
+            },
+            {
+              "id": "c8670a24-6075-46a4-b25a-79f3c684476f",
+              "name": "contactID",
+              "value": "={{ $json.node.contact.id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        576,
+        -544
+      ],
+      "id": "bdc3b4e1-70cf-4bda-b365-649a101194dc",
+      "name": "Simplify User Items",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "data.tasks.edges",
+        "include": "allOtherFields",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        288,
+        0
+      ],
+      "id": "e30bfa69-88cf-4a95-bfeb-b946d73e7473",
+      "name": "Split Task Items"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://coletraining.administrateapp.com/graphql",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "=mutation AssignTasks {\n  tasks {\n    update(input: {userId: \"{{ $json.userID }}\", taskId: \"{{ $json.taskID }}\"}) {\n      task {\n        id\n        assignee {\n          id\n        }\n      }\n      errors {\n        message\n        label\n        value\n      }\n    }\n  }\n}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1824,
+        16
+      ],
+      "id": "8c65875e-5052-4ea2-928c-0d53c8cdf239",
+      "name": "Update Task Assignee",
+      "credentials": {
+        "oAuth2Api": {
+          "id": "4zGZ9WbXS2eV4YZw",
+          "name": "Coletraining - Cole"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "['data.tasks.edges'].node.event.staff.edges",
+        "include": "selectedOtherFields",
+        "fieldsToInclude": "['data.tasks.edges'].node.id",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        720,
+        -368
+      ],
+      "id": "f7fe5dfc-9502-4c65-9ff6-80ac5f0b1f1a",
+      "name": "Split Out"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "['data.tasks.edges'].node.event.staff.edges",
+        "include": "selectedOtherFields",
+        "fieldsToInclude": "['data.tasks.edges'].node.id",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        720,
+        -208
+      ],
+      "id": "f81f9efa-5ec1-4086-b81c-3f5a532ae998",
+      "name": "Split Out1"
+    },
+    {
+      "parameters": {
+        "content": "## Potential Modifications\n\n \n*Only update tasks if they are assigned to default user\n\n*Only update tasks with a \"todo\" status\n\nboth accomplished by filtering initial query here",
+        "height": 416,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -240,
+        -800
+      ],
+      "typeVersion": 1,
+      "id": "5fb0ee4d-f695-420e-9233-9c2b073b0bd5",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "## Potential Modifications\n\n*Only create Account Owner Tasks for Private Events\n\n*Add ability to assign to non-primary event staff\n",
+        "height": 464
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -848,
+        -384
+      ],
+      "typeVersion": 1,
+      "id": "209b41f6-eac0-4d5d-a602-c0ef9b803fb1",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "## Potential Modifications\n\n \n*Only update tasks if they are assigned to default user\n\n*Only update tasks with a \"todo\" status\n\nboth accomplished by filtering initial query here",
+        "height": 448,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        16,
+        176
+      ],
+      "typeVersion": 1,
+      "id": "728fa4fd-6022-43cc-a95a-26561a44cebb",
+      "name": "Sticky Note2"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Query for task created in the last day": {
+      "main": [
+        [
+          {
+            "node": "Split Task Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Split Out",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Split Out1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "If3",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "If2",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [],
+        [],
+        [],
+        [],
+        [],
+        [],
+        [],
+        [],
+        []
+      ]
+    },
+    "Scheduled Trigger": {
+      "main": [
+        [
+          {
+            "node": "Query for task created in the last day",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get Users",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge1": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Instructor Branch Set": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Administrator Branch Set": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Administrator Branch Set",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If1": {
+      "main": [
+        [
+          {
+            "node": "Instructor Branch Set",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Opportunity Owner Branch Set": {
+      "main": [
+        [
+          {
+            "node": "Merge2",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "If2": {
+      "main": [
+        [
+          {
+            "node": "Opportunity Owner Branch Set",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If3": {
+      "main": [
+        [
+          {
+            "node": "Account Owner Branch Set",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Account Owner Branch Set": {
+      "main": [
+        [
+          {
+            "node": "Merge2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge3": {
+      "main": [
+        [
+          {
+            "node": "Update Task Assignee",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge2": {
+      "main": [
+        [
+          {
+            "node": "Merge3",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Edit Fields2": {
+      "main": [
+        [
+          {
+            "node": "Merge3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query for Event Tasks": {
+      "main": [
+        [
+          {
+            "node": "Split Task Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Manual Event Trigger": {
+      "main": [
+        [
+          {
+            "node": "Query for Event Tasks",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get Users",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Users": {
+      "main": [
+        [
+          {
+            "node": "Split User Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split User Data": {
+      "main": [
+        [
+          {
+            "node": "Simplify User Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simplify User Items": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Task Items": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out1": {
+      "main": [
+        [
+          {
+            "node": "If1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "82634bd7-1140-4560-bdb1-09b43b8d2920",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "83919d4354bbaff95da762969bebefe1aea3d522c874fd7a5e6f2d100311439b"
+  },
+  "id": "PLCKEPh1tdJJ6tKl",
+  "tags": []
+}
