@@ -25,6 +25,11 @@ For detailed setup instructions, visit the [Automator documentation](https://sup
 | [Scheduler - Bulk Event Activation](./scheduler-bulk-event-activation) | Activate hundreds or thousands of draft events created by Scheduler in bulk | 1.0.0 |
 | [Instructor Jump Ball](./instructor-jump-ball) | Send RSVP requests to instructors and manage responses for event assignments | 1.0.0 |
 | [Auto Assign Tasks](./auto-assign-tasks) | Automatically redistributes tasks by task type to the Account Owner, Booking Owner, Instructor, and Administrator. | 1.0.0 |
+| [Bulk Resource Removal](./bulk-resource-removal) | Remove all Resources from an Event in bulk with 2 clicks | 1.0.0 |
+| [Updating Billing & Shipping Addresses](./updating-billing-shipping-addresses) | Automatically copy Default Address to Billing and Shipping fields when missing | 1.0.0 |
+| [Managing Low Attendance](./managing-low-attendance) | Email participants with referral links when Events are below target fill rate | 1.0.0 |
+| [Merge Accounts](./merge-accounts) | Merge duplicate Accounts from HRIS/CRM syncs or manual entry | 1.0.0 |
+| [Logging vILT Attendance](./logging-vilt-attendance) | Automatically record Zoom attendance in Administrate by matching email addresses | 1.0.0 |
 
 ## How to Import a Workflow
 

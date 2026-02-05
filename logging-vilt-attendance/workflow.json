@@ -1,0 +1,688 @@
+{
+  "name": "Zoom vILT attendance",
+  "nodes": [
+    {
+      "parameters": {
+        "events": "V2ViaG9va1R5cGU6bWFudWFsX2V2ZW50",
+        "name": "Record Zoom Attendance",
+        "query": "query webhookQuery($objectid: ID!) {\n    node(id: $objectid) {\n        ... on Event {\n            id\n            legacyId\n            title\n            remoteMeeting {\n                url\n            }\n        }\n    }\n}"
+      },
+      "type": "CUSTOM.administrateTrigger",
+      "typeVersion": 1,
+      "position": [
+        -640,
+        496
+      ],
+      "id": "c93113f3-21ac-4635-b9e8-b7e43a3124dc",
+      "name": "Administrate Trigger",
+      "webhookId": "1710c08d-6ebb-4348-9b60-0bd20aa05533",
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "83PCPyOlrB9G9vPC",
+          "name": "Admin Uni Prod"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://zoom.us/oauth/token",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/x-www-form-urlencoded"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "grant_type",
+              "value": "account_credentials"
+            },
+            {
+              "name": "account_id",
+              "value": "D4gcweAGS1yCyuRcJLX4tg"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a1e1b02d-53cf-4eba-8d43-df67408d3217",
+      "name": "Get Zoom Access Token",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        32,
+        496
+      ],
+      "notesInFlow": false,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "gRVIGQu3wQGpiCz8",
+          "name": "Level 1 Course TCLW"
+        },
+        "httpBasicAuth": {
+          "id": "PaaXdwd1XCG9TNOr",
+          "name": "Zoom Basic Auth"
+        },
+        "zoomOAuth2Api": {
+          "id": "DdaJuVzbd91bueea",
+          "name": "GBB Zoom"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "=https://api.zoom.us/v2/past_meetings/{{ $('Get Meeting ID').item.json.zoomMeetingId }}/participants",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $('Get Zoom Access Token').item.json.access_token }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        256,
+        496
+      ],
+      "id": "5ff6c20f-bf0b-4c1c-a70a-9c80933647a9",
+      "name": "GET Meeting Participants"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "participants",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        480,
+        496
+      ],
+      "id": "494a594a-aab6-44bf-a28b-febe5b474ffc",
+      "name": "Split Out"
+    },
+    {
+      "parameters": {
+        "query": "=mutation recordAttendance {\n    learner {\n        recordAttendances(\n            input: [{{ $json.input }}]\n        ) {\n            errors {\n                label\n                message\n                value\n            }\n            learner {\n                id\n            }\n        }\n    }\n}",
+        "variables": "={}",
+        "options": {}
+      },
+      "type": "CUSTOM.administrate",
+      "typeVersion": 1,
+      "position": [
+        1984,
+        400
+      ],
+      "id": "695d2c52-8eaf-4cf7-985f-61bb699431ea",
+      "name": "Record Attendance To Event",
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "83PCPyOlrB9G9vPC",
+          "name": "Admin Uni Prod"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "query": "=query Node {\n    node(id: \"{{ $('Administrate Trigger').item.json.payload.node.id }}\") {\n        ... on Event {\n            id\n            legacyId\n            sessions(\n                filters: [\n                    { field: start, operation: le, value: \"{{ $now }}\" }\n                    { field: lifecycleState, operation: ne, value: \"cancelled\" }\n                ]\n                order: { field: start, direction: desc }\n                first: 1\n            ) {\n                edges {\n                    node {\n                        id\n                        legacyId\n                        timeZonedStart\n                        timeZonedEnd\n                    }\n                }\n            }\n        }\n    }\n}",
+        "options": {
+          "pagination": {
+            "pagination": {}
+          }
+        }
+      },
+      "type": "CUSTOM.administrate",
+      "typeVersion": 1,
+      "position": [
+        -416,
+        496
+      ],
+      "id": "f029ba7e-8197-4b07-b9ba-d7be9a859180",
+      "name": "Get Most Recent Session ID",
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "83PCPyOlrB9G9vPC",
+          "name": "Admin Uni Prod"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "0dc8af2c-05ca-4e66-9ae4-895634e3ca25",
+              "name": "zoomMeetingId",
+              "value": "={{ $('Administrate Trigger').item.json.payload.node.remoteMeeting.url.match(/\\/j\\/(\\d+)/)[1] }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -192,
+        496
+      ],
+      "id": "8f910850-2acb-44bc-808b-d3b1c8eb6829",
+      "name": "Get Meeting ID"
+    },
+    {
+      "parameters": {
+        "query": "=query Learners($offset: Int!) {\n    learners(\n        filters: [\n            { field: eventId, operation: eq, value: \"{{ $('Administrate Trigger').item.json.payload.node.id }}\" }\n            { field: lifecycleState, operation: eq, value: \"active\" }  \n            { field: contactEmailAddress, operation: in, values: {{ JSON.stringify($('Aggregate Participants').item.json.user_email) }} }\n            ]\n            offset: $offset\n    ) {\n        edges {\n            node {\n                id\n                legacyId\n                lifecycleState\n                isActive\n                contact {\n                    id\n                    legacyId\n                    emailAddress\n                }\n            }\n        }\n      pageInfo {\n            hasNextPage\n\n        }\n    }\n} ",
+        "variables": "{\"offset\": \"0\"}",
+        "options": {
+          "pagination": {
+            "pagination": {
+              "paginationMode": "paginate",
+              "dataPath": "data.learners.edges",
+              "completeExpression": "{{ $response.body.data.learners.pageInfo.hasNextPage }}"
+            }
+          }
+        }
+      },
+      "type": "CUSTOM.administrate",
+      "typeVersion": 1,
+      "position": [
+        1152,
+        400
+      ],
+      "id": "06d685fa-a2a3-4d4f-aa3d-b443d99b0ce1",
+      "name": "Get Learners From Event",
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "83PCPyOlrB9G9vPC",
+          "name": "Admin Uni Prod"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={\n  \"attended\": true,\n  \"learnerId\": {{ $('Get Learners From Event').item.json.node.id }},\n  \"sessionId\": {{ $('Get Most Recent Session ID').item.json.node.sessions.edges[0].node.id }}\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1344,
+        400
+      ],
+      "id": "1abd2195-34af-4564-b175-668301270018",
+      "name": "Create Input For Mutation"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "6415f6af-8a6c-4dbc-aaa7-6dddd99791d8",
+              "name": "input",
+              "value": "={{ $('Aggregate Event Learners').item.json.data\n                    .map(d => `{\n                      attended: ${d.attended}\n                      learnerId: \"${d.learnerId}\"\n                      sessionId: \"${d.sessionId}\"\n                    }`)\n                    .join(', ')\n                  }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1760,
+        400
+      ],
+      "id": "66a2fd1b-11d8-4c13-813b-7b03d62c0e2f",
+      "name": "Format Input"
+    },
+    {
+      "parameters": {
+        "content": "## Update Me\nSet your credentials\n",
+        "height": 256,
+        "width": 160,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -672,
+        400
+      ],
+      "id": "3817ca51-d41d-4214-9f64-6e60d9fc420b",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "Parses out the Zoom meeting ID from the Meeting URL recorded in Administrate",
+        "height": 256,
+        "width": 192
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -240,
+        400
+      ],
+      "id": "20a6103c-0276-4674-acc7-a41b2b219a86",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "## Update Me\nSet your credentials\n",
+        "height": 256,
+        "width": 160,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -448,
+        400
+      ],
+      "id": "f29eb956-10c0-4a8a-a19f-85b8e5d98608",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "## Update Me\n\nCreate a Basic Auth to Zoom, then set the value for your account_id from your Zoom Oauth App.\n\nAlternatively, if you can, create a S2S App within Zoom and use those creds.\n\n",
+        "height": 464,
+        "width": 160,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        192
+      ],
+      "id": "ed1d4971-c280-40c0-aeaa-b1167af43759",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "content": "## Requirements\n- Server-to-server app in Zoom. https://developers.zoom.us/docs/internal-apps/create/\n- Server-to-server app in Administrate. https://developer.getadministrate.com/docs/core/02_authorization.md#client-credentials-flow\n- Zoom Integration enabled in your Administrate Instance. https://support.getadministrate.com/hc/en-us/articles/360000352148-Zoom\n\n ",
+        "height": 416,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -960,
+        -32
+      ],
+      "id": "78a58725-1e68-4bea-a632-9f64445bb126",
+      "name": "Sticky Note4"
+    },
+    {
+      "parameters": {
+        "content": "When executed, the current time must be greater than the end time of the event in Zoom. Otherwise the event will not appear.",
+        "height": 304,
+        "width": 192
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        208,
+        352
+      ],
+      "id": "b89e1a52-fbef-4ec7-8a29-3e815fa4d8ed",
+      "name": "Sticky Note5"
+    },
+    {
+      "parameters": {
+        "content": "Logic here could be optionally changed. As-is, this checks that the participant joined the meeting before before the most recent session ended and after it started.",
+        "height": 336,
+        "width": 192
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        656,
+        320
+      ],
+      "id": "76372165-68ea-4f6f-8901-ebed5936bbb7",
+      "name": "Sticky Note6"
+    },
+    {
+      "parameters": {
+        "content": "## Update Me\nSet your credentials\n",
+        "height": 256,
+        "width": 160,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1120,
+        304
+      ],
+      "id": "1d720eb4-64a2-43d2-95b7-4ed4a1553a9a",
+      "name": "Sticky Note7"
+    },
+    {
+      "parameters": {
+        "fieldsToAggregate": {
+          "fieldToAggregate": [
+            {
+              "fieldToAggregate": "user_email"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        928,
+        400
+      ],
+      "id": "1c793eda-8425-4ee1-a725-ed15ba0f930a",
+      "name": "Aggregate Participants"
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        1552,
+        400
+      ],
+      "id": "729b70da-5bd5-471c-9110-9752204e3e07",
+      "name": "Aggregate Event Learners"
+    },
+    {
+      "parameters": {
+        "content": "Combines all attendees into one input so that attendance can be recorded with a single GraphQL muation.",
+        "height": 288,
+        "width": 192
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1712,
+        272
+      ],
+      "id": "8711ad2a-db9d-4434-aa50-0e85f71d7b92",
+      "name": "Sticky Note8"
+    },
+    {
+      "parameters": {
+        "content": "## Usage\nOnce this workflow is configured and Active, the Automator dropdown on events should have the option \"Record Zoom Attendance\". Using this option will take the primary email address of the event's learners and compare that with the list of participants from the Zoom meeting. If there is a match, their attendance will be recorded in Administrate. ",
+        "height": 416,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -688,
+        -32
+      ],
+      "id": "9c5091a3-032a-463a-b303-39112173bff3",
+      "name": "Sticky Note9"
+    },
+    {
+      "parameters": {
+        "content": "## Additional Notes\n- Works with multi session events. Attendance is recorded against the most recent (non-cancelled) session.\n- Zoom meeting end time must be greater than current time when this is executed. Considering this, when testing, you may want to bypass/alter the \"Attended During Most Recent Session\" node.\n- The same meeting link can be used for multiple sessions, but Zoom only keeps the most recent attendance. If used for multiple session, it is necessary to sync attendance between sessions.",
+        "height": 480,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -416,
+        -96
+      ],
+      "id": "3c0484e7-e521-4344-a19d-92c3b89bab70",
+      "name": "Sticky Note10"
+    },
+    {
+      "parameters": {
+        "content": "## Update Me\nSet your credentials\n",
+        "height": 256,
+        "width": 160,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1952,
+        304
+      ],
+      "id": "3ca1b1d2-44bb-4f06-ab25-ca3b321cc4ad",
+      "name": "Sticky Note11"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "236a93c5-53b9-47ed-8251-3b6c66f5104d",
+              "leftValue": "={{ $('Split Out').item.json.join_time }}",
+              "rightValue": "={{ $('Get Most Recent Session ID').item.json.node.sessions.edges[0].node.timeZonedEnd }}",
+              "operator": {
+                "type": "dateTime",
+                "operation": "before"
+              }
+            },
+            {
+              "id": "d265b9c4-0446-4c7a-a1f8-ef207cb5cb1a",
+              "leftValue": "={{ $('Split Out').item.json.leave_time }}",
+              "rightValue": "={{ $('Get Most Recent Session ID').item.json.node.sessions.edges[0].node.timeZonedStart }}",
+              "operator": {
+                "type": "dateTime",
+                "operation": "after"
+              }
+            },
+            {
+              "id": "0c8f2209-2979-43ef-a1f3-55df2843c610",
+              "leftValue": "",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        704,
+        496
+      ],
+      "id": "1cd25d1d-44e8-4f2d-b648-9c4a4d0145a1",
+      "name": "Attended During Most Recent Session?"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        928,
+        592
+      ],
+      "id": "c41cc4a5-563d-429f-8efa-ce3ea3a7a303",
+      "name": "Did Not Attend During Most Recent Session"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Administrate Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get Most Recent Session ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Zoom Access Token": {
+      "main": [
+        [
+          {
+            "node": "GET Meeting Participants",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GET Meeting Participants": {
+      "main": [
+        [
+          {
+            "node": "Split Out",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out": {
+      "main": [
+        [
+          {
+            "node": "Attended During Most Recent Session?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Most Recent Session ID": {
+      "main": [
+        [
+          {
+            "node": "Get Meeting ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Meeting ID": {
+      "main": [
+        [
+          {
+            "node": "Get Zoom Access Token",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Learners From Event": {
+      "main": [
+        [
+          {
+            "node": "Create Input For Mutation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Input For Mutation": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Event Learners",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Input": {
+      "main": [
+        [
+          {
+            "node": "Record Attendance To Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate Participants": {
+      "main": [
+        [
+          {
+            "node": "Get Learners From Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate Event Learners": {
+      "main": [
+        [
+          {
+            "node": "Format Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Attended During Most Recent Session?": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Participants",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Did Not Attend During Most Recent Session",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "70a4b97a-3e98-465a-86df-4a4e18e8ef34",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "83919d4354bbaff95da762969bebefe1aea3d522c874fd7a5e6f2d100311439b"
+  },
+  "id": "4hMis1gU4FmKcEHJ",
+  "tags": []
+}

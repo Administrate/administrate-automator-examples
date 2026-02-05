@@ -1,0 +1,826 @@
+{
+  "name": "Event Fill Rate Email",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 7
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -256,
+        0
+      ],
+      "id": "0a8c8b9c-6588-41e4-b3c2-a8bc0eb324ce",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -256,
+        288
+      ],
+      "id": "09710e2e-800a-47aa-9cbe-d28e9a2f7ad2",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.getadministrate.com/graphql",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
+        "options": {
+          "pagination": {
+            "pagination": {
+              "parameters": {
+                "parameters": [
+                  {
+                    "name": "query",
+                    "value": "=query getEvents { events(filters: [{ field: lifecycleState, operation: eq, value: \"published\" },{ field: isActive, operation: eq, value: \"true\" },{ field: start, operation: ge, value: \"{{ $json.todayDate }}\" }], first: 10, offset: {{ $pageCount * 10 }}) { pageInfo {hasNextPage endCursor} edges { node { id start end isActive lifecycleState bookedPlaces reserved maxPlaces targetFillRate customFieldValues { definition { key label } value }courseTemplate{ customFieldValues{ definition{ key label } value}}}}}}"
+                  }
+                ]
+              },
+              "paginationCompleteWhen": "other",
+              "completeExpression": "={{ $response.body.data.events.pageInfo.hasNextPage == false }}"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        352,
+        0
+      ],
+      "id": "9d1c3979-eabe-4fff-a842-b70a7a461d1f",
+      "name": "Get Events",
+      "credentials": {
+        "oAuth2Api": {
+          "id": "0hA0ldq7amED1zcI",
+          "name": "jarreds - Jarred/Scott"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get today's date in ISO format (e.g., \"2025-11-20\")\nconst today = new Date().toISOString().split('T')[0];\n\n// Return the date as part of the output data\nreturn [\n  {\n    json: {\n      todayDate: today\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        144,
+        0
+      ],
+      "id": "ccfcecee-65bf-4235-a794-57e3e828f986",
+      "name": "Get Today's Date"
+    },
+    {
+      "parameters": {
+        "fieldsToAggregate": {
+          "fieldToAggregate": [
+            {
+              "fieldToAggregate": "data.events.edges"
+            }
+          ]
+        },
+        "options": {
+          "mergeLists": true
+        }
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        560,
+        0
+      ],
+      "id": "593fa1a0-ef5c-48fd-8b15-f8c9f0f9f9a2",
+      "name": "Aggregate"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "edges",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        768,
+        0
+      ],
+      "id": "a33f7fa4-d7d5-4cae-a7a4-32a2f6165451",
+      "name": "Split Out"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c2b62630-6507-4489-b2b1-d6a66d33b333",
+              "leftValue": "={{ $json.node.customFieldValues[14].value }}",
+              "rightValue": "false",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "330263d8-4ba8-481e-ae1e-eca1d10f447d",
+              "leftValue": "={{ $json.node.customFieldValues[14].value }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "empty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        976,
+        0
+      ],
+      "id": "7b474711-d762-4451-b28c-aa26476acecc",
+      "name": "If - Event Custom Field False or Null"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "32e4a5b3-cfa6-4fcf-a84a-9c55e88429cd",
+              "leftValue": "={{ $json.node.courseTemplate.customFieldValues[7].value }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1440,
+        -96
+      ],
+      "id": "d7187c70-623f-45d4-8586-c10da27cd83f",
+      "name": "If - Course Custom Field is not empty"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "da2d26b2-75ea-4ea8-a052-58d9f6ac97d9",
+              "leftValue": "={{ new Date(new Date($json.node.start).setDate(new Date($json.node.start).getDate() - $json.node.courseTemplate.customFieldValues[7].value)).toISOString().split('T')[0] }}",
+              "rightValue": "={{ $today.toISODate() }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1888,
+        -224
+      ],
+      "id": "3b94bbfc-2334-4292-a711-3cd0e3d6afc1",
+      "name": "If Event Start Minus Offset = Today"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Script generated by ChatGPT\n// Extract values from the event node\nconst booked = $json.node.bookedPlaces || 0;\nconst reserved = $json.node.reserved || 0;\nconst max = $json.node.maxPlaces || 0;\nconst target = Number($json.node.targetFillRate) || 0;\n\nlet fillRatePercent = 0;\nlet shouldSendFillRateEmail = false;\n\n// Calculate the percentage\nif (max > 0) {\n  fillRatePercent = ((booked + reserved) / max) * 100;\n}\n\n// Determine if email should be sent\nif (fillRatePercent < target) {\n  shouldSendFillRateEmail = true;\n}\n\n// Return enriched data including event ID\nreturn [\n  {\n    json: {\n      eventIds: $items().map(item => item.json.node.id),\n      events: $items().map(item => ({\n        eventId: item.json.node.id,\n        fillRatePercent:\n          item.json.node.maxPlaces > 0\n            ? ((item.json.node.bookedPlaces || 0) +\n               (item.json.node.reserved || 0)) /\n              item.json.node.maxPlaces * 100\n            : 0,\n        shouldSendFillRateEmail:\n          item.json.node.maxPlaces > 0 &&\n          (((item.json.node.bookedPlaces || 0) +\n            (item.json.node.reserved || 0)) /\n            item.json.node.maxPlaces * 100) <\n            Number(item.json.node.targetFillRate || 0)\n      }))\n    }\n  }\n];\n"
+      },
+      "id": "eed13ae3-9503-456e-aff0-3bb1e1bc8121",
+      "name": "Calculate Fill Rate Percentage + Compare",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2320,
+        -320
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.getadministrate.com/graphql",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"query\": \"mutation BulkAdhocEmails { bulkAdhocEmails { sendBulkBookingContactAdhocEmail(input: { eventId: \\\"{{ $json.eventIds }}\\\" audience: active  templateId: \\\"Q29tbXVuaWNhdGlvblRlbXBsYXRlOjExOA==\\\" sendingAddressId: \\\"U2VuZGluZ0VtYWlsQWRkcmVzczoy\\\" }) { errors { label message value } } } }\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        2784,
+        -144
+      ],
+      "id": "c34d412d-8709-4630-9fe4-8801b362bcc2",
+      "name": "Send Booking Contact Email",
+      "credentials": {
+        "oAuth2Api": {
+          "id": "0hA0ldq7amED1zcI",
+          "name": "jarreds - Jarred/Scott"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.getadministrate.com/graphql",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"query\": \"mutation SendBulkLearnerEmail($input: SendBulkLearnerAdhocEmailInput!) { bulkAdhocEmails { sendBulkLearnerAdhocEmail(input: $input) { errors { message } } } }\",\n  \"variables\": {\n    \"input\": {\n      \"eventId\": \"{{ $json.eventIds }}\",\n      \"audience\": \"active\",\n      \"templateId\": \"Q29tbXVuaWNhdGlvblRlbXBsYXRlOjExNw==\",\n      \"sendingAddressId\": \"U2VuZGluZ0VtYWlsQWRkcmVzczoy\"\n    }\n  }\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        2784,
+        -464
+      ],
+      "id": "d30ba42f-f6d3-45a4-aa10-03fb4003baf3",
+      "name": "Send Learner Email",
+      "credentials": {
+        "oAuth2Api": {
+          "id": "0hA0ldq7amED1zcI",
+          "name": "jarreds - Jarred/Scott"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.getadministrate.com/graphql",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"query\": \"mutation ($eventId: ID!, $emailSentValue: String!) { event { update(eventId: $eventId, input: { customFieldValues: [ { definitionKey: \\\"Q3VzdG9tRmllbGREZWZpbml0aW9uOjE4OA==\\\", value: $emailSentValue } ] }) { event { id } } } }\",\n  \"variables\": {\n    \"eventId\": \"{{ $json.eventIds }}\",\n    \"emailSentValue\": \"true\"\n  }\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        3856,
+        -320
+      ],
+      "id": "38ce4ed7-bde0-4748-aa5b-5be96fa029b1",
+      "name": "Update Event Custom Field",
+      "credentials": {
+        "oAuth2Api": {
+          "id": "0hA0ldq7amED1zcI",
+          "name": "jarreds - Jarred/Scott"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{\n  {\n    events: $items(\"Split Out1\").map(i => ({ eventIds: i.json.eventIds }))\n  }\n}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        3248,
+        -320
+      ],
+      "id": "5155956e-5dfd-4b55-b2a2-7013b26cb2d0",
+      "name": "Store Event ID"
+    },
+    {
+      "parameters": {
+        "content": "## Instructions \n\n**1. Create a Course Custom Field**\nType - Single Line Text\nName - \"Fill Rate Offset (Enter number of days)\"\nThis is where you will store the number of days in advance of the Event Start Date to send the email. (E.g \"14\" means you want the email to send 14 days before the Event Start Date for that Course. Leave blank if you don't want emails to send for that Course.)\nGet the ID and add it to the logic in node \"If - Course Custom Field is not empty\"\n\n**2. Create an Event Custom Field**\nType - Checkbox\nName - \"Target Fill Rate Email Sent?\"\nIndicates (Yes/No) if the fill rate email has already been sent for the Event. \nGet the ID and add it to the logic in node \"If - Event Custom Field False or Null\"\n\n**3. Create Communications Templates**\nCreate a Communication Template for Audience - Students (to send the email to Active Students on the Event). Get the ID and add it to the variable in node \"Send Learner Email\"\n\nCreate a Communication Template for Audience - Booking Contact (to send the email to Active Booking Contacts on the Event). Get the ID and add it to the variable in node \"Send Booking Contact Email\"\n\n**4. Set the Sending Address**\nGet the ID of the Sending Address you want the email to send from and add the ID to the variable in nodes \"Send Learner Email\" and \"Send Booking Contact Email\"\n",
+        "height": 720,
+        "width": 416
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -784,
+        -16
+      ],
+      "typeVersion": 1,
+      "id": "362f5eeb-d727-46a5-b00d-edf9a1b42eed",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "## What Does It Do?\nAn email will automatically send out to Active Students and/or Booking Contacts on an Event if the Event 'Target Fill Rate' has not been met X days before Event Start Date. A Checkbox Event Custom Field will be set to 'Yes' when the email sends.\n\nThe email is to encourage more Registrations by asking the existing Students to reach out to friends/family/colleagues.",
+        "height": 240,
+        "width": 416,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1232,
+        -16
+      ],
+      "typeVersion": 1,
+      "id": "54307ea7-6956-49eb-b1de-2017906b40f6",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "09129ee4-eadb-4a1d-abdd-93524d853294",
+              "name": "node",
+              "value": "={{ $json.node }}",
+              "type": "object"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1248,
+        -96
+      ],
+      "id": "86ec6d58-f91a-44de-9a40-72920f791ea9",
+      "name": "Store Events 1",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "527e4e84-e856-4618-9f61-67838798c837",
+              "name": "node",
+              "value": "={{ $json.node }}",
+              "type": "object"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1680,
+        -224
+      ],
+      "id": "e1b7d7a7-2e83-405d-a81c-ccd99d5ba35c",
+      "name": "Store Events 2"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "85d12465-0ad0-4fc8-856a-c3dc8717a165",
+              "name": "node",
+              "value": "={{ $json.node }}",
+              "type": "object"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2144,
+        -320
+      ],
+      "id": "5fc0a7ed-3c7a-4079-9c9e-435ad25eec20",
+      "name": "Store Events 3"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f0e0860d-4193-4f5b-b79a-59f72b034109",
+              "name": "message",
+              "value": "=Fill Rate email sent for Event ID: {{ $json.data.event.update.event.id }}",
+              "type": "string"
+            },
+            {
+              "id": "e8b52071-569d-4583-a883-1493699da8a4",
+              "name": "payload",
+              "value": "=Event ID: {{ $json.data.event.update.event.id }}",
+              "type": "string"
+            },
+            {
+              "id": "4679ce14-23b3-47f5-846f-d34dc3105d22",
+              "name": "status",
+              "value": "success",
+              "type": "string"
+            },
+            {
+              "id": "9ff50078-ecf6-45de-838e-48fa5a0801ef",
+              "name": "nodeId",
+              "value": "={{ $json.data.event.update.event.id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        4080,
+        -320
+      ],
+      "id": "329e08b0-1def-44b5-bfd0-e57a713e41e5",
+      "name": "External Logs part 1"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://jarreds.administrateapp.com/graphql",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "=mutation addExternalLog {\n  externalLog {\n    createExternalIntegrationLogs(input:{\n      originIdentifier: \"Automator - Events Where Fill Rate Reminder Email Sent\"\n      nodeId: \"{{ $json.nodeId }}\"\n      message:\"{{ $json.message }}\"\n      status: {{ $json.status }}\n      payload: {{ $json.payload.toJsonString() }}\n    }){\n        errors{\n          label\n          message\n          value\n        }\n        entityIds\n      }\n    }\n}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        4272,
+        -320
+      ],
+      "id": "b61c47ee-efe5-4b62-8192-9da98693b43f",
+      "name": "External Logs part 2",
+      "credentials": {
+        "oAuth2Api": {
+          "id": "0hA0ldq7amED1zcI",
+          "name": "jarreds - Jarred/Scott"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "eventIds",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        2512,
+        -320
+      ],
+      "id": "b93e5448-0c67-4d9c-a2e6-17b7ec4cf8ee",
+      "name": "Split Out1"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        3072,
+        -320
+      ],
+      "id": "4894b6b1-0063-439f-a511-04f493eae544",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.removeDuplicates",
+      "typeVersion": 2,
+      "position": [
+        3456,
+        -320
+      ],
+      "id": "674bb59c-f90c-42f2-9d58-f455044fd889",
+      "name": "Remove Duplicates"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "events",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        3648,
+        -320
+      ],
+      "id": "fe251ef9-e687-4c6d-bc5e-a9a5d90b2c64",
+      "name": "Split Out2"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get Today's Date",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Get Today's Date",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Today's Date": {
+      "main": [
+        [
+          {
+            "node": "Get Events",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Events": {
+      "main": [
+        [
+          {
+            "node": "Aggregate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate": {
+      "main": [
+        [
+          {
+            "node": "Split Out",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out": {
+      "main": [
+        [
+          {
+            "node": "If - Event Custom Field False or Null",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If - Event Custom Field False or Null": {
+      "main": [
+        [
+          {
+            "node": "Store Events 1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If - Course Custom Field is not empty": {
+      "main": [
+        [
+          {
+            "node": "Store Events 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If Event Start Minus Offset = Today": {
+      "main": [
+        [
+          {
+            "node": "Store Events 3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculate Fill Rate Percentage + Compare": {
+      "main": [
+        [
+          {
+            "node": "Split Out1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Learner Email": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Booking Contact Email": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Store Event ID": {
+      "main": [
+        [
+          {
+            "node": "Remove Duplicates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Store Events 1": {
+      "main": [
+        [
+          {
+            "node": "If - Course Custom Field is not empty",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Store Events 2": {
+      "main": [
+        [
+          {
+            "node": "If Event Start Minus Offset = Today",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Store Events 3": {
+      "main": [
+        [
+          {
+            "node": "Calculate Fill Rate Percentage + Compare",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Event Custom Field": {
+      "main": [
+        [
+          {
+            "node": "External Logs part 1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "External Logs part 1": {
+      "main": [
+        [
+          {
+            "node": "External Logs part 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out1": {
+      "main": [
+        [
+          {
+            "node": "Send Learner Email",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send Booking Contact Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Store Event ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Remove Duplicates": {
+      "main": [
+        [
+          {
+            "node": "Split Out2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out2": {
+      "main": [
+        [
+          {
+            "node": "Update Event Custom Field",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "b22a5e86-aa04-48b6-89b6-04cfbb486590",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "83919d4354bbaff95da762969bebefe1aea3d522c874fd7a5e6f2d100311439b"
+  },
+  "id": "7qrB9fjACT9xIXuf",
+  "tags": []
+}
