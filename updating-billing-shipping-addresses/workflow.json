@@ -1,0 +1,303 @@
+{
+  "name": "Administrate – Copy Default Address to Billing/Shipping if Blank",
+  "nodes": [
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://adminunisandbox.administrateapp.com/graphql",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"query\": \"query ($id: String!) { accounts(filters: [{field: id, operation: eq, value: $id}]) { edges { node { id postalAddresses { usage lines town region postcode country { id } address { provinceCode contactPerson } } } } } }\",\n  \"variables\": {\n    \"id\": \"={{$json.payload.node.id}}\"\n  }\n}",
+        "options": {}
+      },
+      "id": "9a8f9fe1-1e25-41df-bd8d-6a8fccb3de5c",
+      "name": "Fetch Account",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        -1152,
+        112
+      ],
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "9QvvRxVPpMCETKd1",
+          "name": "n8n adminunisandbox key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// n8n Code node mode: Run Once for All Items\n\nconst acct = $input.first()?.json?.data?.accounts?.edges?.[0]?.node;\n\nif (!acct) {\n  return [{ json: { hasUpdate: false, reason: \"No account node found in Fetch Account output\" } }];\n}\n\nconst addrs = acct.postalAddresses || [];\nconst byUsage = Object.fromEntries(addrs.map(a => [a.usage, a]));\n\n// IMPORTANT: Treat \"country-only\" as empty. We only consider it filled if it has\n// meaningful address text (lines/town/region/postcode/provinceCode/contactPerson).\nconst isEmptyAddr = (a) => {\n  if (!a) return true;\n  const lines = (a.lines || []).map(x => (x || \"\").trim()).filter(Boolean);\n  const town = (a.town || \"\").trim();\n  const region = (a.region || \"\").trim();\n  const postcode = (a.postcode || \"\").trim();\n  const provinceCode = (a.address?.provinceCode || \"\").trim();\n  const contactPerson = a.address?.contactPerson;\n\n  return (\n    lines.length === 0 &&\n    !town &&\n    !region &&\n    !postcode &&\n    !provinceCode &&\n    !contactPerson\n  );\n};\n\nconst def = byUsage.default;\nif (!def || isEmptyAddr(def)) {\n  return [{ json: { hasUpdate: false, reason: \"No usable default address to copy\" } }];\n}\n\nconst buildAddressInputFrom = (src) => ({\n  lines: src.lines || [],\n  town: src.town || \"\",\n  region: src.region || \"\",\n  postcode: src.postcode || \"\",\n  countryId: src.country?.id || null,\n  provinceCode: src.address?.provinceCode || null,\n  contactPerson: src.address?.contactPerson || null\n});\n\n// Missing OR empty should be filled\nconst billingNeedsFill = !byUsage.billing || isEmptyAddr(byUsage.billing);\nconst shippingNeedsFill = !byUsage.shipping || isEmptyAddr(byUsage.shipping);\n\nif (!billingNeedsFill && !shippingNeedsFill) {\n  return [{ json: { hasUpdate: false, reason: \"Nothing to update\" } }];\n}\n\n// Full replacement list (because postalAddresses replaces everything)\nconst out = [];\n\n// Keep existing addresses unchanged EXCEPT billing/shipping when we are filling them\nfor (const a of addrs) {\n  if ((a.usage === \"billing\" && billingNeedsFill) || (a.usage === \"shipping\" && shippingNeedsFill)) {\n    continue;\n  }\n  out.push({\n    usage: a.usage,\n    address: buildAddressInputFrom(a)\n  });\n}\n\n// Add billing/shipping copies from default as needed\nif (billingNeedsFill) out.push({ usage: \"billing\", address: buildAddressInputFrom(def) });\nif (shippingNeedsFill) out.push({ usage: \"shipping\", address: buildAddressInputFrom(def) });\n\nreturn [{\n  json: {\n    hasUpdate: true,\n    accountId: acct.id,\n    postalAddresses: out\n  }\n}];"
+      },
+      "id": "531bedfe-b166-4e9a-ba47-12bcc3452d86",
+      "name": "Build Update Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -880,
+        112
+      ],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "c84e4428-6554-449b-a633-e4cde5cf41f1",
+              "leftValue": "={{$json.hasUpdate}}",
+              "rightValue": "true",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "a73bc1d2-7faa-4a9b-a73a-b646d900173f",
+      "name": "IF Has Update",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -640,
+        112
+      ],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://adminunisandbox.administrateapp.com/graphql",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "={{(() => {\n  const acctId = $json.accountId;\n  const postalAddresses = $json.postalAddresses || [];\n\n  // Build GraphQL object for the nested address input\n  const addressToGql = (addr = {}) => {\n    const parts = [];\n\n    if (Array.isArray(addr.lines)) parts.push(`lines: ${JSON.stringify(addr.lines)}`);\n    if (addr.town !== null && addr.town !== undefined) parts.push(`town: ${JSON.stringify(addr.town)}`);\n    if (addr.region !== null && addr.region !== undefined) parts.push(`region: ${JSON.stringify(addr.region)}`);\n    if (addr.postcode !== null && addr.postcode !== undefined) parts.push(`postcode: ${JSON.stringify(addr.postcode)}`);\n    if (addr.countryId !== null && addr.countryId !== undefined) parts.push(`countryId: ${JSON.stringify(addr.countryId)}`);\n    if (addr.provinceCode !== null && addr.provinceCode !== undefined) parts.push(`provinceCode: ${JSON.stringify(addr.provinceCode)}`);\n    if (addr.contactPerson !== null && addr.contactPerson !== undefined) parts.push(`contactPerson: ${JSON.stringify(addr.contactPerson)}`);\n\n    return `{ ${parts.join(\", \")} }`;\n  };\n\n  // Build GraphQL object for each postal address input\n  const postalAddressToGql = (pa) => {\n    // usage is an ENUM, so it MUST NOT be quoted\n    return `{ usage: ${pa.usage}, address: ${addressToGql(pa.address)} }`;\n  };\n\n  const postalAddressesGql = `[${postalAddresses.map(postalAddressToGql).join(\", \")}]`;\n\n  return `mutation {\n    account {\n      update(input: {\n        accountId: \"${acctId}\"\n        postalAddresses: ${postalAddressesGql}\n      }) {\n        account { id }\n        errors { label message value }\n      }\n    }\n  }`;\n})()}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "4b2f44d8-204a-441f-9c6b-a64264df1d8a",
+      "name": "Update Account",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        -400,
+        48
+      ],
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "9QvvRxVPpMCETKd1",
+          "name": "n8n adminunisandbox key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "name": "https://adminuni.administrateapp.com/graphql",
+        "query": "query webhookQuery($objectid: ID!) {\n  node(id: $objectid) { id }\n}"
+      },
+      "type": "CUSTOM.administrateTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1376,
+        112
+      ],
+      "id": "5344c1c0-5869-4c5f-98d7-d46bacec7603",
+      "name": "Administrate Trigger",
+      "webhookId": "ea9db13f-9563-4f12-9d62-b089f401c740",
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "9QvvRxVPpMCETKd1",
+          "name": "n8n adminunisandbox key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## Update Me\nSet your credentials\n",
+        "height": 256,
+        "width": 166,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -1408,
+        -16
+      ],
+      "id": "01e756a1-c65b-44a2-9a9b-f6b530c39ee4",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "## Update Me\nSet your credentials\n",
+        "height": 256,
+        "width": 150,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -1184,
+        -16
+      ],
+      "id": "b1740bb8-bc92-4888-b703-f4097efab840",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "## Update Me\nSet your credentials\n",
+        "height": 256,
+        "width": 150,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -432,
+        -80
+      ],
+      "id": "8b8c574e-8393-4024-9820-22af6385ff39",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "0bf75c45-842d-4c11-9890-06e648d05ab1",
+      "name": "Respond Loop",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        -400,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Automatic Billing and Shipping Address Fill\n\nThis step checks an account’s postal addresses and fills in missing billing and/or shipping addresses using the default address, but only under specific conditions.\n\n**What data this step reads**\n\nFrom the account record, it reads:\n\t•\tpostalAddresses\n\t•\tFor each postal address:\n\t•\tusage\n\t•\tlines\n\t•\ttown\n\t•\tregion\n\t•\tpostcode\n\t•\tcountry.id\n\t•\taddress.provinceCode\n\t•\taddress.contactPerson\n\n**What counts as an “empty” address**\n\nAn address is treated as empty unless it has at least one of the following filled in:\n\t•\tlines (at least one non-empty line)\n\t•\ttown\n\t•\tregion\n\t•\tpostcode\n\t•\taddress.provinceCode\n\t•\taddress.contactPerson\n\n⚠️ **Important rule**\nIf an address only has a country (country.id) and none of the fields above, it is treated as empty.\n\n**Rules for using the default address**\n\t•\tThe address with usage = \"default\" is used as the source for copying.\n\t•\tIf there is no default address, or the default address is considered empty by the rules above, no changes are made.\n\n",
+        "height": 768,
+        "width": 544
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -2672,
+        -368
+      ],
+      "typeVersion": 1,
+      "id": "7ab94c5f-894e-4bb8-838a-855d5d58de84",
+      "name": "Sticky Note4"
+    },
+    {
+      "parameters": {
+        "content": "**Rules for billing and shipping**\n\t•\tbilling is updated if:\n\t•\tIt does not exist, or\n\t•\tIt exists but is considered empty.\n\t•\tshipping is updated if:\n\t•\tIt does not exist, or\n\t•\tIt exists but is considered empty.\n\t•\tIf both billing and shipping already exist and are not empty, no changes are made.\n\n**What gets updated**\n\nIf an update is required:\n\t•\tThe entire postalAddresses list is replaced.\n\t•\tAll existing addresses are kept unchanged, except:\n\t•\tbilling, if it needs filling\n\t•\tshipping, if it needs filling\n\t•\tAny billing and/or shipping address that needs filling is replaced with a copy of the default address.\n\n**Only the following fields are copied into the new billing/shipping address:**\n\t•\tlines\n\t•\ttown\n\t•\tregion\n\t•\tpostcode\n\t•\tcountry.id\n\t•\taddress.provinceCode\n\t•\taddress.contactPerson\n\n**What this step outputs**\n\t•\tIf no change is needed or possible:\n\t•\thasUpdate: false\n\t•\tA reason explaining why (for example: no account found, no usable default address, or nothing to update)\n\t•\tIf changes are made:\n\t•\thasUpdate: true\n\t•\taccountId\n\t•\tA full replacement postalAddresses list\n\n**What this step does not do**\n\t•\tIt does not modify addresses other than billing and shipping.\n\t•\tIt does not partially merge address fields.\n\t•\tIt does not create a default address.\n\t•\tIt does not treat country-only addresses as valid.",
+        "height": 880,
+        "width": 544
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -2096,
+        -368
+      ],
+      "typeVersion": 1,
+      "id": "50736235-9322-460e-8758-0cdbfaa04d5a",
+      "name": "Sticky Note3"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Fetch Account": {
+      "main": [
+        [
+          {
+            "node": "Build Update Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Update Payload": {
+      "main": [
+        [
+          {
+            "node": "IF Has Update",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Has Update": {
+      "main": [
+        [
+          {
+            "node": "Update Account",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond Loop",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Account": {
+      "main": [
+        []
+      ]
+    },
+    "Administrate Trigger": {
+      "main": [
+        [
+          {
+            "node": "Fetch Account",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "dc04f59d-fa18-47ba-a7de-cbb414c5fd82",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "83919d4354bbaff95da762969bebefe1aea3d522c874fd7a5e6f2d100311439b"
+  },
+  "id": "A7Wl0ElVIVpKKxGb",
+  "tags": []
+}

@@ -1,0 +1,690 @@
+{
+  "name": "Merge Accounts",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "Merge Accounts",
+        "formDescription": "This tool merges one account into another. The \"From Account\" will be merged into the \"To Account\" such that the latter is the one that remains.\n\nNote: Ensure that you are using the Account ID and NOT the Contact ID",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "From Account ID",
+              "fieldType": "number",
+              "placeholder": "123",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "To Account ID",
+              "fieldType": "number",
+              "placeholder": "123",
+              "requiredField": true
+            },
+            {
+              "fieldType": "html",
+              "html": "<h2>FAQ</h2>\n<p><strong>What information will it merge?</strong></p>\n<ul>\n<li><em>Contacts</em></li>\n<li><em>Bookings</em></li>\n<li><em>Registrations</em></li>\n<li><em>Financials</em></li>\n</ul>\n<p><strong>Is there anything that is not merged?</strong></p>\n<ul>\n<li><em>Tasks</em></li>\n<li><em>Training Tokens</em></li>\n<li><em>Pricing Agreements</em></li>\n<li><em>Training Passes</em></li>\n</ul>"
+            }
+          ]
+        },
+        "options": {
+          "appendAttribution": false,
+          "ignoreBots": true
+        }
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.3,
+      "position": [
+        64,
+        368
+      ],
+      "id": "4d794a30-2fc8-4b7a-9ca5-14a4e2b1a5eb",
+      "name": "On form submission",
+      "webhookId": "5e9c9c2b-a0f3-407f-a74b-646f3110aa6c"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "5c989dda-0c11-400b-926c-baba5ff7a44c",
+              "name": "fromAccount",
+              "value": "=Organisation:{{ $json['From Account ID'] }}",
+              "type": "string"
+            },
+            {
+              "id": "871974e7-84c0-4ede-b9ac-d58f7bb9b016",
+              "name": "toAccount",
+              "value": "=Organisation:{{ $json['To Account ID'] }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        288,
+        368
+      ],
+      "id": "b2046548-4544-4ab6-b6c1-0ebf0f2916d0",
+      "name": "Retrieve Account IDs"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "488a83a2-b743-4633-a538-cadbbfea82c0",
+              "name": "fromAccountB64",
+              "value": "={{ $json['fromAccount'].trim().base64Encode() }}",
+              "type": "string"
+            },
+            {
+              "id": "54bc4371-828c-443a-95d0-fab5bbbbb594",
+              "name": "toAccountB64",
+              "value": "={{ $json['toAccount'].trim().base64Encode() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        512,
+        368
+      ],
+      "id": "0b584743-be34-4e5a-9949-ce0cf66e6120",
+      "name": "Convert Account IDs to Base64"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.getadministrate.com/graphql",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "=query Accounts {\n  accounts(filters: [{\n    field: id, operation: eq, value: \"{{ $json.fromAccountB64 }}\"\n  }]) {\n    edges {\n      node {\n        id\n        name\n        legacyId\n      }\n    }\n  }\n}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        720,
+        368
+      ],
+      "id": "aaad11ac-bcdd-4583-839e-f1c92924bcb8",
+      "name": "Retrieve fromAccount",
+      "credentials": {
+        "oAuth2Api": {
+          "id": "fShCWC2pXT1JlwCo",
+          "name": "Hoffministrate - Kory"
+        },
+        "administrateOAuth2Api": {
+          "id": "9QvvRxVPpMCETKd1",
+          "name": "n8n adminunisandbox key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.getadministrate.com/graphql",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "=query Accounts {\n  accounts(filters: [{\n    field: id, operation: eq, value: \"{{ $('Convert Account IDs to Base64').item.json.toAccountB64 }}\"\n  }]) {\n    edges {\n      node {\n        id\n        name\n        legacyId\n      }\n    }\n  }\n}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1008,
+        368
+      ],
+      "id": "6354d832-cf62-436f-b99a-e188985fbec8",
+      "name": "Retrieve toAccount",
+      "credentials": {
+        "oAuth2Api": {
+          "id": "fShCWC2pXT1JlwCo",
+          "name": "Hoffministrate - Kory"
+        },
+        "administrateOAuth2Api": {
+          "id": "9QvvRxVPpMCETKd1",
+          "name": "n8n adminunisandbox key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "5e1b05fb-0c16-4b67-8c40-9e65ba3b64ae",
+              "leftValue": "={{ $json.data.accounts.edges[0].node.id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1136,
+        608
+      ],
+      "id": "5c24517a-9d7c-4642-9d06-7919f2735ebe",
+      "name": "If toAccount exists"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "5e1b05fb-0c16-4b67-8c40-9e65ba3b64ae",
+              "leftValue": "={{ $json.data.accounts.edges[0].node.id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        864,
+        608
+      ],
+      "id": "04f216b8-7e5a-494f-afcb-38d6c48b1cd0",
+      "name": "If fromAccount exists"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e6fc48de-f522-48ee-9d72-f71e17ae18ec",
+              "name": "accountNotFoundId",
+              "value": "={{ $('On form submission').item.json['From Account ID'] }}",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1040,
+        784
+      ],
+      "id": "89ae9dd9-2ad8-4756-a786-53431c6ec7e7",
+      "name": "Set accountNotFoundId"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e6fc48de-f522-48ee-9d72-f71e17ae18ec",
+              "name": "accountNotFoundId",
+              "value": "={{ $('On form submission').item.json['From Account ID'] }}",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1296,
+        784
+      ],
+      "id": "db71414e-a0dd-4ae3-9520-9465bd4879c3",
+      "name": "Set accountNotFoundId1"
+    },
+    {
+      "parameters": {
+        "operation": "completion",
+        "completionTitle": "Something went wrong.",
+        "completionMessage": "=Account {{ $json.accountNotFoundId }} not found. Please confirm the account ID is correct. \n<br>\n<br>\nFor further assistance, please reach out Administrate Support. \n<br>\nhttps://support.getadministrate.com/hc/en-us",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.form",
+      "typeVersion": 2.3,
+      "position": [
+        1456,
+        944
+      ],
+      "id": "929a745f-0608-49d6-aee8-2add5a48262e",
+      "name": "END - Account Not Found",
+      "webhookId": "a5b83835-06fa-48b1-ac5e-e4f1c051837d"
+    },
+    {
+      "parameters": {
+        "operation": "completion",
+        "completionTitle": "Something went wrong.",
+        "completionMessage": "={{ $json.data.account.merge.errors[0].message }}\n<br>\n<br>\nFor further assistance, please reach out Administrate Support. \n<br>\nhttps://support.getadministrate.com/hc/en-us",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.form",
+      "typeVersion": 2.3,
+      "position": [
+        2064,
+        464
+      ],
+      "id": "7aa01d04-e5a3-4916-9066-37029d4719d9",
+      "name": "END - Merge Fail",
+      "webhookId": "a5b83835-06fa-48b1-ac5e-e4f1c051837d"
+    },
+    {
+      "parameters": {
+        "operation": "completion",
+        "completionTitle": "Success",
+        "completionMessage": "Your accounts have been successfully merged. You may close this window.",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.form",
+      "typeVersion": 2.3,
+      "position": [
+        2064,
+        272
+      ],
+      "id": "9ada775e-edfb-4824-96ba-f27d24719803",
+      "name": "END - Success",
+      "webhookId": "a5b83835-06fa-48b1-ac5e-e4f1c051837d"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "420c14b4-311b-4bb3-be27-e93c053fde01",
+              "leftValue": "={{ $json.data.account.merge.errors[0].message }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notExists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1840,
+        368
+      ],
+      "id": "914bc1cd-4046-4ffb-9a82-1007531b593c",
+      "name": "If error"
+    },
+    {
+      "parameters": {
+        "options": {
+          "formTitle": "Are You Sure?",
+          "formDescription": "=You will be merging \"{{ $('Retrieve fromAccount').item.json.data.accounts.edges[0].node.name }}\" into \"{{ $('Retrieve toAccount').item.json.data.accounts.edges[0].node.name }}\". This is irreversible. Are you sure you want to proceed?",
+          "buttonLabel": "Yes, I want to proceed."
+        }
+      },
+      "type": "n8n-nodes-base.form",
+      "typeVersion": 2.3,
+      "position": [
+        1424,
+        368
+      ],
+      "id": "c01be71a-c558-4460-b26c-0b98cb27b63b",
+      "name": "Confirm Accounts To Merge",
+      "webhookId": "452462c6-8adf-455f-b3e3-96493d4b285d"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.getadministrate.com/graphql",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "=mutation mergeAccounts {\n    account {\n      merge(input: { \n        fromAccount: \"{{ $('Retrieve fromAccount').item.json.data.accounts.edges[0].node.id }}\", \n        toAccount: \"{{ $('Retrieve toAccount').item.json.data.accounts.edges[0].node.id }}\"}) {\n        account {\n          id\n          name\n        }\n        errors {\n          label\n          message\n          value\n        }\n      }\n    }\n  }"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1632,
+        368
+      ],
+      "id": "62bd1b91-a5d2-46ee-a63e-a7a2e0467fae",
+      "name": "Mutation",
+      "notesInFlow": true,
+      "credentials": {
+        "oAuth2Api": {
+          "id": "fShCWC2pXT1JlwCo",
+          "name": "Hoffministrate - Kory"
+        },
+        "administrateOAuth2Api": {
+          "id": "9QvvRxVPpMCETKd1",
+          "name": "n8n adminunisandbox key"
+        }
+      },
+      "notes": "Merge Accounts"
+    },
+    {
+      "parameters": {
+        "content": "## Update Me\nSet your credentials\n",
+        "height": 256,
+        "width": 160,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        688,
+        272
+      ],
+      "id": "29972b41-2651-43d3-b289-6438d76ce065",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "## Update Me\nSet your credentials\n",
+        "height": 256,
+        "width": 160,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        976,
+        272
+      ],
+      "id": "7e781146-35a5-429e-8a0b-2452f11f72bd",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "## Update Me\nSet your credentials\n",
+        "height": 256,
+        "width": 160,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1600,
+        272
+      ],
+      "id": "e440a266-be3c-4bfb-9dbd-0f16a97dc26b",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "## Usage\nOnce the workflow is activated, click the \"On form submission\" node and copy the Production URL. \n\nThen on the home page of your Administrate instance, next to announcements, click edit. Here you can add a hyperlink  to the production URL you previously copied. \n\nNow on your home page, you will have a link that you can click that will open the web form in a new window.\n\n",
+        "height": 336,
+        "width": 272,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        48,
+        16
+      ],
+      "id": "36e0d1b3-29d1-465c-af2b-77a34e141def",
+      "name": "Sticky Note9"
+    },
+    {
+      "parameters": {
+        "content": "## Summary\nThis uses an n8n web form to prompt users for the Account IDs they wish to merge, guiding them through the process. To access the webform, they will ideally save the form's link as an announcement in Administrate or as a bookmark in their browser. ",
+        "height": 336,
+        "width": 272,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -256,
+        16
+      ],
+      "id": "3de05f7b-bc21-4ebc-a053-dd85508f2861",
+      "name": "Sticky Note10"
+    },
+    {
+      "parameters": {
+        "content": "## Additional Notes\n- Anyone with the link would be able to use the tool. Additional funcationality would be required to restrict access.",
+        "height": 336,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        352,
+        16
+      ],
+      "id": "0f177941-6120-44c6-ba0d-074c98725dd5",
+      "name": "Sticky Note11"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "On form submission": {
+      "main": [
+        [
+          {
+            "node": "Retrieve Account IDs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Retrieve Account IDs": {
+      "main": [
+        [
+          {
+            "node": "Convert Account IDs to Base64",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert Account IDs to Base64": {
+      "main": [
+        [
+          {
+            "node": "Retrieve fromAccount",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Retrieve fromAccount": {
+      "main": [
+        [
+          {
+            "node": "If fromAccount exists",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Retrieve toAccount": {
+      "main": [
+        [
+          {
+            "node": "If toAccount exists",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If toAccount exists": {
+      "main": [
+        [
+          {
+            "node": "Confirm Accounts To Merge",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Set accountNotFoundId1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If fromAccount exists": {
+      "main": [
+        [
+          {
+            "node": "Retrieve toAccount",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Set accountNotFoundId",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set accountNotFoundId": {
+      "main": [
+        [
+          {
+            "node": "END - Account Not Found",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set accountNotFoundId1": {
+      "main": [
+        [
+          {
+            "node": "END - Account Not Found",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If error": {
+      "main": [
+        [
+          {
+            "node": "END - Success",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "END - Merge Fail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Confirm Accounts To Merge": {
+      "main": [
+        [
+          {
+            "node": "Mutation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mutation": {
+      "main": [
+        [
+          {
+            "node": "If error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "6d67fd26-27fc-40bb-bd15-6e4fb7c8ffed",
+  "meta": {
+    "instanceId": "83919d4354bbaff95da762969bebefe1aea3d522c874fd7a5e6f2d100311439b"
+  },
+  "id": "CNOdDTlHUuH8jXZN",
+  "tags": []
+}

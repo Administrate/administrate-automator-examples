@@ -1,0 +1,163 @@
+{
+  "name": "Remove Event Resources in Bulk",
+  "nodes": [
+    {
+      "parameters": {
+        "events": "V2ViaG9va1R5cGU6bWFudWFsX2V2ZW50",
+        "name": "Remove Event Resources"
+      },
+      "type": "CUSTOM.administrateTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "75e3447d-777c-4e4c-9acd-b7b3da082c6b",
+      "name": "Administrate Trigger",
+      "webhookId": "e2ce709b-89eb-4fc5-b118-15afc5810d15",
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "9QvvRxVPpMCETKd1",
+          "name": "n8n adminunisandbox key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "query": "=query GetEventResourceBookingIds($eventId: String!) {\n  events(filters: [{ field: id, operation: eq, value: $eventId }]) {\n    edges {\n      node {\n        id\n        title\n        sessions {\n          edges {\n            node {\n              id\n              title\n              resourceBookings {\n                edges {\n                  node {\n                    id\n                    start\n                    end\n                    resource { id name }\n                  }\n                }\n              }\n            }\n          }\n        }\n      }\n    }\n  }\n}",
+        "variables": "={\n  \"eventId\": \"={{$json.payload.node.id}}\"\n}",
+        "options": {}
+      },
+      "type": "CUSTOM.administrate",
+      "typeVersion": 1,
+      "position": [
+        208,
+        0
+      ],
+      "id": "e0404ecc-4a32-4fb4-9e9b-4b63ea33d277",
+      "name": "Administrate API",
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "9QvvRxVPpMCETKd1",
+          "name": "n8n adminunisandbox key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst resp = items[0]?.json;\n\n// Basic guard\nif (!resp) {\n  throw new Error(\"No input JSON received from previous node.\");\n}\n\n// Administrate node output (as shown in your screenshot) is: resp.events.edges[0].node\nconst eventNode = resp.events?.edges?.[0]?.node;\n\nif (!eventNode) {\n  return [\n    {\n      json: {\n        ok: false,\n        message: \"No event found for given eventId (or unexpected response shape).\",\n        bookingCount: 0,\n        bookingIds: [],\n        bookings: [],\n      },\n    },\n  ];\n}\n\nconst sessions = eventNode.sessions?.edges?.map(e => e.node) ?? [];\n\nconst bookings = [];\nfor (const s of sessions) {\n  const rbNodes = s.resourceBookings?.edges?.map(e => e.node) ?? [];\n  for (const rb of rbNodes) {\n    bookings.push({\n      eventId: eventNode.id,\n      eventTitle: eventNode.title,\n      sessionId: s.id,\n      sessionTitle: s.title,\n      resourceBookingId: rb.id,\n      start: rb.start,\n      end: rb.end,\n      resourceId: rb.resource?.id ?? null,\n      resourceName: rb.resource?.name ?? null,\n    });\n  }\n}\n\nreturn [\n  {\n    json: {\n      ok: true,\n      eventId: eventNode.id,\n      eventTitle: eventNode.title,\n      sessionCount: sessions.length,\n      bookingCount: bookings.length,\n      bookingIds: bookings.map(b => b.resourceBookingId),\n      bookings,\n    },\n  },\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        416,
+        0
+      ],
+      "id": "9708416b-03f6-4beb-a9bc-9f7bfb8666e8",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "bookingIds",
+        "include": "selectedOtherFields",
+        "fieldsToInclude": "eventId, eventTitle",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        624,
+        0
+      ],
+      "id": "e0825df6-da65-495c-8a67-0b6e413684f1",
+      "name": "Split Out"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://adminunisandbox.administrateapp.com/graphql",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendHeaders": true,
+        "specifyHeaders": "json",
+        "jsonHeaders": "{\n  \"Content-Type\": \"application/json\"\n}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"query\": \"mutation DeleteResourceBooking($resourceBookingId: ID!) { resourceBooking { delete(input: { resourceBookingId: $resourceBookingId }) { resourceBooking { id } } } }\",\n  \"variables\": {\n    \"resourceBookingId\": \"={{$json.bookingIds}}\"\n  }\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        832,
+        0
+      ],
+      "id": "f649274c-3789-4845-8301-2f39f64a3bb2",
+      "name": "HTTP Request",
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "9QvvRxVPpMCETKd1",
+          "name": "n8n adminunisandbox key"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Administrate Trigger": {
+      "main": [
+        [
+          {
+            "node": "Administrate API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Administrate API": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Split Out",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "9ab99ffe-aa56-4893-b48a-d8bbdcb9821e",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "83919d4354bbaff95da762969bebefe1aea3d522c874fd7a5e6f2d100311439b"
+  },
+  "id": "64iwGVSboimAFNk6",
+  "tags": []
+}
