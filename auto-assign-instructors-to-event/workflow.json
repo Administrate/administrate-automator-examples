@@ -1,0 +1,799 @@
+{
+  "name": "Approved Instructors Auto Added to Event",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "f649f34c-eae5-4f1f-9ced-c750f50f4118",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        288,
+        0
+      ],
+      "id": "d495898b-4d55-4dd3-b705-22fe80e0e186",
+      "name": "Webhook",
+      "webhookId": "f649f34c-eae5-4f1f-9ced-c750f50f4118"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.body.payload.node }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        464,
+        -192
+      ],
+      "id": "a37a2534-4cc8-43c0-b532-43c25c53cac0",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "=data.contactStats.edges",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        1008,
+        112
+      ],
+      "id": "95a84a3a-ab99-4bd1-aa0f-7ba313f59191",
+      "name": "Split Out"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.getadministrate.com/graphql",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
+        "options": {
+          "pagination": {
+            "pagination": {
+              "parameters": {
+                "parameters": [
+                  {
+                    "name": "query",
+                    "value": "=query {\n  contactStats(\n    filters: [\n      { field: rangeInEventId, operation: eq, value: \"{{ $json.body.payload.node.id }}\" }\n      { field: isInstructor, operation: eq, value: \"true\" }\n      { field: unconfirmed, operation: eq, value: \"false\" }\n      { field: approvedCourseIds, operation: contains, values: [\"{{ $json.body.payload.node.courseTemplate.id }}\"] }\n    ]\n    first: 10\n    offset: {{ $pageCount * 10 }}\n  ) {\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n    edges {\n      node {\n        bookings { totalCount }\n        contact {\n          id\n          personalName { name }\n          calendarIntegrations { status lastSyncedAt }\n        }\n      }\n    }\n  }\n}"
+                  }
+                ]
+              },
+              "paginationCompleteWhen": "other",
+              "completeExpression": "={{ $response.body.data.contactStats.pageInfo.hasNextPage == false }}"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        800,
+        112
+      ],
+      "id": "1cb08589-867c-4280-8f47-4d85b9f32075",
+      "name": "Get Approved Instructors",
+      "credentials": {
+        "oAuth2Api": {
+          "id": "0hA0ldq7amED1zcI",
+          "name": "jarreds - Jarred/Scott"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "1f164043-3a9e-4c74-ae6b-bb03d5d33790",
+              "leftValue": "={{ $json.node.bookings.totalCount }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1232,
+        112
+      ],
+      "id": "da5c1e75-d1c5-4612-8d32-e0748a7d573e",
+      "name": "If Available"
+    },
+    {
+      "parameters": {
+        "sortFieldsUi": {
+          "sortField": [
+            {
+              "fieldName": "node.personalName.name"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.sort",
+      "typeVersion": 1,
+      "position": [
+        2512,
+        -176
+      ],
+      "id": "fe15e5ba-2f04-4d95-bbe6-49066b932e06",
+      "name": "Sort Alphabetically"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.limit",
+      "typeVersion": 1,
+      "position": [
+        2720,
+        -176
+      ],
+      "id": "d29e1877-1765-4599-8883-11015b3f53c6",
+      "name": "Number of Instructors to Add"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.getadministrate.com/graphql",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"query\": \"mutation addMultipleStaffToEvent { event { addStaffBulk(input: [{ eventId: \\\"{{$node['Store Event and Course'].json.body.payload.node.id}}\\\", contactId: \\\"{{ $json.node.id }}\\\", staffType: instructor }]) { events { id } errors { label message value } } } }\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        2944,
+        -176
+      ],
+      "id": "e152c7c9-cd88-4c06-823a-cded964f2a86",
+      "name": "Add Instructor to Event",
+      "credentials": {
+        "oAuth2Api": {
+          "id": "0hA0ldq7amED1zcI",
+          "name": "jarreds - Jarred/Scott"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f10fabdc-12b6-4e85-9d2e-88ace769bf12",
+              "name": "body.payload.node",
+              "value": "={{ $json.body.payload.node }}",
+              "type": "object"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        592,
+        112
+      ],
+      "id": "3762bf64-f83e-485f-8fc8-ba2e969d9c1f",
+      "name": "Store Event and Course"
+    },
+    {
+      "parameters": {
+        "content": "## Instructions \n**Create an 'Event Created' Webhook**\nhttps://developer.getadministrate.com/docs/core/Webhooks/02_setup.md\n1. Set the url to the n8n url that's provided when creating the Webhook node.\n2. Set the query to \"query test($objectid: ID!){ node(id: $objectid) { id ... on Event{ id courseTemplate{id} location{id} }}}\"\n\n\n**Set how many Approved Instructors to add**\nIn the \"Number of Instructors to Add\" node, change the Max Items to how many Instructors you'd like added to the Event by default.",
+        "height": 368,
+        "width": 416
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -224,
+        -16
+      ],
+      "typeVersion": 1,
+      "id": "566ca04f-357d-4a9a-84b3-c0f2e5831d6a",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "content": "## What Does It Do?\nWhen an Event is created, the Event's Course Approved Instructors are automatically added to the Personnel table of the Event Setup tab. \n\nThe Approved Instructors are checked for their availability before being added to the Event, the default is the 1st available Approved Instructor will be added but you can customise if you want more than 1.\n\n_Please note: if an Event is created via 'Duplicate' feature, any Instructors on the original Event will be carried over to the newly created Event regardless if they are available or not_",
+        "height": 304,
+        "width": 416,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -672,
+        -16
+      ],
+      "typeVersion": 1,
+      "id": "a0b60a38-c288-4e12-bbc8-783a87bc7154",
+      "name": "Sticky Note4"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f0e0860d-4193-4f5b-b79a-59f72b034109",
+              "name": "message",
+              "value": "=Instructor {{ $json.node.contact.personalName.name }} is not available for Event ID {{ $items('Store Event and Course')[0].json.body.payload.node.id }}",
+              "type": "string"
+            },
+            {
+              "id": "e8b52071-569d-4583-a883-1493699da8a4",
+              "name": "payload",
+              "value": "=Event ID {{ $items('Store Event and Course')[0].json.body.payload.node.id }}",
+              "type": "string"
+            },
+            {
+              "id": "4679ce14-23b3-47f5-846f-d34dc3105d22",
+              "name": "status",
+              "value": "success",
+              "type": "string"
+            },
+            {
+              "id": "9ff50078-ecf6-45de-838e-48fa5a0801ef",
+              "name": "nodeId",
+              "value": "={{ $items('Store Event and Course')[0].json.body.payload.node.id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1440,
+        240
+      ],
+      "id": "b6d50949-0d6e-4310-ae1a-c602ccf1083c",
+      "name": "External Logs - Not Available"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://jarreds.administrateapp.com/graphql",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "=mutation addExternalLog {\n  externalLog {\n    createExternalIntegrationLogs(input:{\n      originIdentifier: \"Automator - Approved Instructor Added to Event\"\n      nodeId: \"{{ $json.nodeId }}\"\n      message:\"{{ $json.message }}\"\n      status: {{ $json.status }}\n      payload: {{ $json.payload.toJsonString() }}\n    }){\n        errors{\n          label\n          message\n          value\n        }\n        entityIds\n      }\n    }\n}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1648,
+        240
+      ],
+      "id": "954c5a0e-520c-48c2-b93c-4109df1fbf93",
+      "name": "External Logs - Not Available p2",
+      "credentials": {
+        "oAuth2Api": {
+          "id": "0hA0ldq7amED1zcI",
+          "name": "jarreds - Jarred/Scott"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f0e0860d-4193-4f5b-b79a-59f72b034109",
+              "name": "message",
+              "value": "=Approved Instructor {{$node['Number of Instructors to Add'].json.node.personalName.name}} added to Event ID {{ $json.data.event.addStaffBulk.events[0].id }}",
+              "type": "string"
+            },
+            {
+              "id": "e8b52071-569d-4583-a883-1493699da8a4",
+              "name": "payload",
+              "value": "=Event ID {{ $json.data.event.addStaffBulk.events[0].id }}",
+              "type": "string"
+            },
+            {
+              "id": "4679ce14-23b3-47f5-846f-d34dc3105d22",
+              "name": "status",
+              "value": "success",
+              "type": "string"
+            },
+            {
+              "id": "9ff50078-ecf6-45de-838e-48fa5a0801ef",
+              "name": "nodeId",
+              "value": "={{ $json.data.event.addStaffBulk.events[0].id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        3216,
+        -176
+      ],
+      "id": "32e09c05-c950-4f04-8df6-88e4c6adff5f",
+      "name": "External Logs- Added"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://jarreds.administrateapp.com/graphql",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "=mutation addExternalLog {\n  externalLog {\n    createExternalIntegrationLogs(input:{\n      originIdentifier: \"Automator - Approved Instructor Added to Event\"\n      nodeId: \"{{ $json.nodeId }}\"\n      message:\"{{ $json.message }}\"\n      status: {{ $json.status }}\n      payload: {{ $json.payload.toJsonString() }}\n    }){\n        errors{\n          label\n          message\n          value\n        }\n        entityIds\n      }\n    }\n}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        3408,
+        -176
+      ],
+      "id": "947ebede-d4ce-4947-8992-8d2a9a819f8e",
+      "name": "External Logs - Added p2",
+      "credentials": {
+        "oAuth2Api": {
+          "id": "0hA0ldq7amED1zcI",
+          "name": "jarreds - Jarred/Scott"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fieldsToAggregate": {
+          "fieldToAggregate": [
+            {
+              "fieldToAggregate": "node.contact.id"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        1440,
+        -32
+      ],
+      "id": "cd60a1c0-0392-4a84-832f-99b563c616ef",
+      "name": "Aggregate"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.getadministrate.com/graphql",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "=query Workplaces{\n  contacts(filters:[{field:id, operation:in, values:{{ $json.id }}}]){\n    edges{\n      node{\n        id\n        personalName{\n          name\n        }\n        workplaces{\n          locations{\n            id\n          }\n        }\n      }\n    }\n  }\n}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1840,
+        -32
+      ],
+      "id": "45e32981-afc5-40dc-8be1-64989aa48ca6",
+      "name": "HTTP Request",
+      "credentials": {
+        "oAuth2Api": {
+          "id": "0hA0ldq7amED1zcI",
+          "name": "jarreds - Jarred/Scott"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "data.contacts.edges",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        2048,
+        -32
+      ],
+      "id": "b4677e44-9b5b-4754-b7bf-762d705707ee",
+      "name": "Split Out1"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "375e51f4-ad58-45eb-b73c-bbfac37a5587",
+              "leftValue": "={{ $json.node.workplaces[0].locations[0].id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "empty",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "fff1aafe-bff1-4bc9-877b-593b192ea105",
+              "leftValue": "={{ $json.node.workplaces[0].locations[0].id }}",
+              "rightValue": "TG9jYXRpb246NzY=",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        2272,
+        -32
+      ],
+      "id": "1d749b74-0b1d-478c-854f-48c7c2f2bd6a",
+      "name": "If Workplace Location"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "dd0ffc59-bcac-4bf7-8837-99407aca0d67",
+              "name": "id",
+              "value": "={{ $json.id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1648,
+        -32
+      ],
+      "id": "fbcbdb23-3d42-4e00-b789-b090371064ff",
+      "name": "Store Instructors"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f0e0860d-4193-4f5b-b79a-59f72b034109",
+              "name": "message",
+              "value": "=Instructor {{ $json.node.personalName.name }}'s Workplace Location does not match Event ID {{$node['Store Event and Course'].json.body.payload.node.id}} Location",
+              "type": "string"
+            },
+            {
+              "id": "e8b52071-569d-4583-a883-1493699da8a4",
+              "name": "payload",
+              "value": "=Event ID {{$node['Store Event and Course'].json.body.payload.node.id}}",
+              "type": "string"
+            },
+            {
+              "id": "4679ce14-23b3-47f5-846f-d34dc3105d22",
+              "name": "status",
+              "value": "success",
+              "type": "string"
+            },
+            {
+              "id": "9ff50078-ecf6-45de-838e-48fa5a0801ef",
+              "name": "nodeId",
+              "value": "={{$node['Store Event and Course'].json.body.payload.node.id}}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2512,
+        64
+      ],
+      "id": "16b29ca7-e505-416b-8408-d1071112db6d",
+      "name": "External Logs- Workplace Not Matched"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://jarreds.administrateapp.com/graphql",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "=mutation addExternalLog {\n  externalLog {\n    createExternalIntegrationLogs(input:{\n      originIdentifier: \"Automator - Approved Instructor Added to Event\"\n      nodeId: \"{{ $json.nodeId }}\"\n      message:\"{{ $json.message }}\"\n      status: {{ $json.status }}\n      payload: {{ $json.payload.toJsonString() }}\n    }){\n        errors{\n          label\n          message\n          value\n        }\n        entityIds\n      }\n    }\n}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        2704,
+        64
+      ],
+      "id": "9cdc7e3b-5dda-487d-89fa-900789a23181",
+      "name": "External Logs - Workplace Not Matched p2",
+      "credentials": {
+        "oAuth2Api": {
+          "id": "0hA0ldq7amED1zcI",
+          "name": "jarreds - Jarred/Scott"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Store Event and Course",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respond to Webhook": {
+      "main": [
+        []
+      ]
+    },
+    "Split Out": {
+      "main": [
+        [
+          {
+            "node": "If Available",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Approved Instructors": {
+      "main": [
+        [
+          {
+            "node": "Split Out",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If Available": {
+      "main": [
+        [
+          {
+            "node": "Aggregate",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "External Logs - Not Available",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sort Alphabetically": {
+      "main": [
+        [
+          {
+            "node": "Number of Instructors to Add",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Number of Instructors to Add": {
+      "main": [
+        [
+          {
+            "node": "Add Instructor to Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Store Event and Course": {
+      "main": [
+        [
+          {
+            "node": "Get Approved Instructors",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add Instructor to Event": {
+      "main": [
+        [
+          {
+            "node": "External Logs- Added",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "External Logs - Not Available": {
+      "main": [
+        [
+          {
+            "node": "External Logs - Not Available p2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "External Logs- Added": {
+      "main": [
+        [
+          {
+            "node": "External Logs - Added p2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate": {
+      "main": [
+        [
+          {
+            "node": "Store Instructors",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Split Out1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out1": {
+      "main": [
+        [
+          {
+            "node": "If Workplace Location",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If Workplace Location": {
+      "main": [
+        [
+          {
+            "node": "Sort Alphabetically",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "External Logs- Workplace Not Matched",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Store Instructors": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "External Logs- Workplace Not Matched": {
+      "main": [
+        [
+          {
+            "node": "External Logs - Workplace Not Matched p2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "3427820f-fe02-4ed7-b344-b6f6dd60fa7b",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "83919d4354bbaff95da762969bebefe1aea3d522c874fd7a5e6f2d100311439b"
+  },
+  "id": "zfCRBssFPcSFV4uB",
+  "tags": []
+}

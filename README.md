@@ -30,6 +30,7 @@ For detailed setup instructions, visit the [Automator documentation](https://sup
 | [Managing Low Attendance](./managing-low-attendance) | Email participants with referral links when Events are below target fill rate | 1.0.0 |
 | [Merge Accounts](./merge-accounts) | Merge duplicate Accounts from HRIS/CRM syncs or manual entry | 1.0.0 |
 | [Logging vILT Attendance](./logging-vilt-attendance) | Automatically record Zoom attendance in Administrate by matching email addresses | 1.0.0 |
+| [Auto Assign Instructors to Event](./auto-assign-instructors-to-event) | Automatically assign available Approved Instructors to new Events based on availability and workplace location | 1.0.0 |
 
 ## How to Import a Workflow
 
