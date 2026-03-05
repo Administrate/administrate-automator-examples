@@ -588,7 +588,7 @@
     },
     {
       "parameters": {
-        "content": "## Additional Notes\n- n8n's Data Tables do not have a TTL feature. Rows could potentially accumlate from stale states. May want to consider using a different DB in production or create a workflow to periodically clean up old states.\n\n",
+        "content": "## Additional Notes\n- n8n's Data Tables do not have a TTL feature. Rows could potentially accumulate from stale states. May want to consider using a different DB in production or create a workflow to periodically clean up old states.\n\n",
         "height": 336,
         "width": 272,
         "color": 4
