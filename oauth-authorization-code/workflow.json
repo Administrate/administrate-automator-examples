@@ -1202,7 +1202,7 @@
     },
     {
       "parameters": {
-        "content": "## Account Merge Example (WIth n8n Webform)\nTo Connect this instead, change the 'true' route of the above 'Has Token?\" node to connect to the \"Pass Token To n8n Web Form\" node. You may additionally want to change the Path field of the \"User Entrypoint\" node to be a different name.",
+        "content": "## Account Merge Example (With n8n Web Form)\nTo Connect this instead, change the 'true' route of the above 'Has Token?\" node to connect to the \"Pass Token To n8n Web Form\" node. You may additionally want to change the Path field of the \"User Entrypoint\" node to be a different name.",
         "height": 832,
         "width": 2224,
         "color": 2
