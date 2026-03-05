@@ -1,0 +1,1606 @@
+{
+  "name": "OAuth - Authorization Code",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "oauth/start",
+        "responseMode": "responseNode",
+        "options": {
+          "ignoreBots": true
+        }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -1520,
+        -96
+      ],
+      "id": "b108c9c8-705b-43bd-ace5-8ab21955cac0",
+      "name": "OAuth Start",
+      "webhookId": "23ae551e-22b4-4314-b51d-246313a366f7"
+    },
+    {
+      "parameters": {
+        "jsCode": "function randState(len = 32) {\n  const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';\n  let out = '';\n  for (let i = 0; i < len; i++) out += chars[Math.floor(Math.random() * chars.length)];\n  return out;\n}\n\nfunction base64urlEncode(str) {\n  return Buffer.from(str, 'utf8')\n    .toString('base64')\n    .replace(/\\+/g, '-')\n    .replace(/\\//g, '_')\n    .replace(/=+$/, '');\n}\n\nconst csrf = randState(48);\n\nconst workflowOrigin = $('OAuth Start').first().json.query[\"workflow-origin\"];\nconst instance = $input.first().json.instance;\nconst redirectUri = \"https://\" + $('OAuth Start').first().json.headers.host + \"/webhook/oauth/callback\";\nconst clientId = $input.first().json.client_id;\n\nconst statePayload = {\n  csrf,\n  workflowOrigin\n};\n\nconst state = base64urlEncode(JSON.stringify(statePayload));\n\n// This returns a URL encoded query string replaces URLSearchParams, which is not available in n8n but would have been simpler.\nfunction qs(obj) {\n  return Object.entries(obj)\n    .filter(([_, v]) => v !== undefined && v !== null && v !== '')\n    .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)\n    .join('&');\n}\n\nconst params = qs({\n  response_type: 'code',\n  client_id: clientId,\n  redirect_uri: redirectUri,\n  state,\n  instance\n});\n\nconst authorizeUrl = `https://auth.getadministrate.com/oauth/authorize?${params}`;\n\nreturn [{ state, instance, redirectUri, authorizeUrl, workflowOrigin }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -880,
+        -80
+      ],
+      "id": "243a3c51-41d9-41c0-9a06-4e4dfb995aff",
+      "name": "Build OAuth Authorize URL"
+    },
+    {
+      "parameters": {
+        "dataTableId": {
+          "__rl": true,
+          "value": "87qDzvzrexNlfZG8",
+          "mode": "list",
+          "cachedResultName": "oauth_state",
+          "cachedResultUrl": "/projects/ohT10TwcoZy9K0kE/datatables/87qDzvzrexNlfZG8"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "state": "={{ $json.state }}"
+          },
+          "matchingColumns": [
+            "state"
+          ],
+          "schema": [
+            {
+              "id": "state",
+              "displayName": "state",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "optimizeBulk": false
+        }
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        -656,
+        -80
+      ],
+      "id": "0e61e1b7-d955-4e15-93cd-9bfcdbb0277d",
+      "name": "Store OAuth State"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "d8fd9f08-0c6f-487e-9852-e07eba642be2",
+              "name": "client_id",
+              "value": "changeme",
+              "type": "string"
+            },
+            {
+              "id": "c94a496e-49c0-4e2e-988b-ce30708d2055",
+              "name": "instance",
+              "value": "changeme",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1104,
+        -80
+      ],
+      "id": "082ce98f-20cf-4906-b4fa-9b19b275755d",
+      "name": "Instance Variables"
+    },
+    {
+      "parameters": {
+        "respondWith": "noData",
+        "options": {
+          "responseCode": 302,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Location",
+                "value": "={{ $('Build OAuth Authorize URL').item.json.authorizeUrl + \"&workflow_origin=\" + encodeURIComponent($('OAuth Start').item.json.query[\"workflow-origin\"])}}"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        -432,
+        -80
+      ],
+      "id": "2e4778b1-9347-4887-8606-513b872acb24",
+      "name": "Authorize"
+    },
+    {
+      "parameters": {
+        "path": "oauth/callback",
+        "responseMode": "responseNode",
+        "options": {
+          "ignoreBots": false
+        }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -1520,
+        416
+      ],
+      "id": "40f6fc16-a23b-4dda-8cd7-5b68ceba670c",
+      "name": "Callback",
+      "webhookId": "bbd62c0b-7314-4a1d-97ec-6a985cc3e48a"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "d8fd9f08-0c6f-487e-9852-e07eba642be2",
+              "name": "client_id",
+              "value": "changeme",
+              "type": "string"
+            },
+            {
+              "id": "2afb4c3b-b380-4ec4-87a8-63e27fde2681",
+              "name": "client_secret",
+              "value": "changeme",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1296,
+        416
+      ],
+      "id": "f32071af-8ff2-432b-9915-065ff8d1a5a0",
+      "name": "Client Credentials"
+    },
+    {
+      "parameters": {
+        "jsCode": "function base64urlDecode(str) {\n  str = str.replace(/-/g, '+').replace(/_/g, '/');\n  while (str.length % 4) str += '=';\n  return Buffer.from(str, 'base64').toString('utf8');\n}\n\nconst rawState = $('Callback').first().json.query.state;\nconst decoded = JSON.parse(base64urlDecode(rawState));\n\nreturn decoded;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1072,
+        416
+      ],
+      "id": "17dd11c0-a7b5-4571-a9d2-acfccb7ca87c",
+      "name": "Decode State"
+    },
+    {
+      "parameters": {
+        "jsCode": "function isAllowedRedirect(urlString) {\n  if (!urlString || typeof urlString !== 'string') return false;\n\n  const trimmed = urlString.trim();\n  // Require:\n  // - https\n  // - exact host n8n.administratehq.com\n  // - optional :443\n  // - any path or query\n  const match = trimmed.match(\n    /^https:\\/\\/n8n\\.administratehq\\.com(?::(\\d+))?(\\/|$)/i\n  );\n\n  if (!match) return false;\n\n  const port = match[1];\n  if (port && port !== '443') return false;\n\n  return true;\n}\n\nconst workflowOrigin = String($input.first().json.workflowOrigin || '').trim();\nconst validURL = isAllowedRedirect(workflowOrigin);\n\nreturn [\n  {\n    json: {\n      workflowOrigin,\n      validURL\n    }\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -848,
+        416
+      ],
+      "id": "75e6bac7-a347-4cfe-8a26-f3e235de997b",
+      "name": "Validate Redirect URL"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "f8c097f0-adad-43be-9655-79635599ba36",
+              "leftValue": "={{ $json.validURL }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -624,
+        416
+      ],
+      "id": "cad074d4-f131-4eec-a288-cf824d173493",
+      "name": "Is Redirect URL Valid?"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "value": "87qDzvzrexNlfZG8",
+          "mode": "list",
+          "cachedResultName": "oauth_state",
+          "cachedResultUrl": "/projects/ohT10TwcoZy9K0kE/datatables/87qDzvzrexNlfZG8"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "state",
+              "keyValue": "={{ $('Callback').item.json.query.state }}"
+            }
+          ]
+        },
+        "limit": 1
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        -400,
+        320
+      ],
+      "id": "0a4055ca-95eb-4798-aac8-33021ef54171",
+      "name": "Get State"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "d8ac02d8-4147-4567-8996-eb0bd387af1d",
+              "leftValue": "={{ $json.state }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -176,
+        320
+      ],
+      "id": "1fe650ba-ec1d-41fe-a90b-500bf36a196b",
+      "name": "State Exists?"
+    },
+    {
+      "parameters": {
+        "operation": "deleteRows",
+        "dataTableId": {
+          "__rl": true,
+          "value": "87qDzvzrexNlfZG8",
+          "mode": "list",
+          "cachedResultName": "oauth_state",
+          "cachedResultUrl": "/projects/ohT10TwcoZy9K0kE/datatables/87qDzvzrexNlfZG8"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "state",
+              "keyValue": "={{ $json.state }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        48,
+        224
+      ],
+      "id": "29b2394f-4618-4568-95de-368a06bfb8f3",
+      "name": "Remove State"
+    },
+    {
+      "parameters": {
+        "respondWith": "noData",
+        "options": {
+          "responseCode": 401
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        48,
+        416
+      ],
+      "id": "6127e501-37b1-409c-a2d0-789b0756c40e",
+      "name": "Unauthorized - Bad State"
+    },
+    {
+      "parameters": {
+        "respondWith": "noData",
+        "options": {
+          "responseCode": 401
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        -400,
+        512
+      ],
+      "id": "101cb888-0c7f-4fdc-a563-e13fa7235f18",
+      "name": "Unauthorized - Invalid Redirect URL"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://auth.getadministrate.com/oauth/token",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "grant_type",
+              "value": "authorization_code"
+            },
+            {
+              "name": "code",
+              "value": "={{ $('Callback').item.json.query.code }}"
+            },
+            {
+              "name": "client_id",
+              "value": "={{ $('Client Credentials').item.json.client_id }}"
+            },
+            {
+              "name": "client_secret",
+              "value": "={{ $('Client Credentials').item.json.client_secret }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        272,
+        224
+      ],
+      "id": "704cf027-ad68-4d76-b65c-4f5098a79036",
+      "name": "Get Access Token"
+    },
+    {
+      "parameters": {
+        "respondWith": "noData",
+        "options": {
+          "responseCode": 302,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Location",
+                "value": "={{ $('Decode State').item.json.workflowOrigin + \"?token=\" + $json.access_token }} "
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        496,
+        224
+      ],
+      "id": "c732cd7d-2596-495b-800a-decf32015aa7",
+      "name": "Return Access Token"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "4258d890-6714-4295-93a3-66e9ae10f7dc",
+              "leftValue": "={{ $json.headers['sec-purpose'] }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -1296,
+        -96
+      ],
+      "id": "3497187e-0f87-4d1d-9c79-9c6b2c95bfc3",
+      "name": "Is Prefetch?"
+    },
+    {
+      "parameters": {
+        "respondWith": "noData",
+        "options": {
+          "responseCode": 204
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        -1104,
+        -336
+      ],
+      "id": "3387c845-6f77-496b-87c6-970e05395437",
+      "name": "Ignore Prefetch"
+    },
+    {
+      "parameters": {
+        "content": "## Summary\nThis workflow is a custom implementation of OAuth using Auth Code flow. The purpose of this is so that the permissions of Administrate User which triggered the workflow are used, rather than whoever configured the credentials in n8n.",
+        "height": 336,
+        "width": 272,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -2320,
+        -576
+      ],
+      "id": "e09c1be1-8748-42fb-bc82-60835aec001b",
+      "name": "Sticky Note10"
+    },
+    {
+      "parameters": {
+        "content": "## Update Me\nSet your Client ID and Administrate Instance name.\n",
+        "height": 256,
+        "width": 160,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -1136,
+        -192
+      ],
+      "id": "b296f681-d4fd-40bb-a12b-b98529825b48",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "## Update Me\nSet your Data Table or replace with 3rd party db.\n",
+        "height": 256,
+        "width": 160,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -688,
+        -192
+      ],
+      "id": "e7e38bac-a8db-4393-bfc8-1607978b9d0c",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "## Update Me\nSet your Data Table or replace with 3rd party db.\n",
+        "height": 256,
+        "width": 160,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -432,
+        208
+      ],
+      "id": "8acb951a-79f1-4752-8c8c-0753d10d8425",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "## Update Me\nSet your Data Table or replace with 3rd party db.\n",
+        "height": 256,
+        "width": 160,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        16,
+        112
+      ],
+      "id": "4f708a45-10b3-4cdf-9bd8-bfbf69da4c2d",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "content": "## Requirements\n- Application in the Administrate Developer Portal. https://developer.getadministrate.com/account/my-apps\n- n8n Data Table named \"oauth_state\" and add a column named \"state\" (Alternatively, a 3rd party db can be used, but you would need to replace all references to the Data Table)\n",
+        "height": 336,
+        "width": 272,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -2032,
+        -576
+      ],
+      "id": "c7438a44-6f23-45f5-86d3-a0b89bb3d5fe",
+      "name": "Sticky Note11"
+    },
+    {
+      "parameters": {
+        "content": "## Usage\nOnce the workflow is active, you can initiate it from other workflows. This template includes an example, but it's recommended to remove the example and use it or similar logic from another workflow.\n\nAs shown in the example, you want to initiate with a webhook that the user will visit. If there is no access token in the query parameters, OAuth will be initiated. If the token is present, that token can be used in future GraphQL Queries and Mutations or even passed to an n8n webform if you don't want to format as much HTML.",
+        "height": 400,
+        "width": 272,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -1744,
+        -576
+      ],
+      "id": "874625fc-8761-471c-98d3-9999c7e63abf",
+      "name": "Sticky Note12"
+    },
+    {
+      "parameters": {
+        "content": "## Additional Notes\n- n8n's Data Tables do not have a TTL feature. Rows could potentially accumulate from stale states. May want to consider using a different DB in production or create a workflow to periodically clean up old states.\n\n",
+        "height": 336,
+        "width": 272,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -1456,
+        -576
+      ],
+      "id": "dfa8b435-b196-4d8e-ae12-f5f427e3c8f3",
+      "name": "Sticky Note13"
+    },
+    {
+      "parameters": {
+        "content": "## Update Me\nSet your Client ID and Client Secret.\n",
+        "height": 240,
+        "width": 160,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -1328,
+        320
+      ],
+      "id": "81ab6eb1-f01c-4deb-b252-4522da6023f9",
+      "name": "Sticky Note4"
+    },
+    {
+      "parameters": {
+        "respondWith": "noData",
+        "options": {
+          "responseCode": 302,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Location",
+                "value": "=https://{{ $('User Entrypoint').item.json.headers.host }}/webhook/oauth/start?workflow-origin={{ $json.webhookUrl }}"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        -720,
+        1136
+      ],
+      "id": "ba107a91-f9bb-42bf-8b58-744805914065",
+      "name": "Initiate OAuth"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.getadministrate.com/graphql",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $json.query.token }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "=query Events {\n    events {\n        edges {\n            node {\n                id\n                legacyId\n                title\n            }\n        }\n    }\n}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -720,
+        832
+      ],
+      "id": "ab2a66dd-0ee5-40e7-a001-8d5e7d7eaa7e",
+      "name": "Query Events"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\n\nconst edges =\n  input?.data?.events?.edges ??\n  input?.[0]?.data?.events?.edges ?? \n  [];\n\nconst rows = edges.map(e => ({\n  id: e?.node?.id ?? '',\n  legacyId: e?.node?.legacyId ?? '',\n  title: e?.node?.title ?? '',\n}));\n\nfunction esc(s) {\n  return String(s)\n    .replace(/&/g, '&amp;')\n    .replace(/</g, '&lt;')\n    .replace(/>/g, '&gt;')\n    .replace(/\"/g, '&quot;')\n    .replace(/'/g, '&#39;');\n}\n\nconst tableRowsHtml = rows.map(r => `\n  <tr>\n    <td><code>${esc(r.legacyId)}</code></td>\n    <td>${esc(r.title)}</td>\n    <td><code>${esc(r.id)}</code></td>\n  </tr>\n`).join('');\n\nconst html = `<!doctype html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"utf-8\" />\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n  <title>Administrate Events</title>\n  <style>\n    :root { color-scheme: light dark; }\n    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 24px; }\n    .wrap { max-width: 1100px; margin: 0 auto; }\n    h1 { margin: 0 0 8px; font-size: 22px; }\n    .meta { opacity: 0.8; margin-bottom: 16px; }\n    .bar { display:flex; gap: 12px; align-items:center; margin: 16px 0; }\n    input[type=\"search\"] { flex:1; padding: 10px 12px; font-size: 14px; border: 1px solid rgba(127,127,127,.35); border-radius: 10px; }\n    .pill { padding: 6px 10px; border-radius: 999px; border: 1px solid rgba(127,127,127,.35); font-size: 12px; }\n    table { width: 100%; border-collapse: collapse; border: 1px solid rgba(127,127,127,.35); border-radius: 14px; overflow: hidden; }\n    thead th { text-align: left; font-size: 12px; letter-spacing: .02em; text-transform: uppercase; padding: 12px; background: rgba(127,127,127,.12); }\n    tbody td { padding: 12px; border-top: 1px solid rgba(127,127,127,.25); vertical-align: top; }\n    tbody tr:hover { background: rgba(127,127,127,.08); }\n    code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", monospace; font-size: 12px; }\n    .muted { opacity: .75; font-size: 12px; }\n    .empty { padding: 24px; border: 1px dashed rgba(127,127,127,.35); border-radius: 14px; }\n  </style>\n</head>\n<body>\n  <div class=\"wrap\">\n    <h1>Administrate Events</h1>\n    <div class=\"meta muted\">Rendered from GraphQL response</div>\n\n    <div class=\"bar\">\n      <input id=\"q\" type=\"search\" placeholder=\"Search by title, legacy ID, or GraphQL ID…\" />\n      <div class=\"pill\"><span id=\"count\">${rows.length}</span> events</div>\n    </div>\n\n    ${rows.length ? `\n    <table>\n      <thead>\n        <tr>\n          <th style=\"width: 120px;\">Legacy ID</th>\n          <th>Title</th>\n          <th style=\"width: 420px;\">GraphQL ID</th>\n        </tr>\n      </thead>\n      <tbody id=\"tbody\">\n        ${tableRowsHtml}\n      </tbody>\n    </table>\n    ` : `<div class=\"empty\">No events found in the response.</div>`}\n\n    <p class=\"muted\" style=\"margin-top:16px;\">\n      Tip: use the search box to filter instantly.\n    </p>\n  </div>\n\n  <script>\n    const q = document.getElementById('q');\n    const tbody = document.getElementById('tbody');\n    const count = document.getElementById('count');\n\n    if (q && tbody && count) {\n      const rows = Array.from(tbody.querySelectorAll('tr'));\n\n      q.addEventListener('input', () => {\n        const term = q.value.toLowerCase().trim();\n        let shown = 0;\n\n        for (const tr of rows) {\n          const txt = tr.textContent.toLowerCase();\n          const ok = !term || txt.includes(term);\n          tr.style.display = ok ? '' : 'none';\n          if (ok) shown++;\n        }\n        count.textContent = shown;\n      });\n    }\n  </script>\n</body>\n</html>`;\n\nreturn [\n  {\n    json: {\n      html,\n    },\n  },\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -496,
+        832
+      ],
+      "id": "0a82e54f-478b-4630-9b74-8d6b5f4e1be7",
+      "name": "Build HTML"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.html }}",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/html; charset=UTF-8"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        -272,
+        832
+      ],
+      "id": "eadb315b-5621-48a8-b269-48a302bc2e0e",
+      "name": "Present HTML"
+    },
+    {
+      "parameters": {
+        "path": "get-events",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -1200,
+        1056
+      ],
+      "id": "3e2fd0bd-f47e-4549-b29b-9d5a3627f9c3",
+      "name": "User Entrypoint",
+      "webhookId": "43d0da28-c716-435d-852f-f264085bd827"
+    },
+    {
+      "parameters": {
+        "content": "## Example\n",
+        "height": 1312,
+        "width": 2272
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -1248,
+        800
+      ],
+      "id": "b1295c47-3a11-4e85-bcdd-39c91629ff54",
+      "name": "Sticky Note5"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "0c08a824-cb39-4d9c-b58c-081323780af5",
+              "leftValue": "={{ $json.query.token }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -976,
+        1056
+      ],
+      "id": "dcf56998-ac95-4117-8c84-b7117a86d7ca",
+      "name": "Has Token?"
+    },
+    {
+      "parameters": {
+        "respondWith": "noData",
+        "options": {
+          "responseCode": 302,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Location",
+                "value": "=https://n8n.administratehq.com/form/changeme?token={{ $json.query.token }}"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        -720,
+        976
+      ],
+      "id": "126e6dc8-082f-4547-b6c2-3bc983a52240",
+      "name": "Pass Token To n8n Web Form"
+    },
+    {
+      "parameters": {
+        "formTitle": "Merge Account",
+        "formDescription": "This tool merges one account into another. The \"From Account\" will be merged into the \"To Account\" such that the latter is the one that remains.\n\nNote: Ensure that you are using the Account ID and NOT the Contact ID",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "From Account ID",
+              "fieldType": "number",
+              "placeholder": "123",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "To Account ID",
+              "fieldType": "number",
+              "placeholder": "123",
+              "requiredField": true
+            },
+            {
+              "fieldType": "html",
+              "html": "<h2>FAQ</h2>\n<p><strong>What information will it merge?</strong></p>\n<ul>\n<li><em>Contacts</em></li>\n<li><em>Bookings</em></li>\n<li><em>Registrations</em></li>\n<li><em>Financials</em></li>\n</ul>\n<p><strong>Is there anything that is not merged?</strong></p>\n<ul>\n<li><em>Tasks</em></li>\n<li><em>Training Tokens</em></li>\n<li><em>Pricing Agreements</em></li>\n<li><em>Training Passes</em></li>\n</ul>"
+            }
+          ]
+        },
+        "options": {
+          "appendAttribution": false,
+          "ignoreBots": true
+        }
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.3,
+      "position": [
+        -1200,
+        1360
+      ],
+      "id": "9ba681f1-3274-4ea8-b0a3-eb9caa85ce5a",
+      "name": "On form submission",
+      "webhookId": "5e9c9c2b-a0f3-407f-a74b-646f3110aa6c"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "5c989dda-0c11-400b-926c-baba5ff7a44c",
+              "name": "fromAccount",
+              "value": "=Organisation:{{ $json['From Account ID'] }}",
+              "type": "string"
+            },
+            {
+              "id": "871974e7-84c0-4ede-b9ac-d58f7bb9b016",
+              "name": "toAccount",
+              "value": "=Organisation:{{ $json['To Account ID'] }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -976,
+        1360
+      ],
+      "id": "d72bf2b9-e36e-43e7-9b1d-c25264c81e6d",
+      "name": "Retrieve Account IDs"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "488a83a2-b743-4633-a538-cadbbfea82c0",
+              "name": "fromAccountB64",
+              "value": "={{ $json['fromAccount'].trim().base64Encode() }}",
+              "type": "string"
+            },
+            {
+              "id": "54bc4371-828c-443a-95d0-fab5bbbbb594",
+              "name": "toAccountB64",
+              "value": "={{ $json['toAccount'].trim().base64Encode() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -752,
+        1360
+      ],
+      "id": "3ab6170c-1d5f-40e9-8843-b2df4162c3d7",
+      "name": "Convert Account IDs to Base64"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.getadministrate.com/graphql",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $('On form submission').item.json.formQueryParameters.token }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "=query Accounts {\n  accounts(filters: [{\n    field: id, operation: eq, value: \"{{ $json.fromAccountB64 }}\"\n  }]) {\n    edges {\n      node {\n        id\n        name\n        legacyId\n      }\n    }\n  }\n}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -544,
+        1360
+      ],
+      "id": "94cc54d5-c614-4368-8cd6-ea11d2d11a58",
+      "name": "Retrieve fromAccount"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.getadministrate.com/graphql",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $('On form submission').item.json.formQueryParameters.token }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "=query Accounts {\n  accounts(filters: [{\n    field: id, operation: eq, value: \"{{ $('Convert Account IDs to Base64').item.json.toAccountB64 }}\"\n  }]) {\n    edges {\n      node {\n        id\n        name\n        legacyId\n      }\n    }\n  }\n}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -256,
+        1360
+      ],
+      "id": "43d1dc77-549b-4f05-96b7-8236010751c7",
+      "name": "Retrieve toAccount"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "5e1b05fb-0c16-4b67-8c40-9e65ba3b64ae",
+              "leftValue": "={{ $json.data.accounts.edges[0].node.id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -128,
+        1600
+      ],
+      "id": "93994ca5-f9b9-40c3-8d2f-35f0744e032a",
+      "name": "If toAccount exists"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "5e1b05fb-0c16-4b67-8c40-9e65ba3b64ae",
+              "leftValue": "={{ $json.data.accounts.edges[0].node.id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -400,
+        1600
+      ],
+      "id": "1d9bb79d-6722-4782-b541-5d08a22ba2a1",
+      "name": "If fromAccount exists"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e6fc48de-f522-48ee-9d72-f71e17ae18ec",
+              "name": "accountNotFoundId",
+              "value": "={{ $('On form submission').item.json['From Account ID'] }}",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -224,
+        1776
+      ],
+      "id": "46a9180c-ab10-4efe-959e-21f54234e802",
+      "name": "Set accountNotFoundId"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e6fc48de-f522-48ee-9d72-f71e17ae18ec",
+              "name": "accountNotFoundId",
+              "value": "={{ $('On form submission').item.json['From Account ID'] }}",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        32,
+        1776
+      ],
+      "id": "89584625-106f-4d0e-aa07-1032ba74c9cc",
+      "name": "Set accountNotFoundId1"
+    },
+    {
+      "parameters": {
+        "operation": "completion",
+        "completionTitle": "Something went wrong.",
+        "completionMessage": "=Account {{ $json.accountNotFoundId }} not found. Please confirm the account ID is correct. \n<br>\n<br>\nFor further assistance, please reach out Administrate Support. \n<br>\nhttps://support.getadministrate.com/hc/en-us",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.form",
+      "typeVersion": 2.3,
+      "position": [
+        192,
+        1936
+      ],
+      "id": "18c806d4-0c48-4e5d-b64a-2199fd95ec8a",
+      "name": "END - Account Not Found",
+      "webhookId": "a5b83835-06fa-48b1-ac5e-e4f1c051837d"
+    },
+    {
+      "parameters": {
+        "operation": "completion",
+        "completionTitle": "Something went wrong.",
+        "completionMessage": "={{ $json.data.account.merge.errors[0].message }}\n<br>\n<br>\nFor further assistance, please reach out Administrate Support. \n<br>\nhttps://support.getadministrate.com/hc/en-us",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.form",
+      "typeVersion": 2.3,
+      "position": [
+        800,
+        1456
+      ],
+      "id": "0d10324c-f433-4c87-868a-377e910fbb60",
+      "name": "END - Merge Fail",
+      "webhookId": "a5b83835-06fa-48b1-ac5e-e4f1c051837d"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "420c14b4-311b-4bb3-be27-e93c053fde01",
+              "leftValue": "={{ $json.data.account.merge.errors[0].message }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notExists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        576,
+        1360
+      ],
+      "id": "487d6da4-ba3c-4da9-97a2-416f997454fb",
+      "name": "If error"
+    },
+    {
+      "parameters": {
+        "options": {
+          "formTitle": "Are You Sure?",
+          "formDescription": "=You will be merging \"{{ $('Retrieve fromAccount').item.json.data.accounts.edges[0].node.name }}\" into \"{{ $('Retrieve toAccount').item.json.data.accounts.edges[0].node.name }}\". This is irreversible. Are you sure you want to proceed?",
+          "buttonLabel": "Yes, I want to proceed."
+        }
+      },
+      "type": "n8n-nodes-base.form",
+      "typeVersion": 2.3,
+      "position": [
+        160,
+        1360
+      ],
+      "id": "29a1db06-24a6-46bf-b78b-4700417b1a8f",
+      "name": "Confirm Accounts To Merge",
+      "webhookId": "452462c6-8adf-455f-b3e3-96493d4b285d"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.getadministrate.com/graphql",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $('On form submission').item.json.formQueryParameters.token }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "=mutation mergeAccounts {\n    account {\n      merge(input: { \n        fromAccount: \"{{ $('Retrieve fromAccount').item.json.data.accounts.edges[0].node.id }}\", \n        toAccount: \"{{ $('Retrieve toAccount').item.json.data.accounts.edges[0].node.id }}\"}) {\n        account {\n          id\n          name\n        }\n        errors {\n          label\n          message\n          value\n        }\n      }\n    }\n  }"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        368,
+        1360
+      ],
+      "id": "730a0d96-ef31-424c-a60e-69ec36f22962",
+      "name": "Mutation",
+      "notesInFlow": true,
+      "notes": "Merge Accounts"
+    },
+    {
+      "parameters": {
+        "content": "## Account Merge Example (With n8n Web Form)\nTo Connect this instead, change the 'true' route of the above 'Has Token?\" node to connect to the \"Pass Token To n8n Web Form\" node. You may additionally want to change the Path field of the \"User Entrypoint\" node to be a different name.",
+        "height": 832,
+        "width": 2224,
+        "color": 2
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -1232,
+        1264
+      ],
+      "id": "14355968-5914-4b65-9b66-f04b40f43706",
+      "name": "Sticky Note6"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "OAuth Start": {
+      "main": [
+        [
+          {
+            "node": "Is Prefetch?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build OAuth Authorize URL": {
+      "main": [
+        [
+          {
+            "node": "Store OAuth State",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Store OAuth State": {
+      "main": [
+        [
+          {
+            "node": "Authorize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Instance Variables": {
+      "main": [
+        [
+          {
+            "node": "Build OAuth Authorize URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Callback": {
+      "main": [
+        [
+          {
+            "node": "Client Credentials",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Client Credentials": {
+      "main": [
+        [
+          {
+            "node": "Decode State",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Decode State": {
+      "main": [
+        [
+          {
+            "node": "Validate Redirect URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Redirect URL": {
+      "main": [
+        [
+          {
+            "node": "Is Redirect URL Valid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Redirect URL Valid?": {
+      "main": [
+        [
+          {
+            "node": "Get State",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Unauthorized - Invalid Redirect URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get State": {
+      "main": [
+        [
+          {
+            "node": "State Exists?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "State Exists?": {
+      "main": [
+        [
+          {
+            "node": "Remove State",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Unauthorized - Bad State",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Remove State": {
+      "main": [
+        [
+          {
+            "node": "Get Access Token",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Access Token": {
+      "main": [
+        [
+          {
+            "node": "Return Access Token",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Prefetch?": {
+      "main": [
+        [
+          {
+            "node": "Ignore Prefetch",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Instance Variables",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query Events": {
+      "main": [
+        [
+          {
+            "node": "Build HTML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build HTML": {
+      "main": [
+        [
+          {
+            "node": "Present HTML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "User Entrypoint": {
+      "main": [
+        [
+          {
+            "node": "Has Token?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Token?": {
+      "main": [
+        [
+          {
+            "node": "Query Events",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Initiate OAuth",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "On form submission": {
+      "main": [
+        [
+          {
+            "node": "Retrieve Account IDs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Retrieve Account IDs": {
+      "main": [
+        [
+          {
+            "node": "Convert Account IDs to Base64",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert Account IDs to Base64": {
+      "main": [
+        [
+          {
+            "node": "Retrieve fromAccount",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Retrieve fromAccount": {
+      "main": [
+        [
+          {
+            "node": "If fromAccount exists",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Retrieve toAccount": {
+      "main": [
+        [
+          {
+            "node": "If toAccount exists",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If toAccount exists": {
+      "main": [
+        [
+          {
+            "node": "Confirm Accounts To Merge",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Set accountNotFoundId1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If fromAccount exists": {
+      "main": [
+        [
+          {
+            "node": "Retrieve toAccount",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Set accountNotFoundId",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set accountNotFoundId": {
+      "main": [
+        [
+          {
+            "node": "END - Account Not Found",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set accountNotFoundId1": {
+      "main": [
+        [
+          {
+            "node": "END - Account Not Found",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If error": {
+      "main": [
+        [],
+        [
+          {
+            "node": "END - Merge Fail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Confirm Accounts To Merge": {
+      "main": [
+        [
+          {
+            "node": "Mutation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mutation": {
+      "main": [
+        [
+          {
+            "node": "If error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "cabf2ac2-3918-4a51-bd4f-147bcdbee6ee",
+  "meta": {
+    "instanceId": "83919d4354bbaff95da762969bebefe1aea3d522c874fd7a5e6f2d100311439b"
+  },
+  "id": "KFhdyWSXB8GvvzIf",
+  "tags": []
+}

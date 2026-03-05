@@ -31,6 +31,7 @@ For detailed setup instructions, visit the [Automator documentation](https://sup
 | [Merge Accounts](./merge-accounts) | Merge duplicate Accounts from HRIS/CRM syncs or manual entry | 1.0.0 |
 | [Logging vILT Attendance](./logging-vilt-attendance) | Automatically record Zoom attendance in Administrate by matching email addresses | 1.0.0 |
 | [Auto Assign Instructors to Event](./auto-assign-instructors-to-event) | Automatically assign available Approved Instructors to new Events based on availability and workplace location | 1.0.0 |
+| [OAuth - Authorization Code](./oauth-authorization-code) | Implement OAuth Authorization Code flow to execute API requests with the authenticated user's permissions | 1.0.0 |
 
 ## How to Import a Workflow
 
