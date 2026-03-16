@@ -1,0 +1,942 @@
+{
+  "name": "Create Booking from Event - BOTH",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "8307d02e-2c93-45f5-93ee-9cad13dee8d1",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "01fb7ba8-38a0-4144-a3a4-0fd9bf43a6f1",
+      "name": "Webhook",
+      "webhookId": "8307d02e-2c93-45f5-93ee-9cad13dee8d1"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.body.payload.node }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        176,
+        -176
+      ],
+      "id": "a5598360-a59d-476f-9628-66f362627de5",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.getadministrate.com/graphql",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "=mutation CreateOpportunityInRegion {\n  opportunities{\n    create(input:{\n      name: \"Booking for Event ID {{ $json.body.payload.node.id }}\"\n      regionId:\"{{ $json.body.payload.node.region.id }}\"\n      financialUnitId: \"{{ $json.decoded.currency }}\"\nentryStepId:\"T3Bwb3J0dW5pdHlTdGVwOjE=\"\n    }) {\n      errors{\n        label \n        message \n        value\n      }\n      opportunity{\n        id\n        step{\n          id\n          name\n          stage{\n            id\n            name\n            state\n          }\n        }\n      }\n    }\n  }\n}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        912,
+        32
+      ],
+      "id": "d591c408-9347-45f0-84d5-de805de25f56",
+      "name": "Create Booking",
+      "credentials": {
+        "oAuth2Api": {
+          "id": "0hA0ldq7amED1zcI",
+          "name": "jarreds - Jarred/Scott"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "202540f2-f24e-4449-89b5-b904a6e63db4",
+              "name": "data.opportunities.create.opportunity.id",
+              "value": "={{ $json.data.opportunities.create.opportunity.id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1136,
+        32
+      ],
+      "id": "6ba90f1e-4b58-4eb3-a379-c1189efaa9fe",
+      "name": "Store Booking ID"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.getadministrate.com/graphql",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "=mutation AddEventAsInterest {\n  opportunities{\n    addInterest(input:{\n      opportunityId: \"{{ $json.data.opportunities.create.opportunity.id }}\"\n      interestDetails:{\n        id: \"{{$node['Store Event Region and Default Price'].json.body.payload.node.id}}\"\n        quantity: 1\nunitAmount:\"{{$node['Store Event Region and Default Price'].json.body.payload.node.defaultPrice.amount}}\"\ntaxId:\"{{$node['Store Event Region and Default Price'].json.body.payload.node.defaultTaxType.id}}\"\n      }\n    }) {\n      errors{\n        label \n        message \n        value\n      }\n      interests{\n        id\n        item{\n          id\n          __typename\n          \n        }\n      }\n    }\n  }\n} "
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1344,
+        32
+      ],
+      "id": "40659658-ec6c-4af1-a927-240cb4431949",
+      "name": "Create Interest on Booking",
+      "credentials": {
+        "oAuth2Api": {
+          "id": "0hA0ldq7amED1zcI",
+          "name": "jarreds - Jarred/Scott"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "420a2ba4-907a-45d6-9b80-ce94026032cd",
+              "name": "body.payload.node",
+              "value": "={{ $json.body.payload.node }}",
+              "type": "object"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        208,
+        240
+      ],
+      "id": "cd425999-b8ae-4e62-83b3-6f991d4db7ac",
+      "name": "Store Event Region and Default Price"
+    },
+    {
+      "parameters": {
+        "jsCode": "return items.map(item => {\n  const node = item.json.body.payload.node;\n\n  // Decode Base64 IDs\n  const decodedCurrencyId = Buffer.from(node.defaultPrice.financialUnit.id, 'base64').toString('utf8');\n\n  // Optionally, extract just the values after colon\n  const currencyValue = decodedCurrencyId.split(':')[1];\n\n  // Save decoded values in JSON\n  item.json.decoded = {\n    currency: currencyValue     // GBP\n  };\n\n  return item;\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        32
+      ],
+      "id": "679a19a1-2855-4180-b011-66adbce903e7",
+      "name": "Decode Financial Unit ID"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.body.payload.node.type }}",
+                    "rightValue": "public",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "ecfceee1-d3c9-437a-81f1-4df8728bb32a"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "public"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "295a8a20-b222-4663-83da-b09a37c251e3",
+                    "leftValue": "={{ $json.body.payload.node.type }}",
+                    "rightValue": "private",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "private"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        416,
+        240
+      ],
+      "id": "5a7e97ae-76b7-4d77-ac11-679279e0f71a",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "jsCode": "return items.map(item => {\n  const node = item.json.body.payload.node;\n\n  // Decode Base64 IDs\n  const decodedCurrencyId = Buffer.from(node.financialUnit.id, 'base64').toString('utf8');\n\n  // Optionally, extract just the values after colon\n  const currencyValue = decodedCurrencyId.split(':')[1];\n\n  // Save decoded values in JSON\n  item.json.decoded = {\n    currency: currencyValue     // GBP\n  };\n\n  return item;\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        448
+      ],
+      "id": "9aeac103-d4e9-492b-bc19-44bf29557ec4",
+      "name": "Private Decode Financial Unit ID"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.getadministrate.com/graphql",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "=mutation CreateOpportunityInRegion {\n  opportunities{\n    create(input:{\n      name: \"Booking for Event ID {{ $json.body.payload.node.id }}\"\n      regionId:\"{{ $json.body.payload.node.region.id }}\"\n      financialUnitId: \"{{ $json.decoded.currency }}\"\naccountId:\"{{ $json.body.payload.node.bookingAccount.id }}\"\nentryStepId:\"T3Bwb3J0dW5pdHlTdGVwOjE=\"\n    }) {\n      errors{\n        label \n        message \n        value\n      }\n      opportunity{\n        id\n        step{\n          id\n          name\n          stage{\n            id\n            name\n            state\n          }\n        }\n      }\n    }\n  }\n}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        912,
+        448
+      ],
+      "id": "b13a9728-3d85-4782-8f28-d65d6fa3932b",
+      "name": "Private Create Booking",
+      "credentials": {
+        "oAuth2Api": {
+          "id": "0hA0ldq7amED1zcI",
+          "name": "jarreds - Jarred/Scott"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "202540f2-f24e-4449-89b5-b904a6e63db4",
+              "name": "data.opportunities.create.opportunity.id",
+              "value": "={{ $json.data.opportunities.create.opportunity.id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1136,
+        448
+      ],
+      "id": "8747cf0c-e6e9-46fc-9463-a2e75091d959",
+      "name": "Private Store Booking ID"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.getadministrate.com/graphql",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "=mutation AddEventAsInterest {\n  opportunities{\n    addInterest(input:{\n      opportunityId: \"{{ $json.data.opportunities.create.opportunity.id }}\"\n      interestDetails:{\n        id: \"{{$node['Store Event Region and Default Price'].json.body.payload.node.id}}\"\n        quantity: 1\nunitAmount:\"{{$node['Store Event Region and Default Price'].json.body.payload.node.price}}\"\ntaxId:\"{{$node['Store Event Region and Default Price'].json.body.payload.node.defaultTaxType.id}}\"\n      }\n    }) {\n      errors{\n        label \n        message \n        value\n      }\n      interests{\n        id\n        item{\n          id\n          __typename\n          \n        }\n      }\n    }\n  }\n} "
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1344,
+        448
+      ],
+      "id": "251223d6-433f-4997-9008-3eed8b793d12",
+      "name": "Private Create Interest on Booking",
+      "credentials": {
+        "oAuth2Api": {
+          "id": "0hA0ldq7amED1zcI",
+          "name": "jarreds - Jarred/Scott"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## Instructions \n**Create a 'Manual Event Webhook'**\nhttps://developer.getadministrate.com/docs/core/Webhooks/02_setup.md\n1. Set the webhookTypeId: \"V2ViaG9va1R5cGU6bWFudWFsX2V2ZW50\"\n2. Set the name: \"Create Booking with Event as Interest\"\n3. Set the url to the n8n url that's provided when creating the Webhook node.\n4. Set the query to \"query test($objectid: ID!){ node(id: $objectid) { id ... on Event{ code type bookingAccount{id}price region{id}defaultTaxType{id}financialUnit{id}defaultPrice{amount financialUnit{id }}}}}\"\n\n\n**Update the entryStepId**\nUnder the Create Booking node and Private Create Booking node, update the entryStepId to your preference of Booking Step the Booking should be created in",
+        "height": 448,
+        "width": 416
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -512,
+        -48
+      ],
+      "typeVersion": 1,
+      "id": "ac030a7a-09dc-4388-ac70-223513594791",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "content": "## What Does It Do?\nA Booking can be created directly from an Event, the Event will automatically be added as an Interest on the newly created Booking. \n\nUnder the 'Automator' menu on an Event, you will see \"Create Booking with Event as Interest\" option.\n\nThe Public Event needs to meet this criteria:\n- Active\n- Start Date in the future\n- Default Price Level set\n\n_Please note: Training Tokens cannot be set as a Default Price_\n\n\nThe Private Event needs to meet this criteria:\n- Active \n- Start Date in the future\n- Price set\n\n_Please note: Training Tokens cannot be set as a Price_",
+        "height": 512,
+        "width": 416,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -960,
+        -48
+      ],
+      "typeVersion": 1,
+      "id": "714f2e53-de73-4f12-86da-d58938bf7037",
+      "name": "Sticky Note4"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "d02f53b5-a89f-4f28-a2c6-f53872638b2c",
+              "leftValue": "={{ $json.data.opportunities.addInterest.interests[0].id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1552,
+        32
+      ],
+      "id": "0cab5b58-df25-414d-9bf9-6ed5a60b274a",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "b0e05932-f976-45e0-804b-7bf1df14bfa2",
+              "name": "=message",
+              "value": "=Booking {{$node['Store Booking ID'].json.data.opportunities.create.opportunity.id}} created for Event ID {{$node['Store Event Region and Default Price'].json.body.payload.node.id}}",
+              "type": "string"
+            },
+            {
+              "id": "3f36deec-79a1-4226-8db1-e1e16e598124",
+              "name": "payload",
+              "value": "={{ $json.data }}",
+              "type": "string"
+            },
+            {
+              "id": "10a94522-e8b3-45a4-9965-015d6f949144",
+              "name": "status",
+              "value": "success",
+              "type": "string"
+            },
+            {
+              "id": "c9ab9f22-be66-4d29-9c85-3cb011c98ff5",
+              "name": "nodeId",
+              "value": "={{$node['Store Event Region and Default Price'].json.body.payload.node.id}}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1760,
+        -64
+      ],
+      "id": "882412f8-c187-4d18-90bf-459dc333b9c4",
+      "name": "External Log - success"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "b0e05932-f976-45e0-804b-7bf1df14bfa2",
+              "name": "message",
+              "value": "=Booking not created for Event ID {{$node['Store Event Region and Default Price'].json.body.payload.node.id}}",
+              "type": "string"
+            },
+            {
+              "id": "3f36deec-79a1-4226-8db1-e1e16e598124",
+              "name": "payload",
+              "value": "={{ $json.data }}",
+              "type": "string"
+            },
+            {
+              "id": "10a94522-e8b3-45a4-9965-015d6f949144",
+              "name": "status",
+              "value": "failed",
+              "type": "string"
+            },
+            {
+              "id": "c9ab9f22-be66-4d29-9c85-3cb011c98ff5",
+              "name": "nodeId",
+              "value": "={{$node['Store Event Region and Default Price'].json.body.payload.node.id}}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1760,
+        128
+      ],
+      "id": "2488d5f6-dfcd-4466-8a71-f6f60c96c59c",
+      "name": "External Log - fail"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://jarreds.administrateapp.com/graphql",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "=mutation addExternalLog {\n  externalLog {\n    createExternalIntegrationLogs(input:{\n      originIdentifier: \"Automator - Booking created from Event\"\n      nodeId: \"{{ $json.nodeId }}\"\n      message:\"{{ $json.message }}\"\n      status: {{ $json.status }}\n      payload: {{ $json.payload.toJsonString() }}\n    }){\n        errors{\n          label\n          message\n          value\n        }\n        entityIds\n      }\n    }\n}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        2016,
+        -64
+      ],
+      "id": "38864885-1f06-403b-a722-b159b9deccc5",
+      "name": "External Log - post success",
+      "credentials": {
+        "oAuth2Api": {
+          "id": "0hA0ldq7amED1zcI",
+          "name": "jarreds - Jarred/Scott"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://jarreds.administrateapp.com/graphql",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "=mutation addExternalLog {\n  externalLog {\n    createExternalIntegrationLogs(input:{\n      originIdentifier: \"Automator - Booking created from Event\"\n      nodeId: \"{{ $json.nodeId }}\"\n      message:\"{{ $json.message }}\"\n      status: {{ $json.status }}\n      payload: {{ $json.payload.toJsonString() }}\n    }){\n        errors{\n          label\n          message\n          value\n        }\n        entityIds\n      }\n    }\n}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        2016,
+        128
+      ],
+      "id": "ea323e23-4d4a-4d6c-a6d9-2b7e144bcc97",
+      "name": "External Log - post fail",
+      "credentials": {
+        "oAuth2Api": {
+          "id": "0hA0ldq7amED1zcI",
+          "name": "jarreds - Jarred/Scott"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "d02f53b5-a89f-4f28-a2c6-f53872638b2c",
+              "leftValue": "={{ $json.data.opportunities.addInterest.interests[0].id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1552,
+        448
+      ],
+      "id": "cc31726c-46ff-431b-ba43-a13975a23a85",
+      "name": "If1"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "b0e05932-f976-45e0-804b-7bf1df14bfa2",
+              "name": "=message",
+              "value": "=Booking {{$node['Private Store Booking ID'].json.data.opportunities.create.opportunity.id}} created for Event ID {{$node['Store Event Region and Default Price'].json.body.payload.node.id}}",
+              "type": "string"
+            },
+            {
+              "id": "3f36deec-79a1-4226-8db1-e1e16e598124",
+              "name": "payload",
+              "value": "={{ $json.data }}",
+              "type": "string"
+            },
+            {
+              "id": "10a94522-e8b3-45a4-9965-015d6f949144",
+              "name": "status",
+              "value": "success",
+              "type": "string"
+            },
+            {
+              "id": "c9ab9f22-be66-4d29-9c85-3cb011c98ff5",
+              "name": "nodeId",
+              "value": "={{$node['Store Event Region and Default Price'].json.body.payload.node.id}}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1760,
+        352
+      ],
+      "id": "3571c51a-e2f8-43d8-b337-34e639db4a0b",
+      "name": "Private External Log - success"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://jarreds.administrateapp.com/graphql",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "=mutation addExternalLog {\n  externalLog {\n    createExternalIntegrationLogs(input:{\n      originIdentifier: \"Automator - Booking created from Event\"\n      nodeId: \"{{ $json.nodeId }}\"\n      message:\"{{ $json.message }}\"\n      status: {{ $json.status }}\n      payload: {{ $json.payload.toJsonString() }}\n    }){\n        errors{\n          label\n          message\n          value\n        }\n        entityIds\n      }\n    }\n}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        2016,
+        352
+      ],
+      "id": "b4891c5b-ab68-42e3-a591-248c46e9c988",
+      "name": "Private External Log - post success",
+      "credentials": {
+        "oAuth2Api": {
+          "id": "0hA0ldq7amED1zcI",
+          "name": "jarreds - Jarred/Scott"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "b0e05932-f976-45e0-804b-7bf1df14bfa2",
+              "name": "message",
+              "value": "=Booking not created for Event ID {{$node['Store Event Region and Default Price'].json.body.payload.node.id}}",
+              "type": "string"
+            },
+            {
+              "id": "3f36deec-79a1-4226-8db1-e1e16e598124",
+              "name": "payload",
+              "value": "={{ $json.data }}",
+              "type": "string"
+            },
+            {
+              "id": "10a94522-e8b3-45a4-9965-015d6f949144",
+              "name": "status",
+              "value": "failed",
+              "type": "string"
+            },
+            {
+              "id": "c9ab9f22-be66-4d29-9c85-3cb011c98ff5",
+              "name": "nodeId",
+              "value": "={{$node['Store Event Region and Default Price'].json.body.payload.node.id}}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1760,
+        544
+      ],
+      "id": "c3bdeae4-5913-475b-8688-09f3adde6b0a",
+      "name": "Private External Log - fail"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://jarreds.administrateapp.com/graphql",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "=mutation addExternalLog {\n  externalLog {\n    createExternalIntegrationLogs(input:{\n      originIdentifier: \"Automator - Booking created from Event\"\n      nodeId: \"{{ $json.nodeId }}\"\n      message:\"{{ $json.message }}\"\n      status: {{ $json.status }}\n      payload: {{ $json.payload.toJsonString() }}\n    }){\n        errors{\n          label\n          message\n          value\n        }\n        entityIds\n      }\n    }\n}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        2016,
+        544
+      ],
+      "id": "ca0f69d2-d7e8-4648-98cd-e642bda6c27d",
+      "name": "Private External Log - post fail",
+      "credentials": {
+        "oAuth2Api": {
+          "id": "0hA0ldq7amED1zcI",
+          "name": "jarreds - Jarred/Scott"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Store Event Region and Default Price",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Booking": {
+      "main": [
+        [
+          {
+            "node": "Store Booking ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Store Booking ID": {
+      "main": [
+        [
+          {
+            "node": "Create Interest on Booking",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Store Event Region and Default Price": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Decode Financial Unit ID": {
+      "main": [
+        [
+          {
+            "node": "Create Booking",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Decode Financial Unit ID",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Private Decode Financial Unit ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Private Decode Financial Unit ID": {
+      "main": [
+        [
+          {
+            "node": "Private Create Booking",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Private Create Booking": {
+      "main": [
+        [
+          {
+            "node": "Private Store Booking ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Private Store Booking ID": {
+      "main": [
+        [
+          {
+            "node": "Private Create Interest on Booking",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Interest on Booking": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "External Log - success",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "External Log - fail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "External Log - success": {
+      "main": [
+        [
+          {
+            "node": "External Log - post success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "External Log - fail": {
+      "main": [
+        [
+          {
+            "node": "External Log - post fail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If1": {
+      "main": [
+        [
+          {
+            "node": "Private External Log - success",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Private External Log - fail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Private Create Interest on Booking": {
+      "main": [
+        [
+          {
+            "node": "If1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Private External Log - success": {
+      "main": [
+        [
+          {
+            "node": "Private External Log - post success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Private External Log - fail": {
+      "main": [
+        [
+          {
+            "node": "Private External Log - post fail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "a472e929-b9ba-439e-9048-98de269d791c",
+  "meta": {
+    "instanceId": "83919d4354bbaff95da762969bebefe1aea3d522c874fd7a5e6f2d100311439b"
+  },
+  "id": "EeIgI0XAPbgG37L8",
+  "tags": []
+}
