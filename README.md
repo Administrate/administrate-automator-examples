@@ -35,6 +35,7 @@ For detailed setup instructions, visit the [Automator documentation](https://sup
 | [Create Booking from Event](./create-booking-from-event) | Create a Booking directly from an Event with the Event automatically added as an Interest | 1.0.0 |
 | [Certificate Renewal Reminders](./certificate-renewal-reminders) | Remind learners before their certificates or achievements expire, with dry-run mode, a send cap and a dedupe log | 1.0.0 |
 | [QR Code Check-in and Attendance](./qr-code-check-in-attendance) | QR code self check-in for classroom events, with walk-in registration, a daily reconciliation report and a live dashboard | 1.0.0 |
+| [Review and Cancel Under-Subscribed Events](./cancel-under-subscribed-events) | Flag low-fill events for human approval, re-check them, then cancel and notify instructors and learners | 1.0.0 |
 
 ## How to Import a Workflow
 

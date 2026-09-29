@@ -1,0 +1,1397 @@
+{
+  "name": "Review and Cancel Under-Subscribed Events",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Part 1 – Cancellation Checker\n\nRuns automatically **Mon–Fri at 8:30am** (or use the manual trigger to preview).\n\nQueries Administrate for every published event 11–31 days out (all pages) and applies two cancellation rules.\n\nIf any events qualify, it emails a **review table** to the planning team with one **Cancel Event** button per event.\n\n**Nothing is cancelled automatically.** Each button opens a confirmation page; a person must press **Confirm cancellation** there.\n\nPart 2 (below) handles the confirmation.",
+        "height": 356,
+        "width": 460
+      },
+      "id": "0a88dd95-1b83-4759-8743-c926b0fcc36a",
+      "name": "Sticky Note – Overview",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -3472,
+        336
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Edit Me – Config\n\nUpdate the **Config** node:\n\n- `PLANNING_EMAIL` – who receives the review email\n- `FROM_EMAIL` – sender address for the review email\n- `EXECUTOR_WEBHOOK_URL` – production URL of the **Approval Webhook** node (Part 2)\n- `ADM_INSTANCE_SUBDOMAIN` – the `your-instance` part of your Administrate URL (used for event links)\n- `APPROVAL_LINK_TTL_DAYS` – how long Cancel links stay valid\n- `PAGE_SIZE` / `MAX_PAGES` – API paging\n\nThresholds:\n- `FOUR_WEEK_MIN_REGS` = 3\n- Windows = 25–31 days and 11–17 days",
+        "height": 480,
+        "width": 296,
+        "color": 4
+      },
+      "id": "b1149392-f6b2-4f6b-a845-abe32d040029",
+      "name": "Sticky Note – Config",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -2992,
+        336
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 📏 Cancellation Rules Applied\n\n**4-week rule** (25–31 days out)\nCancel if fewer than 3 registrations\n\n**2-week rule** (11–17 days out)\nCancel if below 50% of minimum places\n\nEvents that just gained a registration between the email being sent and the Confirm button being clicked are **protected** — the Executor re-checks at click time.",
+        "height": 380,
+        "width": 290,
+        "color": 5
+      },
+      "id": "b79796f9-ad3b-4d53-913c-1c976368a818",
+      "name": "Sticky Note – Rules",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -2352,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Edit Me – Email\n\nThe **Send Review Email** node uses an **SMTP** credential.\n\nCreate one in n8n under Credentials → New → SMTP, then select it in the node.\n\nThe sender address comes from `FROM_EMAIL` in **Config**.",
+        "height": 324,
+        "width": 260,
+        "color": 4
+      },
+      "id": "f712ebd4-cb99-4266-b33a-606e3dd441e5",
+      "name": "Sticky Note – Email",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -1648,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "30 8 * * 1-5"
+            }
+          ]
+        }
+      },
+      "id": "f0273407-d8f4-40fd-b6c6-477122a738cb",
+      "name": "Mon–Fri 8:30am",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [
+        -3104,
+        816
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const config = $('Config').item.json;\n\nreturn [{\n  json: {\n    query: `\n      query GetUpcomingEvents($from: String!, $to: String!, $first: Int, $after: String) {\n        events(\n          filters: [\n            { field: timeZonedStart, operation: ge, value: $from }\n            { field: timeZonedStart, operation: le, value: $to }\n            { field: lifecycleState, operation: eq, value: \"published\" }\n          ]\n          orderBy: [{ field: timeZonedStart, direction: asc }]\n          first: $first\n          after: $after\n        ) {\n          pageInfo {\n            hasNextPage\n            endCursor\n          }\n          edges {\n            node {\n              id\n              code\n              title\n              timeZonedStart\n              bookedPlaces\n              minPlaces\n            }\n          }\n        }\n      }\n    `,\n    variables: {\n      from: DateTime.now().plus({ days: config.TWO_WEEK_FROM_DAYS }).toISO(),\n      to: DateTime.now().plus({ days: config.FOUR_WEEK_TO_DAYS }).toISO(),\n      first: config.PAGE_SIZE,\n      after: null\n    }\n  }\n}];"
+      },
+      "id": "1b2c1172-2441-4903-9158-5301620f0eab",
+      "name": "Build ADM Query",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2672,
+        816
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').item.json.ADM_API_URL }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json }}",
+        "options": {
+          "pagination": {
+            "pagination": {
+              "paginationMode": "updateAParameterInEachRequest",
+              "parameters": {
+                "parameters": [
+                  {
+                    "type": "body",
+                    "name": "variables",
+                    "value": "={{ { ...$json.variables, after: (typeof $response === 'undefined' ? null : ($response?.body?.data?.events?.pageInfo?.endCursor ?? null)) } }}"
+                  }
+                ]
+              },
+              "paginationCompleteWhen": "other",
+              "completeExpression": "={{ typeof $response === 'undefined' ? false : !$response?.body?.data?.events?.pageInfo?.hasNextPage }}",
+              "limitPagesFetched": true,
+              "maxRequests": "={{ $('Config').first().json.MAX_PAGES }}",
+              "requestInterval": 200
+            }
+          }
+        }
+      },
+      "id": "688ab4d4-3b61-41d9-9e93-3f5ae922477f",
+      "name": "ADM: Get Upcoming Events",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -2448,
+        816
+      ],
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const config = $('Config').item.json;\nconst edges = $input.all().flatMap(i => i.json?.data?.events?.edges ?? []) // one item per page;\n\nconst now = DateTime.now();\nconst fourWeekFrom = now.plus({ days: config.FOUR_WEEK_FROM_DAYS });\nconst fourWeekTo   = now.plus({ days: config.FOUR_WEEK_TO_DAYS });\nconst twoWeekFrom  = now.plus({ days: config.TWO_WEEK_FROM_DAYS });\nconst twoWeekTo    = now.plus({ days: config.TWO_WEEK_TO_DAYS });\n\nconst toCancel = [];\n\nfor (const edge of edges) {\n  const event        = edge.node;\n  const start        = DateTime.fromISO(event.timeZonedStart);\n  const bookedPlaces = event.bookedPlaces ?? 0;\n  const minPlaces    = event.minPlaces    ?? 0;\n\n  // 4-week rule: cancel if fewer than 3 registrations\n  if (start >= fourWeekFrom && start <= fourWeekTo) {\n    if (bookedPlaces < config.FOUR_WEEK_MIN_REGS) {\n      toCancel.push({\n        ...event,\n        bookedPlaces,\n        cancellationRule: `4-week rule (${bookedPlaces} registrations, threshold < ${config.FOUR_WEEK_MIN_REGS})`\n      });\n      continue;\n    }\n  }\n\n  // 2-week rule: cancel if below 50% of minimum required places\n  if (start >= twoWeekFrom && start <= twoWeekTo) {\n    if (minPlaces > 0 && bookedPlaces < minPlaces * 0.5) {\n      toCancel.push({\n        ...event,\n        bookedPlaces,\n        cancellationRule: `2-week rule (${bookedPlaces}/${minPlaces} min = ${Math.round(bookedPlaces / minPlaces * 100)}%)`\n      });\n    }\n  }\n}\n\nif (toCancel.length === 0) {\n  return [{ json: { _noResults: true } }];\n}\n\nreturn [{ json: { events: toCancel, count: toCancel.length } }];"
+      },
+      "id": "a07f84f2-4986-438e-a5aa-b549f24644c8",
+      "name": "Apply Cancellation Rules",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2224,
+        816
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "cond-1",
+              "leftValue": "={{ $json._noResults }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "82aa74bf-1ff4-4d67-bd8c-91f649bcbd47",
+      "name": "Any Events to Cancel?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -2000,
+        816
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const config = $('Config').item.json;\nconst { events, count } = $input.first().json;\n\n// ---- One-time approval tokens --------------------------------------------\n// Each Cancel link carries a random token. The token is kept in this\n// workflow's static data (shared with the Approval Webhook below) and is\n// checked, then deleted, when the cancellation is confirmed.\n// Static data is only saved for production runs (active workflow), so links\n// from a manual test run will show \"link invalid or expired\".\nconst store = $getWorkflowStaticData('global');\nconst tokens = { ...(store.approvalTokens || {}) };\nconst nowMs = Date.now();\nfor (const [t, entry] of Object.entries(tokens)) {\n  if (!entry || entry.expires < nowMs) delete tokens[t];\n}\nconst ttlMs = (config.APPROVAL_LINK_TTL_DAYS ?? 7) * 24 * 60 * 60 * 1000;\nconst randomToken = () => {\n  try {\n    if (globalThis.crypto && typeof globalThis.crypto.randomUUID === 'function') {\n      return (globalThis.crypto.randomUUID() + globalThis.crypto.randomUUID()).replace(/-/g, '');\n    }\n  } catch (e) { /* fall back below */ }\n  let t = '';\n  for (let i = 0; i < 6; i++) t += Math.random().toString(36).slice(2);\n  return t + nowMs.toString(36);\n};\n\nconst rows = events.map(e => {\n  const date      = DateTime.fromISO(e.timeZonedStart).toFormat('dd/MM/yyyy HH:mm');\n  const numericId = Buffer.from(e.id, 'base64').toString('utf-8').split(':')[1];\n  const eventUrl  = `https://${config.ADM_INSTANCE_SUBDOMAIN}.administrateapp.com/beta#/events/events/${numericId}`;\n  const token     = randomToken();\n  tokens[token] = {\n    eventId: e.id,\n    code: e.code,\n    title: e.title,\n    start: e.timeZonedStart,\n    rule: e.cancellationRule,\n    expires: nowMs + ttlMs\n  };\n  // Opening this link only shows a confirmation page; nothing is cancelled until the button on that page is pressed.\n  const cancelUrl = `${config.EXECUTOR_WEBHOOK_URL}?eventId=${encodeURIComponent(e.id)}&token=${encodeURIComponent(token)}`;\n  return `\n    <tr>\n      <td style=\"padding:8px;border:1px solid #ddd\">${e.code}</td>\n      <td style=\"padding:8px;border:1px solid #ddd\">${e.title}</td>\n      <td style=\"padding:8px;border:1px solid #ddd\">${date}</td>\n      <td style=\"padding:8px;border:1px solid #ddd;text-align:center\">${e.bookedPlaces}</td>\n      <td style=\"padding:8px;border:1px solid #ddd\">${e.cancellationRule}</td>\n      <td style=\"padding:8px;border:1px solid #ddd;text-align:center\">\n        <a href=\"${eventUrl}\" style=\"color:#2980b9;font-size:13px;font-weight:bold\">${numericId}</a>\n      </td>\n      <td style=\"padding:8px;border:1px solid #ddd;text-align:center\">\n        <a href=\"${cancelUrl}\"\n           style=\"background:#c0392b;color:white;padding:8px 16px;text-decoration:none;border-radius:4px;display:inline-block;font-size:13px;font-weight:bold;white-space:nowrap\">\n          Cancel Event\n        </a>\n      </td>\n    </tr>`;\n}).join('');\n\nconst html = `\n<!DOCTYPE html>\n<html>\n<body style=\"font-family:Arial,sans-serif;max-width:960px;margin:0 auto\">\n  <h2 style=\"color:#333\">Event Cancellation Review</h2>\n  <p>The following <strong>${count} event(s)</strong> do not meet the minimum attendance threshold and are eligible for cancellation.</p>\n  <p>Use the individual <strong>Cancel Event</strong> button for each one you want to cancel. The button opens a confirmation page &mdash; the event is only cancelled when you confirm there. Links expire after ${config.APPROVAL_LINK_TTL_DAYS ?? 7} day(s) and can be used once.</p>\n  <table style=\"border-collapse:collapse;width:100%;margin-bottom:24px\">\n    <thead>\n      <tr style=\"background:#f0f0f0\">\n        <th style=\"padding:8px;border:1px solid #ddd;text-align:left\">Code</th>\n        <th style=\"padding:8px;border:1px solid #ddd;text-align:left\">Title</th>\n        <th style=\"padding:8px;border:1px solid #ddd;text-align:left\">Start Date</th>\n        <th style=\"padding:8px;border:1px solid #ddd;text-align:center\">Registrations</th>\n        <th style=\"padding:8px;border:1px solid #ddd;text-align:left\">Rule Applied</th>\n        <th style=\"padding:8px;border:1px solid #ddd;text-align:center\">Event ID</th>\n        <th style=\"padding:8px;border:1px solid #ddd;text-align:center\">Action</th>\n      </tr>\n    </thead>\n    <tbody>${rows}</tbody>\n  </table>\n  <p style=\"color:#999;font-size:12px\">\n    Each event is cancelled independently — cancelling one does not affect the others.\n    The cancellation rules are re-evaluated at the moment you click, so any event that has received new\n    registrations since this email was sent will not be cancelled.\n  </p>\n</body>\n</html>`;\n\n// Save the new tokens (reassign so n8n persists the change)\nstore.approvalTokens = tokens;\n\nreturn [{\n  json: {\n    html,\n    subject: `[Action Required] ${count} Event(s) Eligible for Cancellation – ${DateTime.now().toFormat('dd/MM/yyyy')}`\n  }\n}];"
+      },
+      "id": "3971b351-f64d-4f6d-987e-c557203e4011",
+      "name": "Build Review Email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1792,
+        704
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "296abaa2-b72b-460a-a67a-3f8aed319706",
+      "name": "No Events – Done",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        -1792,
+        960
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 🔀 Why the Merge Node?\n\n**The problem:** n8n HTTP Request nodes replace all item data with the API response. After `ADM: Cancel Event` runs, the original event data (staffEdges, learnerEdges, etc.) is lost.\n\n**The fix:** The Merge node combines:\n- **Input 0** — original event item (from Any Events to Cancel?)\n- **Input 1** — cancel API response (from ADM: Cancel Event)\n\nDownstream nodes then have both the event data and the cancel result in a single `$json` object.\n\nMerge mode should be set to **Combine → By Position (Index)**.",
+        "height": 536,
+        "width": 306,
+        "color": 2
+      },
+      "id": "836c71f0-7be8-49ec-a342-eb3370e90d84",
+      "name": "Sticky Note – Merge Explanation",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -896,
+        1152
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Edit Me – Email Templates\n\nThe two email nodes send Administrate email templates with the `bulkAdhocEmails.sendBulkContactAdhocEmail` mutation.\n\nSet these in **Config1**:\n- `INSTRUCTOR_TEMPLATE_ID`\n- `PARTICIPANT_TEMPLATE_ID`\n- `SENDING_ADDRESS_ID`\n\nIf there are no instructors, the instructor email is skipped (a no-op query is sent instead).",
+        "height": 560,
+        "width": 280,
+        "color": 4
+      },
+      "id": "8d340fd6-00e8-4c0d-9d49-c3ffd2d6d162",
+      "name": "Sticky Note – Email Templates",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -448,
+        1136
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Learner Cancellation Loop\n\n`Expand to One Item per Learner` splits the `learnerIds` array into individual items.\n\n`ADM: Cancel Learner Registration` then runs **once per learner** using `learner.cancel`.\n\nFor events with no registrations the loop is skipped entirely (handled by the `Any Participants?` branch).",
+        "height": 412,
+        "width": 270,
+        "color": 5
+      },
+      "id": "f5be060f-73e8-4c96-a774-c98dd4c92417",
+      "name": "Sticky Note – Learner Loop",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        224,
+        1200
+      ]
+    },
+    {
+      "parameters": {
+        "multipleMethods": true,
+        "httpMethod": [
+          "GET",
+          "POST"
+        ],
+        "path": "26ff3114-e9ff-4f02-b38d-3be028fbf917",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "372fadcb-83bc-4387-ac38-9854c2cd07a7",
+      "name": "Approval Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -2960,
+        1776
+      ],
+      "webhookId": "e232a927-d224-4c7a-a32f-1eac07156279"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config1').item.json.ADM_API_URL }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  query: `mutation CancelEvent($id: ID!) {\n    event {\n      update(eventId: $id, input: {\n        lifecycleState: cancelled\n      }) {\n        event { id lifecycleState }\n        errors { label message value }\n      }\n    }\n  }`,\n  variables: { id: $json.id }\n}) }}",
+        "options": {}
+      },
+      "id": "6f6a080d-3d1d-4358-92b9-d39f618f6a7f",
+      "name": "ADM: Cancel Event",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        -1008,
+        1648
+      ],
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combinationMode": "mergeByPosition",
+        "options": {}
+      },
+      "id": "e738c9ff-6994-48f2-a57a-d5a157f2d7a1",
+      "name": "Merge Event Context",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2,
+      "position": [
+        -784,
+        1776
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// After the Merge, $json contains both:\n//   - original event data (id, staffEdges, learnerEdges, etc.) from input 0\n//   - cancel API response (data.event.update) from input 1\n// No back-references needed — everything is in $json directly.\nconst config = $('Config1').item.json;\nconst data = $input.first().json;\n\n// Log any cancel errors but don't stop the pipeline\nconst cancelErrors = data?.data?.event?.update?.errors ?? [];\nif (cancelErrors.length > 0) {\n  console.error('Cancel errors for event', data.id, JSON.stringify(cancelErrors));\n}\n\nconst staffEdges         = data.staffEdges  ?? [];\nconst learnerEdges       = data.learnerEdges ?? [];\nconst instructorRoleName = (config.INSTRUCTOR_ROLE_NAME ?? 'Instructor').toLowerCase();\n\nconst instructorContactIds = staffEdges\n  .filter(e => e.node.staffRole?.name?.toLowerCase() === instructorRoleName)\n  .map(e => e.node.contact?.id)\n  .filter(Boolean);\n\nconst participantContactIds = learnerEdges\n  .map(e => e.node.contact?.id)\n  .filter(Boolean);\n\nconst learnerIds = learnerEdges.map(e => e.node.id);\n\nreturn [{\n  json: {\n    eventId:               data.id,\n    eventCode:             data.code,\n    eventTitle:            data.title,\n    eventStart:            data.timeZonedStart,\n    instructorContactIds,\n    participantContactIds,\n    learnerIds,\n    cancelStatus: cancelErrors.length > 0 ? 'error' : 'cancelled'\n  }\n}];"
+      },
+      "id": "bd1f786b-b19c-4e8e-b612-085b32abe731",
+      "name": "Build Notification Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -560,
+        1776
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config1').item.json.ADM_API_URL }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json._skip\n  ? { query: 'mutation NoOp { __typename }' }\n  : {\n      query: 'mutation SendInstructorNotification($contactIds: [String]!, $templateId: ID!, $eventId: String, $sendingAddressId: ID) { bulkAdhocEmails { sendBulkContactAdhocEmail(input: { contactIds: $contactIds, templateId: $templateId, eventId: $eventId, sendingAddressId: $sendingAddressId }) { errors { label message value } } } }',\n      variables: {\n        contactIds: $json._contactIds,\n        templateId: $json._templateId,\n        eventId: $json.eventId,\n        sendingAddressId: $json._sendingAddressId\n      }\n    }\n) }}",
+        "options": {}
+      },
+      "id": "ed219526-bb24-4333-95f6-f33bc9098237",
+      "name": "ADM: Send Instructor Email",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        -224,
+        1776
+      ],
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "cond-2",
+              "leftValue": "={{ $('Build Notification Data').item.json.participantContactIds.length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "9b663935-01f4-459f-a32b-1810360cbf07",
+      "name": "Any Participants?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -32,
+        1776
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config1').item.json.ADM_API_URL }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json._skip\n  ? { query: 'mutation NoOp { __typename }' }\n  : {\n      query: 'mutation SendParticipantNotification($contactIds: [String]!, $templateId: ID!, $eventId: String, $sendingAddressId: ID) { bulkAdhocEmails { sendBulkContactAdhocEmail(input: { contactIds: $contactIds, templateId: $templateId, eventId: $eventId, sendingAddressId: $sendingAddressId }) { errors { label message value } } } }',\n      variables: {\n        contactIds: $json._contactIds,\n        templateId: $json._templateId,\n        eventId: $json.eventId,\n        sendingAddressId: $json._sendingAddressId\n      }\n    }\n) }}",
+        "options": {}
+      },
+      "id": "0101bf9f-6a9d-45ba-afdf-044f57bce6d7",
+      "name": "ADM: Send Participant Emails",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        464,
+        1632
+      ],
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const learnerIds = $('Build Notification Data').first().json.learnerIds ?? [];\nreturn learnerIds.map(learnerId => ({ json: { learnerId } }));"
+      },
+      "id": "a438c5e1-c1f6-4960-bce7-4a763bb89e98",
+      "name": "Expand to One Item per Learner",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        672,
+        1632
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config1').item.json.ADM_API_URL }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  query: `mutation CancelLearner($learnerId: ID!) {\n    learner {\n      cancel(learnerId: $learnerId) {\n        learner { id lifecycleState }\n        errors { label message }\n      }\n    }\n  }`,\n  variables: { learnerId: $json.learnerId }\n}) }}",
+        "options": {}
+      },
+      "id": "f7640bae-80f6-4353-9c8d-f72aeaeff145",
+      "name": "ADM: Cancel Learner Registration",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        896,
+        1632
+      ],
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "6af0093e-4591-4bb7-9a98-de492dbf94d9",
+      "name": "No Participants – Done",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        256,
+        1904
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Part 2 – Cancellation Executor\n\nTriggered by the **Cancel Event** links in the review email.\n\n**GET** (link opened) → shows a confirmation page only. No changes are made, so email link scanners can't cancel anything.\n\n**POST** (Confirm button) → checks the one-time token, then:\n1. Re-checks Administrate (protects last-minute registrations)\n2. Cancels the event\n3. Emails the instructors\n4. Emails all participants\n5. Cancels each learner registration\n\nTokens are single-use and expire after `APPROVAL_LINK_TTL_DAYS`.",
+        "height": 520,
+        "width": 412
+      },
+      "id": "1b1ca26e-7356-4f75-a686-8a9e7b41729f",
+      "name": "Sticky Note – Overview1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -3392,
+        1180
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Edit Me – Config1\n\nUpdate the **Config1** node:\n\n**Email template IDs** (from Administrate)\n- `INSTRUCTOR_TEMPLATE_ID`\n- `PARTICIPANT_TEMPLATE_ID`\n- `SENDING_ADDRESS_ID`\n\n**Instructor role**\n- `INSTRUCTOR_ROLE_NAME` – must match the `staffRole.name` in Administrate (e.g. `Instructor`, `Trainer`). Case-insensitive.\n\nThresholds – keep in sync with **Config**:\n- `FOUR_WEEK_MIN_REGS` = 3\n- Date windows = same as Part 1",
+        "height": 640,
+        "width": 312,
+        "color": 4
+      },
+      "id": "95b643a3-55f2-401e-9893-9318a8657dac",
+      "name": "Sticky Note – Config1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -2192,
+        1088
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const config = $('Config1').item.json;\n\nreturn [{\n  json: {\n    query: `\n      query GetUpcomingEvents($from: String!, $to: String!, $first: Int, $after: String) {\n        events(\n          filters: [\n            { field: timeZonedStart, operation: ge, value: $from }\n            { field: timeZonedStart, operation: le, value: $to }\n            { field: lifecycleState, operation: eq, value: \"published\" }\n          ]\n          orderBy: [{ field: timeZonedStart, direction: asc }]\n          first: $first\n          after: $after\n        ) {\n          pageInfo {\n            hasNextPage\n            endCursor\n          }\n          edges {\n            node {\n              id\n              code\n              title\n              timeZonedStart\n              bookedPlaces\n              minPlaces\n              staff {\n                edges {\n                  node {\n                    staffRole { name }\n                    contact { id }\n                  }\n                }\n              }\n              learners {\n                edges {\n                  node {\n                    id\n                    contact { id }\n                  }\n                }\n              }\n            }\n          }\n        }\n      }\n    `,\n    variables: {\n      from: DateTime.now().plus({ days: config.TWO_WEEK_FROM_DAYS }).toISO(),\n      to: DateTime.now().plus({ days: config.FOUR_WEEK_TO_DAYS }).toISO(),\n      first: config.PAGE_SIZE,\n      after: null\n    }\n  }\n}];"
+      },
+      "id": "7b564cf1-b039-4250-88e1-56d847c09397",
+      "name": "Build ADM Query1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1888,
+        1776
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config1').item.json.ADM_API_URL }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json }}",
+        "options": {
+          "pagination": {
+            "pagination": {
+              "paginationMode": "updateAParameterInEachRequest",
+              "parameters": {
+                "parameters": [
+                  {
+                    "type": "body",
+                    "name": "variables",
+                    "value": "={{ { ...$json.variables, after: (typeof $response === 'undefined' ? null : ($response?.body?.data?.events?.pageInfo?.endCursor ?? null)) } }}"
+                  }
+                ]
+              },
+              "paginationCompleteWhen": "other",
+              "completeExpression": "={{ typeof $response === 'undefined' ? false : !$response?.body?.data?.events?.pageInfo?.hasNextPage }}",
+              "limitPagesFetched": true,
+              "maxRequests": "={{ $('Config1').first().json.MAX_PAGES }}",
+              "requestInterval": 200
+            }
+          }
+        }
+      },
+      "id": "b4a14b4e-ec1f-493d-9d4e-dcf4262335da",
+      "name": "ADM: Get Upcoming Events1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1664,
+        1776
+      ],
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Re-runs rules at approval time — protects events that gained\n// registrations between the review email and the approval click.\n// Also filters to only the event whose approval token was verified.\n\nconst config       = $('Config1').item.json;\nconst targetId     = $('Verify Approval Token').first().json.eventId ?? null;\nconst edges        = $input.all().flatMap(i => i.json?.data?.events?.edges ?? []) // one item per page;\n\nconst now = DateTime.now();\nconst fourWeekFrom = now.plus({ days: config.FOUR_WEEK_FROM_DAYS });\nconst fourWeekTo   = now.plus({ days: config.FOUR_WEEK_TO_DAYS });\nconst twoWeekFrom  = now.plus({ days: config.TWO_WEEK_FROM_DAYS });\nconst twoWeekTo    = now.plus({ days: config.TWO_WEEK_TO_DAYS });\n\nconst toCancel = [];\n\n// Never fall back to \"all qualifying events\": a verified event id is required.\nif (!targetId) {\n  return [{ json: { _noEvents: true } }];\n}\n\nfor (const edge of edges) {\n  const event        = edge.node;\n\n  // Only process the event that was requested\n  if (event.id !== targetId) continue;\n\n  const start        = DateTime.fromISO(event.timeZonedStart);\n  const bookedPlaces = event.bookedPlaces ?? 0;\n  const minPlaces    = event.minPlaces    ?? 0;\n\n  const staffEdges   = event.staff?.edges   ?? [];\n  const learnerEdges = event.learners?.edges ?? [];\n\n  const qualified =\n    (start >= fourWeekFrom && start <= fourWeekTo && bookedPlaces < config.FOUR_WEEK_MIN_REGS) ||\n    (start >= twoWeekFrom  && start <= twoWeekTo  && minPlaces > 0 && bookedPlaces < minPlaces * 0.5);\n\n  if (qualified) {\n    toCancel.push({\n      json: {\n        id:             event.id,\n        code:           event.code,\n        title:          event.title,\n        timeZonedStart: event.timeZonedStart,\n        bookedPlaces,\n        staffEdges,\n        learnerEdges\n      }\n    });\n  }\n}\n\nif (toCancel.length === 0) {\n  return [{ json: { _noEvents: true } }];\n}\n\nreturn toCancel;"
+      },
+      "id": "01be6ce7-25f1-43ac-b294-1324470926f9",
+      "name": "Apply Cancellation Rules1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1440,
+        1776
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "cond-1",
+              "leftValue": "={{ $json._noEvents }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "3d2d3348-5d1f-4b37-aee3-4f7a4c9017a6",
+      "name": "Any Events to Cancel?1",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -1216,
+        1776
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "bd0d5218-ffde-417d-8ee7-66cef8677031",
+      "name": "No Events – Done1",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        -1008,
+        1936
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "cfg-1",
+              "name": "ADM_API_URL",
+              "value": "https://api.getadministrate.com/graphql",
+              "type": "string"
+            },
+            {
+              "id": "cfg-2",
+              "name": "FOUR_WEEK_MIN_REGS",
+              "value": 3,
+              "type": "number"
+            },
+            {
+              "id": "cfg-3",
+              "name": "FOUR_WEEK_FROM_DAYS",
+              "value": 25,
+              "type": "number"
+            },
+            {
+              "id": "cfg-4",
+              "name": "FOUR_WEEK_TO_DAYS",
+              "value": 31,
+              "type": "number"
+            },
+            {
+              "id": "cfg-5",
+              "name": "TWO_WEEK_FROM_DAYS",
+              "value": 11,
+              "type": "number"
+            },
+            {
+              "id": "cfg-6",
+              "name": "TWO_WEEK_TO_DAYS",
+              "value": 17,
+              "type": "number"
+            },
+            {
+              "id": "cfg-7",
+              "name": "PLANNING_EMAIL",
+              "value": "admin@example.com",
+              "type": "string"
+            },
+            {
+              "id": "cfg-8",
+              "name": "EXECUTOR_WEBHOOK_URL",
+              "value": "https://YOUR-N8N-HOST/webhook/26ff3114-e9ff-4f02-b38d-3be028fbf917",
+              "type": "string"
+            },
+            {
+              "id": "6b080ba6-e7ae-4e54-a3b4-33e02d1979da",
+              "name": "FROM_EMAIL",
+              "value": "admin@example.com",
+              "type": "string"
+            },
+            {
+              "id": "6e4d74da-90f8-4523-99a6-cab64470acf0",
+              "name": "ADM_INSTANCE_SUBDOMAIN",
+              "value": "REPLACE_WITH_INSTANCE_SUBDOMAIN",
+              "type": "string"
+            },
+            {
+              "id": "42f2c990-ad64-4fc4-a384-dd0b554a2888",
+              "name": "APPROVAL_LINK_TTL_DAYS",
+              "value": 7,
+              "type": "number"
+            },
+            {
+              "id": "e14f5a0e-a607-4357-8084-9ce0ddcb8ece",
+              "name": "PAGE_SIZE",
+              "value": 50,
+              "type": "number"
+            },
+            {
+              "id": "31296476-74f3-47a7-94fc-d50dcffd32ec",
+              "name": "MAX_PAGES",
+              "value": 20,
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "73d87857-f807-4494-adbd-271b2c38bd38",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -2912,
+        816
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "cfg-1",
+              "name": "ADM_API_URL",
+              "value": "https://api.getadministrate.com/graphql",
+              "type": "string"
+            },
+            {
+              "id": "cfg-2",
+              "name": "FOUR_WEEK_MIN_REGS",
+              "value": 3,
+              "type": "number"
+            },
+            {
+              "id": "cfg-3",
+              "name": "FOUR_WEEK_FROM_DAYS",
+              "value": 25,
+              "type": "number"
+            },
+            {
+              "id": "cfg-4",
+              "name": "FOUR_WEEK_TO_DAYS",
+              "value": 31,
+              "type": "number"
+            },
+            {
+              "id": "cfg-5",
+              "name": "TWO_WEEK_FROM_DAYS",
+              "value": 11,
+              "type": "number"
+            },
+            {
+              "id": "cfg-6",
+              "name": "TWO_WEEK_TO_DAYS",
+              "value": 17,
+              "type": "number"
+            },
+            {
+              "id": "cfg-8",
+              "name": "INSTRUCTOR_ROLE_NAME",
+              "value": "Instructor",
+              "type": "string"
+            },
+            {
+              "id": "cfg-9",
+              "name": "INSTRUCTOR_TEMPLATE_ID",
+              "value": "REPLACE_WITH_INSTRUCTOR_TEMPLATE_ID",
+              "type": "string"
+            },
+            {
+              "id": "cfg-10",
+              "name": "PARTICIPANT_TEMPLATE_ID",
+              "value": "REPLACE_WITH_PARTICIPANT_TEMPLATE_ID",
+              "type": "string"
+            },
+            {
+              "id": "cfg-11",
+              "name": "SENDING_ADDRESS_ID",
+              "value": "REPLACE_WITH_SENDING_ADDRESS_ID",
+              "type": "string"
+            },
+            {
+              "id": "d91e38df-a1c2-4db9-9a4a-8f554858df37",
+              "name": "PAGE_SIZE",
+              "value": 50,
+              "type": "number"
+            },
+            {
+              "id": "0c2c3621-0b52-4feb-b2b2-aedea2268785",
+              "name": "MAX_PAGES",
+              "value": 20,
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "7d792dd9-f4e6-465a-a184-d8d645a5e708",
+      "name": "Config1",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -2080,
+        1776
+      ]
+    },
+    {
+      "parameters": {
+        "fromEmail": "={{ $('Config').item.json.FROM_EMAIL }}",
+        "toEmail": "={{ $('Config').item.json.PLANNING_EMAIL }}",
+        "subject": "={{ $json.subject }}",
+        "html": "={{ $json.html }}",
+        "options": {}
+      },
+      "id": "f89d244b-374b-48d2-865c-06425e62642b",
+      "name": "Send Review Email1",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        -1568,
+        704
+      ],
+      "webhookId": "314a271b-8d72-44a7-bf7c-97ba0243da07",
+      "credentials": {
+        "smtp": {
+          "id": "",
+          "name": "SMTP"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -3200,
+        976
+      ],
+      "id": "9a852a11-13b8-4d1d-85a0-6accd133a622",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\nconst config = $('Config1').item.json;\nconst contactIds = data.instructorContactIds ?? [];\n\nreturn [{ json: {\n  ...data,\n  _contactIds: contactIds,\n  _templateId: config.INSTRUCTOR_TEMPLATE_ID,\n  _sendingAddressId: config.SENDING_ADDRESS_ID,\n  _skip: contactIds.length === 0\n}}];"
+      },
+      "id": "d9ba4009-58de-4e8e-b905-c3a70642aec2",
+      "name": "Build Instructor Email Query",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -384,
+        1776
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $('Build Notification Data').first().json;\nconst config = $('Config1').item.json;\nconst contactIds = data.participantContactIds ?? [];\n\nreturn [{ json: {\n  ...data,\n  _contactIds: contactIds,\n  _templateId: config.PARTICIPANT_TEMPLATE_ID,\n  _sendingAddressId: config.SENDING_ADDRESS_ID,\n  _skip: contactIds.length === 0\n}}];"
+      },
+      "id": "3c2a75c4-228c-4daa-9023-cbf555af8b81",
+      "name": "Build Participant Email Query",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        256,
+        1632
+      ]
+    },
+    {
+      "id": "e5a6ffeb-84b6-4018-8bfc-048a2d8a3d83",
+      "name": "Confirm Cancellation",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        -160,
+        1950
+      ],
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.responseHtml }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/html; charset=utf-8"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "69252fab-9a6a-4822-a18b-d6e2237ed793",
+      "name": "Build Response HTML",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -410,
+        1950
+      ],
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\nconst isError = data.cancelStatus === 'error';\nconst css = '*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;background:#f4f4f4;display:flex;align-items:center;justify-content:center;min-height:100vh}.card{background:#fff;border-radius:8px;box-shadow:0 2px 12px rgba(0,0,0,0.1);padding:48px 40px;text-align:center;max-width:440px;width:90%}.icon{font-size:52px;margin-bottom:20px}.title{color:#222;font-size:22px;font-weight:bold;margin-bottom:10px}.msg{color:#555;font-size:15px;line-height:1.6}.note{margin-top:20px;color:#999;font-size:13px}';\nconst wrap = (icon, title, msg) =>\n  `<!DOCTYPE html><html><head><meta charset=\"UTF-8\"><title>Event Cancellation</title><style>${css}</style></head><body><div class=\"card\"><div class=\"icon\">${icon}</div><div class=\"title\">${title}</div><div class=\"msg\">${msg}</div><div class=\"note\">You can close this window.</div></div></body></html>`;\nconst responseHtml = isError\n  ? wrap('&#10060;', 'Cancellation Failed', 'There was a problem cancelling this event in Administrate. Please check the n8n execution logs and cancel it manually if needed.')\n  : wrap('&#9989;', 'Cancellation Confirmed', 'The event cancellation is being processed. Instructors and participants will be notified shortly.');\nreturn [{ json: { ...data, responseHtml } }];"
+      }
+    },
+    {
+      "id": "45f05ed4-6231-4101-b91b-6ca927f928c6",
+      "name": "No Longer Qualifies",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        -1008,
+        2100
+      ],
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "<!DOCTYPE html><html><head><meta charset=\"UTF-8\"><title>Event Cancellation</title><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;background:#f4f4f4;display:flex;align-items:center;justify-content:center;min-height:100vh}.card{background:#fff;border-radius:8px;box-shadow:0 2px 12px rgba(0,0,0,0.1);padding:48px 40px;text-align:center;max-width:440px;width:90%}.icon{font-size:52px;margin-bottom:20px}.title{color:#222;font-size:22px;font-weight:bold;margin-bottom:10px}.msg{color:#555;font-size:15px;line-height:1.6}.note{margin-top:20px;color:#999;font-size:13px}</style></head><body><div class=\"card\"><div class=\"icon\">⚠️</div><div class=\"title\">No Longer Qualifies</div><div class=\"msg\">This event no longer meets the cancellation criteria — it may have received new registrations since the review email was sent. No changes have been made.</div><div class=\"note\">You can close this window.</div></div></body></html>",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/html; charset=utf-8"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// GET handler: shows a confirmation page. It has NO side effects, so email\n// link scanners that pre-fetch the link cannot cancel anything.\nconst q      = $input.first().json.query ?? {};\nconst token  = String(q.token ?? '');\nconst store  = $getWorkflowStaticData('global');\nconst entry  = (store.approvalTokens ?? {})[token];\nconst valid  = !!entry && entry.eventId === q.eventId && entry.expires > Date.now();\n\nconst esc = s => String(s ?? '').replace(/[&<>\"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '\"': '&quot;', \"'\": '&#39;' }[c]));\nconst css = '*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;background:#f4f4f4;display:flex;align-items:center;justify-content:center;min-height:100vh}.card{background:#fff;border-radius:8px;box-shadow:0 2px 12px rgba(0,0,0,0.1);padding:40px;text-align:center;max-width:480px;width:90%}.title{color:#222;font-size:22px;font-weight:bold;margin-bottom:12px}.msg{color:#555;font-size:15px;line-height:1.6;margin-bottom:8px}.meta{color:#333;font-size:14px;text-align:left;background:#f8f8f8;border-radius:6px;padding:12px 16px;margin:16px 0}.btn{background:#c0392b;color:#fff;border:none;border-radius:4px;padding:12px 24px;font-size:15px;font-weight:bold;cursor:pointer}.note{margin-top:20px;color:#999;font-size:13px}';\nconst wrap = (inner) => `<!DOCTYPE html><html><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><meta name=\"robots\" content=\"noindex\"><title>Event Cancellation</title><style>${css}</style></head><body><div class=\"card\">${inner}</div></body></html>`;\n\nlet responseHtml;\nlet statusCode = 200;\nif (!valid) {\n  statusCode = 403;\n  responseHtml = wrap(`<div class=\"title\">Link invalid or expired</div><div class=\"msg\">This cancellation link is not valid any more. It may already have been used, or it has expired. No changes have been made.</div><div class=\"note\">Wait for the next review email, or cancel the event in Administrate.</div>`);\n} else {\n  const start = entry.start ? DateTime.fromISO(entry.start).toFormat('dd/MM/yyyy HH:mm') : '';\n  // No \"action\" attribute: the form posts back to this same webhook URL.\n  responseHtml = wrap(`<div class=\"title\">Cancel this event?</div>\n<div class=\"meta\"><strong>${esc(entry.code)}</strong> &ndash; ${esc(entry.title)}<br>Start: ${esc(start)}<br>Rule: ${esc(entry.rule)}</div>\n<div class=\"msg\">The cancellation rules are checked again when you confirm. Instructors and learners will be emailed and every registration will be cancelled.</div>\n<form method=\"POST\">\n  <input type=\"hidden\" name=\"eventId\" value=\"${esc(entry.eventId)}\">\n  <input type=\"hidden\" name=\"token\" value=\"${esc(token)}\">\n  <button type=\"submit\" class=\"btn\">Confirm cancellation</button>\n</form>\n<div class=\"note\">If you did not mean to cancel this event, close this window.</div>`);\n}\n\nreturn [{ json: { responseHtml, statusCode } }];"
+      },
+      "name": "Build Confirmation Page",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2752,
+        1376
+      ],
+      "id": "81bce663-5b54-41c0-928c-09cabc42d78c"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.responseHtml }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/html; charset=utf-8"
+              }
+            ]
+          },
+          "responseCode": "={{ $json.statusCode }}"
+        }
+      },
+      "name": "Show Confirmation Page",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        -2528,
+        1376
+      ],
+      "id": "702a91ef-35ad-42e1-b7f9-0caf0e8550ce"
+    },
+    {
+      "parameters": {
+        "jsCode": "// POST handler: verifies the one-time token from the confirmation page.\n// A valid token is deleted straight away so the same link cannot be replayed.\nconst body    = $input.first().json.body ?? {};\nconst eventId = String(body.eventId ?? '');\nconst token   = String(body.token ?? '');\nconst store   = $getWorkflowStaticData('global');\nconst tokens  = { ...(store.approvalTokens ?? {}) };\nconst entry   = tokens[token];\nconst valid   = !!eventId && !!entry && entry.eventId === eventId && entry.expires > Date.now();\n\nif (valid) {\n  delete tokens[token];\n  store.approvalTokens = tokens; // reassign so n8n persists the change\n}\n\nreturn [{ json: { valid, eventId: valid ? eventId : null } }];"
+      },
+      "name": "Verify Approval Token",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2752,
+        1776
+      ],
+      "id": "011a197b-7c89-4185-8033-41b4c52b0c34"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "31a38a06-07e2-4797-874a-71b394d94f7b",
+              "leftValue": "={{ $json.valid }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "name": "Token Valid?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -2560,
+        1776
+      ],
+      "id": "39793a50-d884-4265-847a-7d66a808ba5d"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "<!DOCTYPE html><html><head><meta charset=\"UTF-8\"><title>Event Cancellation</title><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;background:#f4f4f4;display:flex;align-items:center;justify-content:center;min-height:100vh}.card{background:#fff;border-radius:8px;box-shadow:0 2px 12px rgba(0,0,0,0.1);padding:40px;text-align:center;max-width:480px;width:90%}.title{color:#222;font-size:22px;font-weight:bold;margin-bottom:12px}.msg{color:#555;font-size:15px;line-height:1.6;margin-bottom:8px}.meta{color:#333;font-size:14px;text-align:left;background:#f8f8f8;border-radius:6px;padding:12px 16px;margin:16px 0}.btn{background:#c0392b;color:#fff;border:none;border-radius:4px;padding:12px 24px;font-size:15px;font-weight:bold;cursor:pointer}.note{margin-top:20px;color:#999;font-size:13px}</style></head><body><div class=\"card\"><div class=\"title\">Link invalid or expired</div><div class=\"msg\">This cancellation request could not be verified. The link may already have been used, or it has expired. No changes have been made.</div><div class=\"note\">You can close this window.</div></div></body></html>",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/html; charset=utf-8"
+              }
+            ]
+          },
+          "responseCode": 403
+        }
+      },
+      "name": "Invalid Link",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        -2352,
+        1976
+      ],
+      "id": "74d76b8c-6173-4d63-b3c5-32867b3df2fa"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Mon–Fri 8:30am": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build ADM Query": {
+      "main": [
+        [
+          {
+            "node": "ADM: Get Upcoming Events",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ADM: Get Upcoming Events": {
+      "main": [
+        [
+          {
+            "node": "Apply Cancellation Rules",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Apply Cancellation Rules": {
+      "main": [
+        [
+          {
+            "node": "Any Events to Cancel?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Any Events to Cancel?": {
+      "main": [
+        [
+          {
+            "node": "Build Review Email",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Events – Done",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Review Email": {
+      "main": [
+        [
+          {
+            "node": "Send Review Email1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ADM: Cancel Event": {
+      "main": [
+        [
+          {
+            "node": "Merge Event Context",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Event Context": {
+      "main": [
+        [
+          {
+            "node": "Build Notification Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ADM: Send Instructor Email": {
+      "main": [
+        [
+          {
+            "node": "Any Participants?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Any Participants?": {
+      "main": [
+        [
+          {
+            "node": "Build Participant Email Query",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Participants – Done",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ADM: Send Participant Emails": {
+      "main": [
+        [
+          {
+            "node": "Expand to One Item per Learner",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Expand to One Item per Learner": {
+      "main": [
+        [
+          {
+            "node": "ADM: Cancel Learner Registration",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build ADM Query1": {
+      "main": [
+        [
+          {
+            "node": "ADM: Get Upcoming Events1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ADM: Get Upcoming Events1": {
+      "main": [
+        [
+          {
+            "node": "Apply Cancellation Rules1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Apply Cancellation Rules1": {
+      "main": [
+        [
+          {
+            "node": "Any Events to Cancel?1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Any Events to Cancel?1": {
+      "main": [
+        [
+          {
+            "node": "ADM: Cancel Event",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge Event Context",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Longer Qualifies",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Build ADM Query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config1": {
+      "main": [
+        [
+          {
+            "node": "Build ADM Query1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Instructor Email Query": {
+      "main": [
+        [
+          {
+            "node": "ADM: Send Instructor Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Participant Email Query": {
+      "main": [
+        [
+          {
+            "node": "ADM: Send Participant Emails",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Approval Webhook": {
+      "main": [
+        [
+          {
+            "node": "Build Confirmation Page",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Verify Approval Token",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Notification Data": {
+      "main": [
+        [
+          {
+            "node": "Build Response HTML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Response HTML": {
+      "main": [
+        [
+          {
+            "node": "Confirm Cancellation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Confirm Cancellation": {
+      "main": [
+        [
+          {
+            "node": "Build Instructor Email Query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Confirmation Page": {
+      "main": [
+        [
+          {
+            "node": "Show Confirmation Page",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verify Approval Token": {
+      "main": [
+        [
+          {
+            "node": "Token Valid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Token Valid?": {
+      "main": [
+        [
+          {
+            "node": "Config1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Invalid Link",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "availableInMCP": true
+  },
+  "tags": []
+}
