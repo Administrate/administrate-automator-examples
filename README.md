@@ -34,6 +34,7 @@ For detailed setup instructions, visit the [Automator documentation](https://sup
 | [OAuth - Authorization Code](./oauth-authorization-code) | Implement OAuth Authorization Code flow to execute API requests with the authenticated user's permissions | 1.0.0 |
 | [Create Booking from Event](./create-booking-from-event) | Create a Booking directly from an Event with the Event automatically added as an Interest | 1.0.0 |
 | [Certificate Renewal Reminders](./certificate-renewal-reminders) | Remind learners before their certificates or achievements expire, with dry-run mode, a send cap and a dedupe log | 1.0.0 |
+| [QR Code Check-in and Attendance](./qr-code-check-in-attendance) | QR code self check-in for classroom events, with walk-in registration, a daily reconciliation report and a live dashboard | 1.0.0 |
 
 ## How to Import a Workflow
 

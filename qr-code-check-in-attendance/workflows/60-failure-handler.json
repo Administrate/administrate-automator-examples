@@ -1,0 +1,202 @@
+{
+  "name": "6.0 QR Check-in - Failure Handler",
+  "nodes": [
+    {
+      "id": "1adbe23c-4b38-4f7c-b45d-6458940ca403",
+      "name": "On QR Workflow Failure",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "be63e39f-954d-4a73-a4db-dd7255760e3c",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        224,
+        96
+      ],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "N8N_BASE_URL",
+              "name": "N8N_BASE_URL",
+              "type": "string",
+              "value": "https://YOUR-N8N-HOST"
+            },
+            {
+              "id": "ALERT_TO",
+              "name": "ALERT_TO",
+              "type": "string",
+              "value": "admin@example.com"
+            },
+            {
+              "id": "ALERT_FROM",
+              "name": "ALERT_FROM",
+              "type": "string",
+              "value": "Automator <admin@example.com>"
+            },
+            {
+              "id": "SUBJECT_PREFIX",
+              "name": "SUBJECT_PREFIX",
+              "type": "string",
+              "value": "QR Check-in"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "dd76492a-d853-42f7-baef-ea2b4c74543a",
+      "name": "Build Alert",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        96
+      ],
+      "parameters": {
+        "jsCode": "/*\t=== Turn a failure into an alert a person can act on ===\t*/\n/*\tThe error trigger payload carries workflow and execution metadata only, never the failing\t*/\n/*\tworkflow's data. Reading the values that broke means fetching the execution through the n8n API,\t*/\n/*\twhich needs an n8n API credential. So the alert links to the failed run instead of pretending to\t*/\n/*\tdiagnose it.\t*/\n/*\tThe trigger is read BY NAME, never from $input: the input here is Config, and reading $input would\t*/\n/*\tlabel every real failure as a hand test.\t*/\nconst config_obj = $('Config').first().json;\n\nlet payload_obj = {};\nlet fromErrorTrigger_bln = false;\nif ($('On QR Workflow Failure').isExecuted)\n{\n\tpayload_obj = $('On QR Workflow Failure').first().json || {};\n\tfromErrorTrigger_bln = true;\n}\n\nconst workflow_obj = payload_obj.workflow || {};\nconst execution_obj = payload_obj.execution || {};\nconst trigger_obj = payload_obj.trigger || {};\nconst error_obj = execution_obj.error || trigger_obj.error || {};\n\nconst isTest_bln = !fromErrorTrigger_bln;\nconst isUnidentified_bln = fromErrorTrigger_bln && !execution_obj.id && !workflow_obj.id;\nconst failedAt_str = new Date().toISOString();\n\nlet link_str = String(execution_obj.url || '').trim();\nif (link_str === '' && workflow_obj.id && execution_obj.id)\n{\n\tlink_str = String(config_obj.N8N_BASE_URL) + '/workflow/' + workflow_obj.id + '/executions/' + execution_obj.id;\n}\n\nlet name_str = String(workflow_obj.name || '');\nif (name_str === '')\n{\n\tname_str = isTest_bln ? '(handler tested by hand, no real failure)' : 'UNIDENTIFIED workflow';\n}\n\nlet message_str = String(error_obj.message || '');\nif (message_str === '')\n{\n\tmessage_str = isTest_bln\n\t\t? 'No error payload, so this is a manual test of the handler itself.'\n\t\t: 'A failure was reported with no message. Treat it as real and check recent executions.';\n}\n\n/*\tWhat the failure means in practice depends on which workflow broke. Workflow names must keep\t*/\n/*\ttheir leading number (1.0, 2.0 ...) for this to work.\t*/\nlet impact_str = 'Open the execution to see which node failed.';\nif (name_str.indexOf('3.0') === 0)\n{\n\timpact_str = 'A delegate saw an error page instead of a result, so their attendance may not be marked. Check the execution, then check that person in Administrate by hand.';\n} else if (name_str.indexOf('4.0') === 0) {\n\timpact_str = 'The morning reconciliation report did not go out.';\n} else if (name_str.indexOf('5.0') === 0) {\n\timpact_str = 'A member of staff saw an error instead of the page. It is read-only, so nothing was changed.';\n} else if (name_str.indexOf('1.0') === 0 || name_str.indexOf('2.0') === 0) {\n\timpact_str = 'A QR code link or page could not be produced for an event.';\n}\n\nlet subject_str = String(config_obj.SUBJECT_PREFIX) + ' FAILED: ' + name_str;\nif (isTest_bln)\n{\n\tsubject_str = String(config_obj.SUBJECT_PREFIX) + ' TEST alert, no action needed';\n} else if (isUnidentified_bln) {\n\tsubject_str = String(config_obj.SUBJECT_PREFIX) + ' FAILED: workflow could not be identified';\n}\n\nconst lines_ary = [];\nif (isTest_bln)\n{\n\tlines_ary.push('This is a TEST of the failure handler. Nothing has failed and no action is needed.');\n} else {\n\tlines_ary.push('A QR check-in workflow failed.');\n}\nlines_ary.push('');\nlines_ary.push('Workflow:  ' + name_str);\nlines_ary.push('Failed at: ' + failedAt_str);\nlines_ary.push('Last node: ' + String(execution_obj.lastNodeExecuted || 'unknown'));\nlines_ary.push('Mode:      ' + String(execution_obj.mode || (isTest_bln ? 'manual test' : 'unknown')));\nlines_ary.push('');\nlines_ary.push('Message:');\nlines_ary.push(message_str);\nlines_ary.push('');\nif (!isTest_bln)\n{\n\tlines_ary.push('What it means:');\n\tlines_ary.push(impact_str);\n\tlines_ary.push('');\n}\nif (link_str !== '')\n{\n\tlines_ary.push('Execution: ' + link_str);\n}\n\nreturn [{ json: {\n\tsubject: subject_str,\n\tbody: lines_ary.join('\\n'),\n\tisTest: isTest_bln,\n\tworkflowName: name_str,\n\texecutionUrl: link_str,\n\tmessage: message_str\n} }];\n"
+      }
+    },
+    {
+      "id": "2dd52065-8e89-4488-8fbd-12f5f012245b",
+      "name": "Send Alert Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        672,
+        96
+      ],
+      "parameters": {
+        "fromEmail": "={{ $('Config').first().json.ALERT_FROM }}",
+        "toEmail": "={{ $('Config').first().json.ALERT_TO }}",
+        "subject": "={{ $('Build Alert').first().json.subject }}",
+        "emailFormat": "text",
+        "text": "={{ $('Build Alert').first().json.body }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "credentials": {
+        "smtp": {
+          "id": "",
+          "name": "SMTP"
+        }
+      },
+      "onError": "continueRegularOutput",
+      "webhookId": "a3f00992-869d-49e3-a928-8e3edd381eb3"
+    },
+    {
+      "id": "1c52289a-b5ee-4e37-97db-15238e34d34d",
+      "name": "Done",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        896,
+        96
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "2940d843-6298-4d5f-b3ad-8942ee355497",
+      "name": "Test Alert By Hand",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        200
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "98c6c8f3-96c6-4a58-8388-e21467f98bdd",
+      "name": "Sticky - Start Here",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        400
+      ],
+      "parameters": {
+        "content": "## 6.0 QR Check-in Failure Handler\n\nSet as the **Error Workflow** (Workflow Settings) on every QR check-in workflow: 1.0, 2.0, 3.0, 4.0 and 5.0. n8n runs it automatically when any of them fails, and it emails ALERT_TO with the workflow name, the failing node, the message and a link to the execution.\n\n**Config:** N8N_BASE_URL (your n8n address, used to build the execution link), ALERT_TO, ALERT_FROM, SUBJECT_PREFIX. Select your SMTP credential on Send Alert Email.\n\n**It fires on production runs only, never on manual ones.** Running a workflow by hand and watching it fail will not reach this handler. That is n8n behaviour, not a wiring fault. To prove the email path, run THIS workflow by hand from Test Alert By Hand: it sends a clearly labelled test email.\n\n**It does not diagnose.** The error payload carries metadata only. The execution link is there instead.\n\n**Keep the leading numbers in the workflow names** (1.0, 2.0 ...). Build Alert uses them to explain what the failure means.",
+        "height": 560,
+        "width": 520,
+        "color": 4
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "On QR Workflow Failure": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Build Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Alert": {
+      "main": [
+        [
+          {
+            "node": "Send Alert Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Alert Email": {
+      "main": [
+        [
+          {
+            "node": "Done",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Test Alert By Hand": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true
+  },
+  "tags": []
+}
