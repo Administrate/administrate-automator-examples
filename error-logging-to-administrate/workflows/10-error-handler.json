@@ -1,0 +1,337 @@
+{
+  "name": "Error Handler - Log Failures to Administrate",
+  "nodes": [
+    {
+      "id": "fdf5400f-1933-4a39-9704-91fa217f68a2",
+      "name": "A workflow failed",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "33677dd0-4095-47ad-94b6-c1539d88b004",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        220,
+        0
+      ],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": false,
+        "options": {},
+        "assignments": {
+          "assignments": [
+            {
+              "id": "adm_graphql_url",
+              "name": "ADM_GRAPHQL_URL",
+              "type": "string",
+              "value": "https://api.getadministrate.com/graphql"
+            },
+            {
+              "id": "adm_log_origin",
+              "name": "ADM_LOG_ORIGIN_IDENTIFIER",
+              "type": "string",
+              "value": "Automator - Workflow Failures"
+            },
+            {
+              "id": "adm_run_node",
+              "name": "ADM_RUN_LEVEL_NODE_ID",
+              "type": "string",
+              "value": "T3JnYW5pc2F0aW9uOg=="
+            },
+            {
+              "id": "n8n_api_base",
+              "name": "N8N_API_BASE_URL",
+              "type": "string",
+              "value": "https://YOUR-N8N-HOST/api/v1"
+            },
+            {
+              "id": "n8n_ui_base",
+              "name": "N8N_UI_BASE_URL",
+              "type": "string",
+              "value": "https://YOUR-N8N-HOST"
+            },
+            {
+              "id": "failures_table",
+              "name": "FAILURES_TABLE_ID",
+              "type": "string",
+              "value": "REPLACE_WITH_AUTOMATION_FAILURES_TABLE_ID"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "8728a4c5-b963-4114-99f2-1803c63b7319",
+      "name": "Extract failure",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        440,
+        0
+      ],
+      "parameters": {
+        "jsCode": "/*\tRead the TRIGGER, not $input. Config sits between the two and does not pass\n\tother fields through, so $input here is the config values and the failure\n\tpayload has already gone.\n\n\tThe payload carries workflow and execution metadata only, never the failing\n\tworkflow's data, so the reason has to be fetched back from the execution\n\titself. That is the next node's job.\n\n\tThe error sits under execution on some n8n versions and at the top level on\n\tothers, so both are read.\t*/\n\nconst payload_obj = $('A workflow failed').first().json ?? {};\nconst execution_obj = payload_obj.execution ?? {};\nconst workflow_obj = payload_obj.workflow ?? {};\nconst error_obj = payload_obj.error ?? execution_obj.error ?? {};\n\n/*\tThe trigger stamps the failure in epoch milliseconds, not ISO.\t*/\nconst stamp_var = error_obj.timestamp ?? null;\nlet failedAt_str = new Date().toISOString();\nif (typeof stamp_var === 'number')\n{\n\tfailedAt_str = new Date(stamp_var).toISOString();\n} else if (typeof stamp_var === 'string' && stamp_var !== '') {\n\tfailedAt_str = stamp_var;\n}\n\n/*\texecution.url is NOT used: it can read localhost:5678, because\n\ta failure has no incoming request to build a host from. The human link is\n\tbuilt from N8N_UI_BASE_URL instead.\t*/\n\nreturn [{\n\tjson:\n\t{\n\t\tfailed_at: failedAt_str,\n\t\tworkflow_id: String(workflow_obj.id ?? ''),\n\t\tworkflow_name: String(workflow_obj.name ?? 'unknown workflow'),\n\t\texecution_id: String(execution_obj.id ?? ''),\n\t\texecution_mode: String(execution_obj.mode ?? ''),\n\t\tfailed_node: String((error_obj.node ?? {}).name ?? execution_obj.lastNodeExecuted ?? ''),\n\t\tmessage: String(error_obj.message ?? error_obj.description ?? 'Unknown error'),\n\t\tstack: String(error_obj.stack ?? '')\n\t}\n}];",
+        "mode": "runOnceForAllItems"
+      },
+      "notes": "The Error Trigger payload is metadata only. This normalises it and nothing more."
+    },
+    {
+      "id": "002bf812-0afc-4627-bdd9-b44ce21c519e",
+      "name": "Fetch failed execution",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        660,
+        0
+      ],
+      "parameters": {
+        "authentication": "predefinedCredentialType",
+        "method": "GET",
+        "nodeCredentialType": "n8nApi",
+        "options": {
+          "timeout": 30000
+        },
+        "url": "={{ $('Config').first().json.N8N_API_BASE_URL }}/executions/{{ $json.execution_id }}?includeData=true"
+      },
+      "credentials": {
+        "n8nApi": {
+          "id": "",
+          "name": "n8n API"
+        }
+      },
+      "notes": "Best effort. If this fails the handler still logs what the trigger gave it, because an error handler that throws is the one failure nobody ever sees.",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "331532a5-06df-441d-a10b-29052fceef71",
+      "name": "Build failure record",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        0
+      ],
+      "parameters": {
+        "jsCode": "/*\tOne failure, written two ways.\n\n\tAdministrate gets plain language: what failed and why. Which node stopped,\n\tthe run mode, the stack and the raw error are n8n internals that mean\n\tnothing to Administrate users, so they go in the data table instead, which\n\tonly somebody with n8n access can open.\n\n\tEverything here degrades rather than throws. A handler that throws produces\n\tthe one failure nobody ever hears about.\t*/\n\nconst config_obj = $('Config').first().json;\nconst extract_obj = $('Extract failure').first().json;\nconst fetched_obj = $input.first().json ?? {};\n\nlet failedNode_str = extract_obj.failed_node;\nlet reason_str = extract_obj.message;\n\nconst resultData_obj = (fetched_obj.data ?? {}).resultData ?? {};\nconst runData_obj = resultData_obj.runData ?? null;\nconst resultError_obj = resultData_obj.error ?? null;\n\nif (resultError_obj !== null)\n{\n\treason_str = String(resultError_obj.message ?? reason_str);\n\tfailedNode_str = String((resultError_obj.node ?? {}).name ?? failedNode_str);\n}\nif (failedNode_str === '' && resultData_obj.lastNodeExecuted !== undefined)\n{\n\tfailedNode_str = String(resultData_obj.lastNodeExecuted);\n}\n\nconst nodesRun_int = runData_obj === null ? 0 : Object.keys(runData_obj).length;\nconst fetchedOk_bln = runData_obj !== null || resultError_obj !== null;\n\nconst executionUrl_str = String(config_obj.N8N_UI_BASE_URL)\n\t+ '/workflow/' + extract_obj.workflow_id\n\t+ '/executions/' + extract_obj.execution_id;\n\n/*\tThe workflow name minus any parenthetical (e.g. \"(shared)\"), which is an\n\tn8n-side label rather than something Administrate users need.\t*/\nconst stage_str = String(extract_obj.workflow_name).split('(')[0].trim();\n\n/*\tAdministrate renders one detail per column and expects every group to hold\n\texactly two, a label and a value, or the entry comes out ragged.\t*/\nconst groups_ary =\n[\n\t{ details: [{ type: 'text', value: 'Failed at' }, { type: 'text', value: stage_str }] },\n\t{ details: [{ type: 'text', value: 'Reason' }, { type: 'text', value: reason_str }] },\n\t{ details: [{ type: 'text', value: 'When' }, { type: 'text', value: extract_obj.failed_at }] }\n];\n\nconst details_obj =\n{\n\tfailed_node: failedNode_str,\n\texecution_mode: extract_obj.execution_mode,\n\tnodes_run: nodesRun_int,\n\texecution_fetched: fetchedOk_bln,\n\tstack: extract_obj.stack\n};\n\nconst notifyBody_str = stage_str + ' failed.\\n\\n'\n\t+ 'Reason: ' + reason_str + '\\n'\n\t+ 'Failed node: ' + (failedNode_str === '' ? 'not reported' : failedNode_str) + '\\n'\n\t+ 'When: ' + extract_obj.failed_at + '\\n\\n'\n\t+ 'Execution: ' + executionUrl_str;\n\nreturn [{\n\tjson:\n\t{\n\t\tfailed_at: extract_obj.failed_at,\n\t\tworkflow_name: extract_obj.workflow_name,\n\t\tworkflow_id: extract_obj.workflow_id,\n\t\texecution_id: extract_obj.execution_id,\n\t\texecution_url: executionUrl_str,\n\t\tfailed_node: failedNode_str,\n\t\tmessage: reason_str,\n\t\tstage: stage_str,\n\t\tdetails: JSON.stringify(details_obj),\n\t\tlog_message: stage_str + ' failed: ' + reason_str,\n\t\tlog_payload: JSON.stringify({ groups: groups_ary }),\n\t\tnotify_subject: 'n8n failure: ' + extract_obj.workflow_name,\n\t\tnotify_body: notifyBody_str\n\t}\n}];",
+        "mode": "runOnceForAllItems"
+      },
+      "notes": "Splits the failure in two: plain language for Administrate, full detail for the data table."
+    },
+    {
+      "id": "898cad50-5c98-4eba-9662-80b72b15c3ab",
+      "name": "Record the failure",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        1100,
+        0
+      ],
+      "parameters": {
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "details": "={{ $('Build failure record').first().json.details }}",
+            "execution_id": "={{ $('Build failure record').first().json.execution_id }}",
+            "execution_url": "={{ $('Build failure record').first().json.execution_url }}",
+            "failed_at": "={{ $('Build failure record').first().json.failed_at }}",
+            "failed_node": "={{ $('Build failure record').first().json.failed_node }}",
+            "message": "={{ $('Build failure record').first().json.message }}",
+            "notified": "no channel configured",
+            "stage": "={{ $('Build failure record').first().json.stage }}",
+            "workflow_id": "={{ $('Build failure record').first().json.workflow_id }}",
+            "workflow_name": "={{ $('Build failure record').first().json.workflow_name }}"
+          }
+        },
+        "dataTableId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Config').first().json.FAILURES_TABLE_ID }}"
+        },
+        "operation": "insert"
+      },
+      "notes": "The durable record. n8n executions are pruned and Administrate log entries cannot be filtered by origin, so this is the only queryable history of failures."
+    },
+    {
+      "id": "0011c64e-a432-47e0-8dce-cc9b95b42d6b",
+      "name": "Log failure to Administrate",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1320,
+        0
+      ],
+      "parameters": {
+        "authentication": "predefinedCredentialType",
+        "jsonBody": "={{ JSON.stringify({ query: 'mutation LogFailure($input: ExternalIntegrationLogCreateInput!) { externalLog { createExternalIntegrationLog(input: $input) { externalLog { id } errors { label message value } } } }', variables: { input: { nodeId: $('Config').first().json.ADM_RUN_LEVEL_NODE_ID, originIdentifier: $('Config').first().json.ADM_LOG_ORIGIN_IDENTIFIER, status: 'failed', message: $('Build failure record').first().json.log_message, payload: $('Build failure record').first().json.log_payload } } }) }}",
+        "method": "POST",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "options": {
+          "timeout": 20000
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "url": "={{ $('Config').first().json.ADM_GRAPHQL_URL }}"
+      },
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      },
+      "notes": "Run-level entry, filed under the Organisation type because a dead run has no single affected record. Keeps to plain language on purpose.",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "ee1593a7-702d-4cc5-8dd4-641c05460f5c",
+      "name": "Done",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1980,
+        0
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "a0a40e41-142f-4f0a-8128-77c47b8cdb36",
+      "name": "Sticky - Overview",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -560
+      ],
+      "parameters": {
+        "color": 4,
+        "content": "## Error Handler - Log Failures to Administrate (shared)\n\nSet as the **Error Workflow** on any workflow you want covered (Workflow settings > Error workflow). It is not called directly and never appears on the calling workflow's canvas. It catches a run that **dies**.\n\n### The two layers are not redundant\n\nWell-built workflows already check the errors arrays behind every Administrate mutation, because Administrate refuses a mutation inside an HTTP 200. That handles a refusal and keeps the run going.\n\nThis catches the other thing: the run that stops. A failed query, a refused HTTP call, a Stop and Error. Nothing downstream of those ever runs, so nothing downstream can report them. You need both layers.\n\n### It writes the failure twice, on purpose\n\n**To the Administrate integration log**, in plain language: what failed, why, when. Nothing else. The failed node, run mode and stack are n8n internals and are kept out of a log that Administrate users read.\n\n**To the `automation_failures` Data Table**, in full. n8n prunes executions, and `ExternalLog` does not expose `originIdentifier` on read, so Administrate cannot be asked for \"every failure from this automation\". The table is the queryable history.\n\n### Nothing here should throw\n\nThe external calls continue on error. A handler that fails produces the one failure nobody ever hears about.\n",
+        "height": 460,
+        "width": 820
+      }
+    },
+    {
+      "id": "32763a2a-aaa6-4b1c-adaf-7a820d6f904c",
+      "name": "Sticky - Config Explained",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        820,
+        -560
+      ],
+      "parameters": {
+        "color": 5,
+        "content": "## Config Explained\n\n**ADM_GRAPHQL_URL** - the Administrate API address. The same for every instance; which instance you reach is decided by the credential.\n\n**ADM_LOG_ORIGIN_IDENTIFIER** - the origin name on every failure entry, so failures are distinguishable from the entries your other workflows write. Administrate will not let you filter by it on read; that is what the Data Table is for.\n\n**ADM_RUN_LEVEL_NODE_ID** - a base64 type sentinel, not a record id. `T3JnYW5pc2F0aW9uOg==` decodes to `Organisation:`, and an entry sent with it files under that entity type rather than against one record. A dead run has no single affected record, which is why this exists. `UGVyc29uOg==` is the Contact equivalent if you prefer.\n\n**N8N_API_BASE_URL** - your n8n public API base (`https://YOUR-N8N-HOST/api/v1`). The failed execution is fetched back from here, because the Error Trigger payload carries only metadata.\n\n**N8N_UI_BASE_URL** - your n8n base URL (`https://YOUR-N8N-HOST`), used to build the link to the failed execution. The link in the trigger payload is not used because it can read `localhost:5678`.\n\n**FAILURES_TABLE_ID** - the id of your `automation_failures` Data Table. **Record the failure** reads it by expression; do not re-select the table in the node.\n\nReplace `YOUR-N8N-HOST` in both URLs. If they point at the wrong n8n, the fetch-back silently returns nothing and every execution link is wrong.\n\n## Adding a notification (optional)\n\nThis handler logs; it does not send. To add an alert, add an IF reading a `NOTIFY_ENABLED` value in Config and a channel node (email, Slack, Teams) on its true branch, wired between **Log failure to Administrate** and **Done**. The text is already built: **Build failure record** emits `notify_subject` and `notify_body`. Update the `notified` column in **Record the failure** to match.\n",
+        "height": 700,
+        "width": 620
+      }
+    },
+    {
+      "id": "67156c77-2ebc-4041-8934-48405368d702",
+      "name": "Sticky - How to Attach and Test",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1460,
+        -560
+      ],
+      "parameters": {
+        "color": 3,
+        "content": "## Attaching this to a workflow\n\nOpen the workflow you want covered, then **Workflow settings > Error workflow** and select this workflow. Save.\n\nDo not also put an Error Trigger inside that workflow itself. Where both exist the Error Workflow wins, and the inline one becomes dead code that looks live.\n\n## Testing it\n\n**An Error Workflow fires on production runs only.** A manual execution never reaches it, however broken the workflow is.\n\nTo prove it, build a throwaway workflow with this set as its Error Workflow, run it in production mode (for example on a schedule or a webhook), ending in a Stop and Error node. Then check for a new row in `automation_failures` and a `failed` entry in the Administrate integration log under the Organisation type.\n\n## Republish after every change\n\nEditing this while it is published diverges the draft from the live version, and the live version is the one that answers when something fails.\n",
+        "height": 460,
+        "width": 620
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "A workflow failed": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Extract failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract failure": {
+      "main": [
+        [
+          {
+            "node": "Fetch failed execution",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch failed execution": {
+      "main": [
+        [
+          {
+            "node": "Build failure record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build failure record": {
+      "main": [
+        [
+          {
+            "node": "Record the failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Record the failure": {
+      "main": [
+        [
+          {
+            "node": "Log failure to Administrate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log failure to Administrate": {
+      "main": [
+        [
+          {
+            "node": "Done",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true
+  },
+  "tags": []
+}

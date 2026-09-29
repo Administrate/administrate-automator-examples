@@ -1,0 +1,493 @@
+{
+  "name": "4.0 QR Check-in - Daily Reconciliation Report",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 7
+            }
+          ]
+        }
+      },
+      "id": "16efa04b-618c-41bf-aff1-f4fe8dc8b7aa",
+      "name": "Daily 07:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -160,
+        544
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "LOOKBACK_HOURS",
+              "name": "LOOKBACK_HOURS",
+              "type": "string",
+              "value": "24"
+            },
+            {
+              "id": "DUP_THRESHOLD",
+              "name": "DUP_THRESHOLD",
+              "type": "string",
+              "value": "0.85"
+            },
+            {
+              "id": "REPORT_TITLE",
+              "name": "REPORT_TITLE",
+              "type": "string",
+              "value": "Check-in reconciliation"
+            },
+            {
+              "id": "GRAPHQL_URL",
+              "name": "GRAPHQL_URL",
+              "type": "string",
+              "value": "https://api.getadministrate.com/graphql"
+            },
+            {
+              "id": "CHECKIN_LOG_TABLE_ID",
+              "name": "CHECKIN_LOG_TABLE_ID",
+              "type": "string",
+              "value": "REPLACE_WITH_CHECKIN_LOG_TABLE_ID"
+            },
+            {
+              "id": "EMAIL_TRANSPORT",
+              "name": "EMAIL_TRANSPORT",
+              "type": "string",
+              "value": "smtp"
+            },
+            {
+              "id": "SENDING_ADDRESS_ID",
+              "name": "SENDING_ADDRESS_ID",
+              "type": "string",
+              "value": "REPLACE_WITH_SENDING_ADDRESS_ID"
+            },
+            {
+              "id": "REPORT_CONTACT_IDS",
+              "name": "REPORT_CONTACT_IDS",
+              "type": "string",
+              "value": "REPLACE_WITH_REPORT_CONTACT_IDS"
+            },
+            {
+              "id": "SMTP_FROM",
+              "name": "SMTP_FROM",
+              "type": "string",
+              "value": "Automator <admin@example.com>"
+            },
+            {
+              "id": "REPORT_EMAILS",
+              "name": "REPORT_EMAILS",
+              "type": "string",
+              "value": "admin@example.com"
+            },
+            {
+              "id": "SEND_ENABLED",
+              "name": "SEND_ENABLED",
+              "type": "string",
+              "value": "true"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "41273b94-ebcb-4115-a7af-90bd6e40c345",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        64,
+        544
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Config').first().json.CHECKIN_LOG_TABLE_ID }}",
+          "cachedResultName": "EventCheckInLog"
+        },
+        "returnAll": true
+      },
+      "id": "0847902e-1e0d-4e0e-97c9-77798d279032",
+      "name": "Read Check-in Log",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        288,
+        544
+      ],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "/*\tBuild the daily reconciliation digest from the check-in log.\t*/\nconst cfg_obj = $('Config').item.json;\nconst lookback_num = Number(cfg_obj.LOOKBACK_HOURS || 24);\nconst threshold_num = Number(cfg_obj.DUP_THRESHOLD || 0.85);\nconst title_str = String(cfg_obj.REPORT_TITLE || 'Check-in reconciliation');\nconst cutoff_num = Date.now() - (lookback_num * 3600 * 1000);\n\nconst rows_ary = $input.all().map(function (it_obj) { return it_obj.json; }).filter(function (r_obj) {\n\tconst t_num = Date.parse(r_obj.timestamp || '');\n\treturn !isNaN(t_num) && t_num >= cutoff_num;\n});\n\n/*\tPlain wording for every reason 3.0 can refuse a scan.\t*/\nconst reasons_obj = {\n\t'not-open-yet': 'Scanned before check-in opened',\n\t'closed': 'Scanned after check-in closed',\n\t'reception-unknown-email': 'Email not recognised, sent to reception',\n\t'reception-not-booked': 'Not booked on this public course, sent to reception',\n\t'registration-refused': 'Administrate refused the registration',\n\t'walk-in-failed': 'Could not set up the walk-in\\'s details',\n\t'attendance-refused': 'Administrate refused the attendance mark',\n\t'invalid-event': 'QR code for an unknown event',\n\t'no-sessions': 'Event has no sessions'\n};\n\nfunction reasonFor(mark_str)\n{\n\tconst key_str = mark_str.indexOf('blocked-') === 0 ? mark_str.slice(8) : mark_str;\n\treturn reasons_obj[key_str] || key_str;\n}\n\nfunction eventLabel(r_obj)\n{\n\treturn String(r_obj.eventTitle || '').trim() || String(r_obj.eventId || '');\n}\n\n/*\tGroup by status.\t*/\nconst byStatus_obj = {};\nfor (const r_obj of rows_ary)\n{\n\tconst s_str = String(r_obj.status || 'unknown');\n\tbyStatus_obj[s_str] = (byStatus_obj[s_str] || 0) + 1;\n}\n\n/*\tGroup by attendance mark. 'Present' means Administrate accepted the mark; anything beginning\t*/\n/*\t'blocked-' means the scan happened but no attendance was recorded, and why.\t*/\nconst byMark_obj = {};\nfor (const r_obj of rows_ary)\n{\n\tconst mark_str = String(r_obj.attendanceMark || 'unknown');\n\tconst label_str = mark_str === 'Present' ? 'Present' : reasonFor(mark_str);\n\tbyMark_obj[label_str] = (byMark_obj[label_str] || 0) + 1;\n}\n\n/*\tRows needing review. Includes needs-review-multiple-contact, where one email matched several\t*/\n/*\tcontacts and check-in took the first.\t*/\nconst needsReview_ary = rows_ary.filter(function (r_obj) { return String(r_obj.status || '').indexOf('needs-review') === 0; });\n\n/*\tEvery scan Administrate did not record. This is the section that matters on the day. 3.0 writes\t*/\n/*\texactly 'Present' for a recorded check-in and 'blocked-<reason>' for everything else.\t*/\nconst notRecorded_ary = rows_ary.filter(function (r_obj) { return String(r_obj.attendanceMark || '') !== 'Present'; });\n\n/*\tFuzzy duplicate detection on normalized full names (Levenshtein similarity).\t*/\nfunction norm(v_var)\n{\n\treturn String(v_var || '').toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\\s+/g, ' ').trim();\n}\n\nfunction levenshtein(a_str, b_str)\n{\n\tconst m_num = a_str.length;\n\tconst n_num = b_str.length;\n\tif (m_num === 0) { return n_num; }\n\tif (n_num === 0) { return m_num; }\n\tconst d_ary = [];\n\tfor (let i_num = 0; i_num <= m_num; i_num++) { d_ary[i_num] = [i_num]; }\n\tfor (let j_num = 0; j_num <= n_num; j_num++) { d_ary[0][j_num] = j_num; }\n\tfor (let i_num = 1; i_num <= m_num; i_num++)\n\t{\n\t\tfor (let j_num = 1; j_num <= n_num; j_num++)\n\t\t{\n\t\t\tconst cost_num = a_str[i_num - 1] === b_str[j_num - 1] ? 0 : 1;\n\t\t\td_ary[i_num][j_num] = Math.min(d_ary[i_num - 1][j_num] + 1, d_ary[i_num][j_num - 1] + 1, d_ary[i_num - 1][j_num - 1] + cost_num);\n\t\t}\n\t}\n\treturn d_ary[m_num][n_num];\n}\n\nfunction similarity(a_str, b_str)\n{\n\tconst max_num = Math.max(a_str.length, b_str.length);\n\treturn max_num === 0 ? 1 : (1 - (levenshtein(a_str, b_str) / max_num));\n}\n\n/*\tOne entry per person (dedupe by email) so repeat scans do not double-count pairs.\t*/\nconst seenEmails_obj = {};\nconst people_ary = [];\nfor (const r_obj of rows_ary)\n{\n\tconst name_str = norm(String(r_obj.firstName || '') + ' ' + String(r_obj.lastName || ''));\n\tconst emailKey_str = String(r_obj.email || '').toLowerCase();\n\tif (name_str === '') { continue; }\n\tif (emailKey_str !== '' && seenEmails_obj[emailKey_str]) { continue; }\n\tif (emailKey_str !== '') { seenEmails_obj[emailKey_str] = true; }\n\tpeople_ary.push({ name: name_str, email: emailKey_str, raw: r_obj });\n}\n\nconst dupes_ary = [];\nfor (let i_num = 0; i_num < people_ary.length; i_num++)\n{\n\tfor (let j_num = i_num + 1; j_num < people_ary.length; j_num++)\n\t{\n\t\tconst a_obj = people_ary[i_num];\n\t\tconst b_obj = people_ary[j_num];\n\t\tif (a_obj.email === b_obj.email) { continue; }\n\t\tconst score_num = similarity(a_obj.name, b_obj.name);\n\t\tif (score_num >= threshold_num)\n\t\t{\n\t\t\tdupes_ary.push({ a: a_obj, b: b_obj, score: score_num });\n\t\t}\n\t}\n}\n\nfunction esc(v_var) { return String(v_var == null ? '' : v_var).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }\n\nconst tableOpen_str = '<table border=\"1\" cellpadding=\"6\" cellspacing=\"0\" style=\"border-collapse:collapse\">';\n\nlet html_str = '<h2>' + esc(title_str) + ' - last ' + lookback_num + 'h</h2>';\nhtml_str += '<p>Total scans: <strong>' + rows_ary.length + '</strong></p>';\n\nhtml_str += '<h3>By status</h3><ul>';\nfor (const s_str of Object.keys(byStatus_obj).sort())\n{\n\thtml_str += '<li>' + esc(s_str) + ': ' + byStatus_obj[s_str] + '</li>';\n}\nhtml_str += '</ul>';\n\nhtml_str += '<h3>By result</h3><ul>';\nfor (const m_str of Object.keys(byMark_obj).sort())\n{\n\thtml_str += '<li>' + esc(m_str) + ': ' + byMark_obj[m_str] + '</li>';\n}\nhtml_str += '</ul>';\n\nhtml_str += '<h3>Attendance not recorded (' + notRecorded_ary.length + ')</h3>';\nif (notRecorded_ary.length === 0)\n{\n\thtml_str += '<p>None - every scan was marked in Administrate.</p>';\n} else {\n\thtml_str += tableOpen_str + '<tr><th>Email</th><th>Name</th><th>Event</th><th>Session</th><th>Reason</th></tr>';\n\tfor (const r_obj of notRecorded_ary)\n\t{\n\t\thtml_str += '<tr><td>' + esc(r_obj.email) + '</td><td>' + esc(r_obj.firstName) + ' ' + esc(r_obj.lastName) + '</td><td>' + esc(eventLabel(r_obj)) + '</td><td>' + esc(r_obj.sessionId) + '</td><td>' + esc(reasonFor(String(r_obj.attendanceMark || 'unknown'))) + '</td></tr>';\n\t}\n\thtml_str += '</table>';\n}\n\nhtml_str += '<h3>Needs review (' + needsReview_ary.length + ')</h3>';\nif (needsReview_ary.length === 0)\n{\n\thtml_str += '<p>None - nothing to reconcile.</p>';\n} else {\n\thtml_str += tableOpen_str + '<tr><th>Email</th><th>Name</th><th>Company</th><th>Status</th><th>Contact</th><th>Event</th></tr>';\n\tfor (const r_obj of needsReview_ary)\n\t{\n\t\thtml_str += '<tr><td>' + esc(r_obj.email) + '</td><td>' + esc(r_obj.firstName) + ' ' + esc(r_obj.lastName) + '</td><td>' + esc(r_obj.company) + '</td><td>' + esc(r_obj.status) + '</td><td>' + esc(r_obj.contactId) + '</td><td>' + esc(eventLabel(r_obj)) + '</td></tr>';\n\t}\n\thtml_str += '</table>';\n}\n\nhtml_str += '<h3>Possible duplicates (' + dupes_ary.length + ', threshold ' + Math.round(threshold_num * 100) + '%)</h3>';\nif (dupes_ary.length === 0)\n{\n\thtml_str += '<p>None detected.</p>';\n} else {\n\thtml_str += tableOpen_str + '<tr><th>Match</th><th>Person A</th><th>Person B</th></tr>';\n\tfor (const d_obj of dupes_ary)\n\t{\n\t\thtml_str += '<tr><td>' + Math.round(d_obj.score * 100) + '%</td><td>' + esc(d_obj.a.raw.firstName) + ' ' + esc(d_obj.a.raw.lastName) + ' (' + esc(d_obj.a.email) + ')</td><td>' + esc(d_obj.b.raw.firstName) + ' ' + esc(d_obj.b.raw.lastName) + ' (' + esc(d_obj.b.email) + ')</td></tr>';\n\t}\n\thtml_str += '</table>';\n}\n\nconst subject_str = title_str + ' - ' + rows_ary.length + ' scans, ' + notRecorded_ary.length + ' unmarked, ' + needsReview_ary.length + ' to review, ' + dupes_ary.length + ' possible dupes';\n\nreturn [{ json: { subject: subject_str, html: html_str, total: rows_ary.length, notRecorded: notRecorded_ary.length, needsReview: needsReview_ary.length, dupes: dupes_ary.length } }];\n"
+      },
+      "id": "bf898f8e-e33b-43f5-9f21-ea14cba25d07",
+      "name": "Build Digest",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        512,
+        544
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Delivery\n\n**EMAIL_TRANSPORT chooses the route.**\n- **'smtp'** (default) sends through the SMTP credential on Send Report SMTP, from SMTP_FROM to REPORT_EMAILS.\n- **'administrate'** (anything other than 'smtp') sends through Administrate (bulkAdhocEmails.sendBulkContactAdhocEmail) from SENDING_ADDRESS_ID to the contacts in REPORT_CONTACT_IDS.\n\nBoth paths rejoin at IF Send Errors?, which catches a GraphQL refusal, an SMTP rejection, or a send where no recipient was accepted.\n\n**Sender address.** Some SMTP providers (e.g. Google Workspace) rewrite the From header to the authenticated mailbox, so SMTP_FROM may not control the visible sender. Use a sending domain whose SPF/DKIM/DMARC records authorise your mail route, or messages may be silently dropped.\n\n**There is no reply-to on the Administrate send mutation.** Replies go to the sending address.\n\n**Check the digest in a real mail client before go-live.** Email HTML is table layout and inline styles only.\n\n**An attached credential is not a working credential.** Send one manual run and read the response. Administrate returns refusals inside an HTTP 200.",
+        "height": 720,
+        "width": 484,
+        "color": 3
+      },
+      "id": "f9f932b2-1b7d-4ef8-a912-9bc5a7bcef51",
+      "name": "Sticky - SMTP setup",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        768,
+        -400
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 4.0 Daily Reconciliation Report - Config\n\n**LOOKBACK_HOURS** - hours of scans to include. 24 = the last day.\n**DUP_THRESHOLD** - name-similarity cut-off for flagging possible duplicate people, 0 to 1. Higher = stricter, fewer flagged.\n**REPORT_TITLE** - heading and subject-line prefix.\n**GRAPHQL_URL** - Administrate endpoint used by Send Report.\n**CHECKIN_LOG_TABLE_ID** - id of the EventCheckInLog Data Table that 3.0 writes.\n**EMAIL_TRANSPORT** - 'smtp' or 'administrate'. See the Delivery sticky.\n**SENDING_ADDRESS_ID** - the verified Administrate sending address id, Administrate route only.\n**REPORT_CONTACT_IDS** - comma separated Administrate contact ids, Administrate route only.\n**SMTP_FROM / REPORT_EMAILS** - sender and comma separated recipients, SMTP route only.\n**SEND_ENABLED** - 'true' sends the report, 'false' builds it and sends nothing.\n\n**Schedule.** Runs daily at 07:00 in the workflow's timezone (Workflow Settings, default Europe/London). Change the trigger or the timezone to suit.\n\n**Empty days.** The report goes out every day with the counts in the subject line, so it can be cleared without opening. Silence would be indistinguishable from a broken scheduler.\n\n**What it reads.** Every scan 3.0 handles writes one row to the check-in log, including refused ones. attendanceMark is exactly 'Present' when Administrate recorded attendance, otherwise 'blocked-<reason>'. Build Digest turns each reason into plain wording and shows the event title instead of the raw id. alwaysOutputData is on, so an empty table still produces a report.\n\n**Caveat.** 3.0's ATTENDED controls whether Administrate records Present or Absent, but 3.0's Build Log Row writes 'Present' whenever check-in succeeded, regardless. With ATTENDED false this report says Present while Administrate says Absent. Leave ATTENDED alone unless you also change Build Log Row.\n\n**Before go-live:** clear test rows from the check-in table. Delete the rows, never the table, since 3.0, 4.0 and 5.0 reference it by id.",
+        "height": 1100,
+        "width": 520,
+        "color": 4
+      },
+      "id": "8044dbf7-8804-496d-a1b9-2931ea3d85c7",
+      "name": "Sticky - Config",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -128,
+        -864
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').item.json.GRAPHQL_URL }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ query: 'mutation SendReport($contactIds: [String]!, $subject: String, $body: String, $sendingAddressId: ID){ bulkAdhocEmails { sendBulkContactAdhocEmail(input:{ contactIds:$contactIds, subject:$subject, body:$body, sendingAddressId:$sendingAddressId }){ errors { label message value } } } }', variables: { contactIds: String($('Config').item.json.REPORT_CONTACT_IDS || '').split(',').map(function (id) { return id.trim(); }).filter(function (id) { return id !== ''; }), subject: $json.subject, body: $json.html, sendingAddressId: $('Config').item.json.SENDING_ADDRESS_ID } }) }}",
+        "options": {}
+      },
+      "id": "ea89ab88-8fa5-4c5a-bc72-21d8d56399df",
+      "name": "Send Report",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1184,
+        560
+      ],
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "se1",
+              "leftValue": "={{ String($('Config').item.json.SEND_ENABLED || '').trim().toLowerCase() }}",
+              "operator": {
+                "operation": "equals",
+                "type": "string"
+              },
+              "rightValue": "true"
+            }
+          ],
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          }
+        },
+        "options": {}
+      },
+      "id": "084655b0-521e-427d-b841-662c397546ba",
+      "name": "IF Send Enabled?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        736,
+        544
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "3e66350e-44d7-48dd-bf61-c12c4fed9e16",
+      "name": "Send Skipped",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        960,
+        640
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "err1",
+              "leftValue": "={{ (($json.errors || []).length > 0) || ((((($json.data || {}).bulkAdhocEmails || {}).sendBulkContactAdhocEmail || {}).errors || []).length > 0) || (($json.rejected || []).length > 0) || ((($json.accepted !== undefined) && (($json.accepted || []).length === 0))) }}",
+              "operator": {
+                "operation": "true",
+                "singleValue": true,
+                "type": "boolean"
+              },
+              "rightValue": ""
+            }
+          ],
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          }
+        },
+        "options": {}
+      },
+      "id": "a2ff91b8-3cc5-4142-b50b-49b625ee7b84",
+      "name": "IF Send Errors?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1408,
+        448
+      ]
+    },
+    {
+      "parameters": {
+        "errorMessage": "Daily reconciliation report was not sent: the send returned errors, or the mail server rejected every recipient."
+      },
+      "id": "6ce02fb3-b3a2-4305-9fe9-f7a31d7c7de7",
+      "name": "Stop",
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        1632,
+        352
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "802b25f9-922f-4ff4-a6d2-5f402c002608",
+      "name": "Done",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1632,
+        560
+      ]
+    },
+    {
+      "id": "53d1a330-04ff-4975-8794-dc5998bbbd1e",
+      "name": "IF Transport SMTP",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        960,
+        448
+      ],
+      "parameters": {
+        "conditions": {
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "tr1",
+              "leftValue": "={{ String($('Config').item.json.EMAIL_TRANSPORT || '').trim().toLowerCase() }}",
+              "operator": {
+                "operation": "equals",
+                "type": "string"
+              },
+              "rightValue": "smtp"
+            }
+          ],
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          }
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "9ab390c6-b1cf-4629-be3c-0dbfc90996cb",
+      "name": "Send Report SMTP",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1184,
+        352
+      ],
+      "parameters": {
+        "emailFormat": "html",
+        "fromEmail": "={{ $('Config').item.json.SMTP_FROM }}",
+        "html": "={{ $json.html }}",
+        "options": {
+          "appendAttribution": false
+        },
+        "subject": "={{ $json.subject }}",
+        "toEmail": "={{ $('Config').item.json.REPORT_EMAILS }}"
+      },
+      "credentials": {
+        "smtp": {
+          "id": "",
+          "name": "SMTP"
+        }
+      },
+      "webhookId": "17a5a46c-3c2f-4049-a41d-22a810dd5f40"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Daily 07:00": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Read Check-in Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Check-in Log": {
+      "main": [
+        [
+          {
+            "node": "Build Digest",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Digest": {
+      "main": [
+        [
+          {
+            "node": "IF Send Enabled?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Send Enabled?": {
+      "main": [
+        [
+          {
+            "node": "IF Transport SMTP",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Skipped",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Send Errors?": {
+      "main": [
+        [
+          {
+            "node": "Stop",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Done",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Transport SMTP": {
+      "main": [
+        [
+          {
+            "node": "Send Report SMTP",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Report SMTP": {
+      "main": [
+        [
+          {
+            "node": "IF Send Errors?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Report": {
+      "main": [
+        [
+          {
+            "node": "IF Send Errors?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true,
+    "timeSavedMode": "fixed",
+    "timezone": "Europe/London"
+  },
+  "tags": []
+}

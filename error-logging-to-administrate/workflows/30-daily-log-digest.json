@@ -1,0 +1,463 @@
+{
+  "name": "Daily Log Digest Email",
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -224,
+        0
+      ],
+      "id": "ccdc9383-cfda-435f-9ffa-e5321fbfb90c",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": true,
+        "options": {},
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c01",
+              "name": "LOG_ORIGIN_NAME",
+              "type": "string",
+              "value": "REPLACE_WITH_LOG_ORIGIN_NAME"
+            },
+            {
+              "id": "c02",
+              "name": "LOG_URL_TABLE_ID",
+              "type": "string",
+              "value": "REPLACE_WITH_LOG_URL_TABLE_ID"
+            },
+            {
+              "id": "c03",
+              "name": "RECIPIENTS_TABLE_ID",
+              "type": "string",
+              "value": "REPLACE_WITH_RECIPIENTS_TABLE_ID"
+            },
+            {
+              "id": "c04",
+              "name": "RECIPIENT_GROUP",
+              "type": "string",
+              "value": "automationDigest"
+            },
+            {
+              "id": "c05",
+              "name": "EMAIL_WORKFLOW_ID",
+              "type": "string",
+              "value": "REPLACE_WITH_ID_OF_EMAIL_NOTIFICATION_WORKFLOW"
+            },
+            {
+              "id": "c06",
+              "name": "TIMEZONE",
+              "type": "string",
+              "value": "America/New_York"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        0,
+        0
+      ],
+      "id": "a6ca93a5-27ec-4c4a-ab5a-5f77d3f444a0",
+      "name": "Config"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Input: items with fields \"Log ID\" and \"Log Message\"\n// Output: one item with field \"htmlTable\" containing the full HTML string\n\nconst logURL = $('Get Log URL').first().json.url;\n\nfunction getEasternTimestamp(timestamp) {\n\n  dateObj = new Date(timestamp);\n  \n  const options = {\n    timeZone: $('Config').first().json.TIMEZONE, // IANA time zone from Config\n    year: 'numeric',\n    month: '2-digit',\n    day: '2-digit',\n    hour: '2-digit',\n    minute: '2-digit',\n    second: '2-digit',\n    hour12: true,\n  };\n\n  const formatter = new Intl.DateTimeFormat('en-US', options);\n  const parts = formatter.formatToParts(dateObj);\n\n  const date = `${parts.find(p => p.type === 'year').value}-${parts.find(p => p.type === 'month').value}-${parts.find(p => p.type === 'day').value}`;\n  const time = `${parts.find(p => p.type === 'hour').value}:${parts.find(p => p.type === 'minute').value}:${parts.find(p => p.type === 'second').value} ${parts.find(p => p.type === 'dayPeriod').value}`;\n  \n  return `${date} ${time}`;\n}\n\n\nlet html = `<p>Please see below for a digest of automation activity over the past 24 hours.</p><p>More details may be available by clicking into the individual messages in the <a href=\"${logURL}\">logs within Administrate.</a> <table border=\"1\" cellpadding=\"5\" cellspacing=\"0\" style=\"border-collapse: collapse; font-family: sans-serif;\">\n  <thead>\n    <tr>\n      <th>Timestamp</th>\n      <th>Status</th>\n      <th>Message</th>\n    </tr>\n  </thead>\n  <tbody>\n`;\n\nfor (const item of items) {\n  \n  const logRow = \"<td>\" + getEasternTimestamp(item.json.node.createdAt) + \"</td><td>\" + item.json.node.status + \"</td><td>\" + item.json.node.message + \"</td>\"\n  \n  html += `<tr>\n    ${logRow}\n  </tr>\\n`;\n}\n\nhtml += `</tbody></table>`;\n\nreturn [\n  {\n    json: {\n      htmlTable: html\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1776,
+        0
+      ],
+      "id": "01daad14-9657-4133-92ed-8827d11f8941",
+      "name": "Build HTML",
+      "executeOnce": false
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Config').first().json.EMAIL_WORKFLOW_ID }}"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "subject": "Daily Automation Summary",
+            "bodyHTML": "={{ $json.htmlTable }}",
+            "recipients": "={{ $('Get Email(s)').first().json.emailValues }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "subject",
+              "displayName": "subject",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "recipients",
+              "displayName": "recipients",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "bodyHTML",
+              "displayName": "bodyHTML",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        2000,
+        0
+      ],
+      "id": "27d92866-caa0-4fdd-aafa-648bb3b8a5b5",
+      "name": "Send Email"
+    },
+    {
+      "parameters": {
+        "url": "https://api.getadministrate.com/graphql",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "=query externalLogOrigins {\n  externalLogOrigins (filters:{field:name operation:contains values:[\"{{ $('Config').first().json.LOG_ORIGIN_NAME }}\"]}) {\n  \tedges\t{\n      node {\n        name\n        id\n      }\n    }\n  }\n}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        656,
+        0
+      ],
+      "id": "7d119949-f44a-40e1-a333-89ff05feaba3",
+      "name": "Get Log Origin ID",
+      "notesInFlow": true,
+      "credentials": {
+        "oAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "https://api.getadministrate.com/graphql",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "=query externalLogs ($cursor: String) {\n  externalLogs (after: $cursor, filters:[{field:externalLogOriginId operation:eq value:\"{{ $('Define Last 24 Hours').item.json.data.externalLogOrigins.edges[0].node.id }}\"}, {field:createdAt operation:gt value:\"{{ $('Define Last 24 Hours').item.json.yesterday }}\"}] order:{field:createdAt direction:asc}) {\n    edges {\n      node {\n        id\n        externalLogOrigin {\n          id\n          name\n        }\n        status\n        entityId\n        createdAt\n        message\n        payload\n      }\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n}"
+            }
+          ]
+        },
+        "options": {
+          "pagination": {
+            "pagination": {
+              "parameters": {
+                "parameters": [
+                  {
+                    "type": "body",
+                    "name": "variables",
+                    "value": "={{ { cursor: Object.values($response.body.data)[0]?.pageInfo?.endCursor || null } }}"
+                  }
+                ]
+              },
+              "paginationCompleteWhen": "other",
+              "completeExpression": "={{ !Object.values($response.body.data)[0]?.pageInfo?.hasNextPage }}"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1104,
+        0
+      ],
+      "id": "f8feb806-f595-43d6-995d-164659945710",
+      "name": "Get Logs",
+      "notesInFlow": true,
+      "executeOnce": false,
+      "credentials": {
+        "oAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "data.externalLogs.edges",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        1328,
+        0
+      ],
+      "id": "4e957886-13b4-42bf-9521-6b92ee1b1d3e",
+      "name": "Split Out"
+    },
+    {
+      "parameters": {
+        "jsCode": "for (const item of $input.all()) {\n\n  const now = new Date();\n  const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);\n  \n  // Format to YYYY-MM-DDTHH:mm:ss in UTC\n  const formatted = twentyFourHoursAgo.toISOString().split('.')[0];\n\n  item.json.yesterday = formatted;\n\n}\n\nreturn $input.all();"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        0
+      ],
+      "id": "d151c4fd-b9b6-4362-b334-d5acec4e11c8",
+      "name": "Define Last 24 Hours"
+    },
+    {
+      "parameters": {
+        "sortFieldsUi": {
+          "sortField": [
+            {
+              "fieldName": "node.createdAt"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.sort",
+      "typeVersion": 1,
+      "position": [
+        1552,
+        0
+      ],
+      "id": "fd5a3d15-731c-4b1b-b6ca-c95e88399df1",
+      "name": "Sort"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Config').first().json.LOG_URL_TABLE_ID }}"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "endpointName",
+              "keyValue": "automationLogs"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        224,
+        0
+      ],
+      "id": "3d206a3b-8366-40f5-87bd-3f324c256c27",
+      "name": "Get Log URL"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Config').first().json.RECIPIENTS_TABLE_ID }}"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "description",
+              "keyValue": "={{ $('Config').first().json.RECIPIENT_GROUP }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        432,
+        0
+      ],
+      "id": "1df7f0f5-4ae5-4a30-8dac-b6df1100cc1b",
+      "name": "Get Email(s)"
+    },
+    {
+      "parameters": {
+        "color": 4,
+        "width": 560,
+        "height": 520,
+        "content": "## Daily Log Digest Email\n\nCollects the last 24 hours of Administrate External Integration Log entries for one log origin and emails them as an HTML table.\n\n**How it starts:** this workflow has an *Execute Workflow* trigger. Call it from a scheduled workflow (for example a daily Schedule Trigger followed by an Execute Workflow node pointing here).\n\n**Config**\n\n- **LOG_ORIGIN_NAME** - text contained in the log origin's name (matched with `contains`)\n- **LOG_URL_TABLE_ID** - Data Table with columns `endpointName`, `url`; the row with `endpointName = automationLogs` holds the link to the logs page in Administrate\n- **RECIPIENTS_TABLE_ID** - Data Table with columns `description`, `emailValues`; the row whose `description` equals **RECIPIENT_GROUP** holds the recipient list\n- **EMAIL_WORKFLOW_ID** - id of your email-sending workflow. It receives `subject`, `recipients` and `bodyHTML`\n- **TIMEZONE** - IANA time zone used for timestamps in the email\n"
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -240,
+        -560
+      ],
+      "id": "b021fe95-9406-484b-a1cc-f1d29bf43246",
+      "name": "Sticky - Overview"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build HTML": {
+      "main": [
+        [
+          {
+            "node": "Send Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Log Origin ID": {
+      "main": [
+        [
+          {
+            "node": "Define Last 24 Hours",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Logs": {
+      "main": [
+        [
+          {
+            "node": "Split Out",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out": {
+      "main": [
+        [
+          {
+            "node": "Sort",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Define Last 24 Hours": {
+      "main": [
+        [
+          {
+            "node": "Get Logs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sort": {
+      "main": [
+        [
+          {
+            "node": "Build HTML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Log URL": {
+      "main": [
+        [
+          {
+            "node": "Get Email(s)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Email(s)": {
+      "main": [
+        [
+          {
+            "node": "Get Log Origin ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Get Log URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "tags": []
+}

@@ -1,0 +1,2148 @@
+{
+  "name": "Import Learners onto an Event from a Spreadsheet",
+  "nodes": [
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1792,
+        752
+      ],
+      "id": "c78724b8-ddd7-41f7-9f43-662fbf6526fb",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "jsCode": "const docs = $json.data?.events?.edges?.[0]?.node?.documents || [];\n\n// Read swappable settings from the Config node\nconst cfg = $('Config').first().json;\nconst allowedExts = (cfg.allowedFileExtensions || 'xlsx,xls')\n  .split(',').map(e => e.trim().toLowerCase());\nconst firstChoice = (cfg.documentNameFirstChoice || '').toLowerCase();\nconst secondChoice = (cfg.documentNameSecondChoice || '').toLowerCase();\n\n// Find spreadsheet documents attached to the event\nconst excelDocs = docs.filter(d => {\n  const ext = (d.fileExtension || '').toLowerCase();\n  const mime = (d.mimeType || '').toLowerCase();\n  return allowedExts.includes(ext) ||\n    mime.includes('spreadsheetml') || mime.includes('ms-excel');\n});\n\n// prefer first choice name, then second choice, then first spreadsheet found\nconst pick =\n  (firstChoice && excelDocs.find(d => (d.name || '').toLowerCase().includes(firstChoice))) ||\n  (secondChoice && excelDocs.find(d => (d.name || '').toLowerCase().includes(secondChoice))) ||\n  excelDocs[0] ||\n  null;\n\n$json.selectedDocument = pick;\n$json.selectedDocumentId = pick?.id || null;\n\nreturn $json;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2032,
+        752
+      ],
+      "id": "4d4ebd01-ed1d-46a7-9f24-94213750e423",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "operation": "xlsx",
+        "options": {
+          "headerRow": true
+        }
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        2736,
+        752
+      ],
+      "id": "6f3ae7ba-96b9-421c-a599-fa3c53480491",
+      "name": "Extract from File"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "3d4fc00a-8b15-4212-934d-5017937c0c6b",
+              "name": "eventId",
+              "value": "={{ $json.payload.node.id }}",
+              "type": "string"
+            },
+            {
+              "id": "1a2779de-8e64-4602-993a-88d4be783d84",
+              "name": "eventType",
+              "value": "={{ $json.payload.node.__typename }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1024,
+        768
+      ],
+      "id": "baeb26fc-dca2-456c-8dd5-bed0d8dba182",
+      "name": "Get EventID and EventType"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').item.json.apiUrl }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"query\": \"query GetEvent($id: String!) { events(filters: [{ field: id, operation: eq, value: $id }]) { edges { node { id displayId title code timeZonedStart timeZonedEnd status lifecycleState documents { id name description fileExtension fileSize mimeType } } } pageInfo { hasNextPage endCursor } } }\",\n  \"variables\": {\n    \"id\": \"={{ $json.eventId }}\"\n  }\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1440,
+        560
+      ],
+      "id": "6e32663a-374b-4a66-bf4e-f2acdc7176ed",
+      "name": "HTTP Request - Get Event Docs",
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "query": "={{ \n`query {\n  downloadDocument(documentId: \"${$json.selectedDocumentId}\", expiresIn: 3600) {\n    url\n    document {\n      id\n      name\n      fileExtension\n      fileSize\n      mimeType\n    }\n  }\n}` \n}}",
+        "options": {}
+      },
+      "type": "CUSTOM.administrate",
+      "typeVersion": 1,
+      "position": [
+        2288,
+        752
+      ],
+      "id": "a9d26fa7-4ca0-446a-b4fa-dc6d3eadfd73",
+      "name": "Administrate API - Get DmsDoc URL",
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.downloadDocument.url }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        2560,
+        752
+      ],
+      "id": "e8e9675b-122f-432d-af32-a46184f0cab1",
+      "name": "HTTP Request - Get Excel Data"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "6781097b-025b-4f66-ba32-c03c5c3a35c3",
+              "name": "eventId",
+              "value": "={{ $('Get EventID and EventType').item.json.eventId }}",
+              "type": "string"
+            },
+            {
+              "id": "44b226b0-19d1-46ae-9f88-00a0550079f4",
+              "name": "Account Name",
+              "value": "={{ $json[$('Config').item.json.colAccountName] }}",
+              "type": "string"
+            },
+            {
+              "id": "d4eb13ee-3245-4cde-8066-debbc1cc5fe9",
+              "name": "email",
+              "value": "={{ $json[$('Config').item.json.colEmail] }}",
+              "type": "string"
+            },
+            {
+              "id": "2505cd25-20cc-42bb-8713-bf45100d7865",
+              "name": "First Name",
+              "value": "={{ $json[$('Config').item.json.colFirstName] }}",
+              "type": "string"
+            },
+            {
+              "id": "6710f1f0-8d1e-4e7e-a639-4f4f359d2150",
+              "name": "Last Name",
+              "value": "={{ $json[$('Config').item.json.colLastName] }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        3296,
+        768
+      ],
+      "id": "1d7db22d-945d-499f-be56-08b2aecf7405",
+      "name": "Set EventID on each Result from Excel"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').item.json.apiUrl }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "options": {},
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  query: `query contacts($email: String!) {\n  contacts(filters: { field: emailAddress, operation: eq, value: $email }) {\n    edges {\n      node {\n        id\n        emailAddress\n        personalName {\n          name\n        }\n        account {\n          id\n          name\n        }\n      }\n    }\n  }\n}`,\n  variables: { email: String($json.email ?? '') }\n}) }}"
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        3552,
+        768
+      ],
+      "id": "f5048e91-f83c-4841-af07-e80585292355",
+      "name": "HTTP Request - Look up if Contacts already Exist",
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "04d4c16b-5ecc-4c42-b8b9-4ba270b79f04",
+              "name": "eventId",
+              "value": "={{ $('Set EventID on each Result from Excel').item.json.eventId }}",
+              "type": "string"
+            },
+            {
+              "id": "b737d21d-6203-4131-bde6-d59772fecd8e",
+              "name": "email",
+              "value": "={{ $('Set EventID on each Result from Excel').item.json.email }}",
+              "type": "string"
+            },
+            {
+              "id": "32184095-f10b-4800-b5bf-5c3a71d4401b",
+              "name": "First Name",
+              "value": "={{ $('Set EventID on each Result from Excel').item.json['First Name'] }}",
+              "type": "string"
+            },
+            {
+              "id": "c6f6ecd8-3eca-4adb-92ef-0ee903158fe7",
+              "name": "Last Name",
+              "value": "={{ $('Set EventID on each Result from Excel').item.json['Last Name'] }}",
+              "type": "string"
+            },
+            {
+              "id": "b2e29046-c731-4c89-a0f8-02874f0ed21a",
+              "name": "Account Name",
+              "value": "={{ $('Set EventID on each Result from Excel').item.json['Account Name'] }}",
+              "type": "string"
+            },
+            {
+              "id": "a31c42b2-62d9-4bd1-b511-04edb11a3ac2",
+              "name": "data.contacts.edges[0].node.id",
+              "value": "={{ $json.data.contacts.edges[0].node.id }}",
+              "type": "string"
+            },
+            {
+              "id": "17dfcc58-6277-4c2b-aaac-d4330765956a",
+              "name": "data.contacts.edges[0].node.account.id",
+              "value": "={{ $json.data.contacts.edges[0].node.account.id }}",
+              "type": "string"
+            },
+            {
+              "id": "681219c0-a959-4324-b50d-0260bb8f519e",
+              "name": "data.contacts.edges[0].node.account.name",
+              "value": "={{ $json.data.contacts.edges[0].node.account.name }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        3808,
+        768
+      ],
+      "id": "8f861d6f-e03d-4e8e-a0b4-652ee29bb084",
+      "name": "Set ContactIDs and Account info on each row from Excel"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "f113aa86-830f-47ee-af9b-03ae3e7fa7f0",
+              "leftValue": "={{ $json.data.contacts.edges[0].node.id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        4176,
+        768
+      ],
+      "id": "2da04c75-1bcf-49c1-a815-d410fd84dde7",
+      "name": "If ContactID Exists"
+    },
+    {
+      "parameters": {
+        "content": "## Column mapping\nThis node maps your spreadsheet headers (from `colEmail`, `colFirstName`, `colLastName`, `colAccountName` in **Config**) to the fields used by the rest of the workflow.\n\nTo carry extra columns (e.g. contact custom fields), add them here.",
+        "height": 416,
+        "width": 272,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        3200,
+        624
+      ],
+      "typeVersion": 1,
+      "id": "b20dbc5e-d499-458f-830f-e8407d6ba8a9",
+      "name": "Note – Column Mapping"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').item.json.apiUrl }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "options": {},
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  query: `query accountName($name: String!) {\n  accounts(filters: { field: name, operation: eq, value: $name }) {\n    edges {\n      node {\n        id\n        name\n        isIndividual\n      }\n    }\n  }\n}`,\n  variables: { name: String($json['Account Name'] ?? '') }\n}) }}"
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        4496,
+        1152
+      ],
+      "id": "b4ce8090-3358-4655-8792-5bd0004a7dc6",
+      "name": "HTTP Request - Get AccountID",
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "e98784f5-da26-4d5a-9a75-90a3b082a22b",
+              "leftValue": "={{ $json.data.accounts.edges[0].node.isIndividual }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "8865bb1b-0412-4bc2-8747-4c43297a8adb",
+              "leftValue": "={{ $json.data.accounts.edges[0].node.id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "empty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        4880,
+        1152
+      ],
+      "id": "8ceeedfb-5dc2-46e4-ae15-4aa713ab7f69",
+      "name": "Check Account Exists and is not Individual"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').item.json.apiUrl }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "=query checkContactRegistration {\n  learners(filters:[{field: contactId, operation: eq, value: \"{{ $json.data.contacts.edges[0].node.id }}\"}, {field: eventId, operation: eq, value: \"{{ $json.eventId }}\"}]){\n    pageInfo{\n      totalRecords\n    }\n  }\n}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        4896,
+        144
+      ],
+      "id": "473e3d5c-62a7-4d4c-81f8-dae9ecd7618e",
+      "name": "HTTP Request - check Contact not already registered on Event",
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "abcf3935-f143-450a-8745-04df7ea2ae67",
+              "leftValue": "={{ $json.data.learners.pageInfo.totalRecords }}",
+              "rightValue": 1,
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        5424,
+        144
+      ],
+      "id": "f30ffe1f-11eb-48f5-b909-b330d219e307",
+      "name": "If already on Event"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').item.json.apiUrl }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "=mutation createContacts ($contactCreateInput:[ContactCreateInput]!) {\n  contact{\n    createBatch(input:$contactCreateInput){\n      contact{\n        id\n        personalName{\n          firstName\n          lastName\n        }\n        account{\n          id\n          name\n        }\n        emailAddress\n      }\n      errors{\n        label\n        message\n        value\n      }\n    }\n  }\n}"
+            },
+            {
+              "name": "variables",
+              "value": "={\"contactCreateInput\": {{ $json.contactCreateInput.toJsonString() }}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        5296,
+        1312
+      ],
+      "id": "a9ea8280-9bbf-4896-80c3-11db37842f3d",
+      "name": "HTTP Request - create Contact",
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## Contact creation\nNew contacts are created in one batch under the matched non-individual account.\n\nTo set contact custom fields from extra spreadsheet columns, add them to `contactCreateInput` in **Prepare for Batch Contact Creation**.",
+        "height": 432,
+        "width": 256,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        5216,
+        1136
+      ],
+      "typeVersion": 1,
+      "id": "ced4de4f-106c-4b57-9cbe-d5a291d6f19e",
+      "name": "Note – Contact Creation"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').item.json.apiUrl }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "=mutation registerContact{\n  event{\n    registerContacts(\n      eventId: \"{{ $('Set EventID on each Result from Excel').item.json.eventId }}\"\n      input:{\n        contacts:[\"{{ $json.data.contacts.edges[0].node.id }}\"]\n      }\n    ){\n      errors{\n        label\n        message\n        value\n      }\n      event{\n        id\n        bookedPlaces\n      }\n      learners{\n        id\n        contact{\n          id\n          personalName{\n            firstName\n            lastName\n          }\n          emailAddress\n          account{\n            id\n            name\n          }\n        }\n      }\n    }\n  }\n}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        6256,
+        464
+      ],
+      "id": "95a81f19-cc4a-4103-bf86-810fdab8c895",
+      "name": "HTTP Request - Register Existing Contacts to Event",
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').item.json.apiUrl }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "=mutation registerContact{\n  event{\n    registerContacts(\n      eventId: \"{{ $json.eventId }}\"\n      input:{\n        contacts:[\"{{ $json.contact.id }}\"]\n      }\n    ){\n      errors{\n        label\n        message\n        value\n      }\n      event{\n        id\n        bookedPlaces\n      }\n      learners{\n        id\n        contact{\n          id\n          personalName{\n            firstName\n            lastName\n          }\n          emailAddress\n          account{\n            id\n            name\n          }\n        }\n      }\n    }\n  }\n}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        7216,
+        1328
+      ],
+      "id": "0ecb24e7-e6b8-4285-aad8-e0c39a6f69f8",
+      "name": "HTTP Request - Register New Contact to Event",
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## Credentials\nEvery Administrate node in this workflow (the trigger, the **Administrate API** node and all **HTTP Request** nodes) uses one **Administrate OAuth2** credential.\n\nSelect it in each node after importing. The GraphQL URL comes from `apiUrl` in **Config**.",
+        "height": 448,
+        "width": 272,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        544,
+        592
+      ],
+      "typeVersion": 1,
+      "id": "16ac4e96-a32b-4117-9547-6d6da6506557",
+      "name": "Note – Credentials"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "341560bf-9a67-49dd-9018-201b568fe3bd",
+              "leftValue": "={{ $json.data.accounts.edges[0].node.isIndividual }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        5520,
+        880
+      ],
+      "id": "4781abdb-b101-46de-a535-9852523ede5b",
+      "name": "If Account IsIndividual"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a4b209b6-32af-4a19-86d5-b629a782577e",
+              "name": "message",
+              "value": "= | {{ new Date().toLocaleString('en-GB') }} Contact {{ $('If ContactID Exists').item.json['First Name'] }} {{ $('If ContactID Exists').item.json['Last Name'] }} was not created. Account specified is an Individual Account",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        6320,
+        864
+      ],
+      "id": "f0678745-c783-4f7d-a980-5047a9c24b55",
+      "name": "Record IsIndividual error message"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "525e9814-789a-416a-8b7a-07a2f182f22a",
+              "name": "message",
+              "value": "= | {{ new Date().toLocaleString('en-GB') }} Contact {{ $('If ContactID Exists').item.json['First Name'] }} {{ $('If ContactID Exists').item.json['Last Name'] }} was not created. Account Name provided not found",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        6320,
+        1088
+      ],
+      "id": "8793b6ae-14a5-4423-a202-a842faecd7e2",
+      "name": "Record Account Does Not Exist error message"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "7642767f-379a-40cb-8538-2f70c7de411a",
+              "name": "Message",
+              "value": "=| {{ new Date().toLocaleString('en-GB') }} Contact {{ $json.data.event.registerContacts.learners[0].contact.personalName.firstName }} {{ $json.data.event.registerContacts.learners[0].contact.personalName.lastName }} was created and Registered to Event",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        8848,
+        1104
+      ],
+      "id": "e419e9bd-4f65-42aa-972b-df70ba868fd2",
+      "name": "Record Contact Created and Registered message"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        7200,
+        880
+      ],
+      "id": "448d506b-c700-49fb-9517-73f2197b857b",
+      "name": "Collect status messages"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        9600,
+        1024
+      ],
+      "id": "516b2816-3cf4-45a6-af82-51e05286d26e",
+      "name": "Collect status messages1"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        9872,
+        896
+      ],
+      "id": "92c8e8db-e0e2-4e37-a781-c0da59dc7394",
+      "name": "Collect status messages2"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        10272,
+        720
+      ],
+      "id": "b294e8a8-4b7e-4252-90cb-ca44dd78b7b0",
+      "name": "Collect status messages3"
+    },
+    {
+      "parameters": {
+        "fieldsToAggregate": {
+          "fieldToAggregate": [
+            {
+              "fieldToAggregate": "message"
+            },
+            {
+              "fieldToAggregate": "Message"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        10496,
+        720
+      ],
+      "id": "19798fda-8057-4371-9795-aca64cb70a40",
+      "name": "Combine status messages"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').item.json.apiUrl }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "=query event {\n  events(filters:{field: id, operation: eq, value: \"{{ $('Get EventID and EventType').item.json.eventId }}\"}){\n    edges{\n      node{\n        id\n        internalNotes\n      }\n    }\n  }\n}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        10752,
+        720
+      ],
+      "id": "ea932af6-b5de-4b62-bd12-11cabf9827d9",
+      "name": "Retrieve Existing Event Internal Notes",
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').item.json.apiUrl }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "options": {},
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  query: `mutation updateEvent($eventId: ID!, $internalNotes: String) {\n  event {\n    update(eventId: $eventId, input: { internalNotes: $internalNotes }) {\n      errors {\n        label\n        message\n        value\n      }\n      event {\n        id\n        legacyId\n        internalNotes\n      }\n    }\n  }\n}`,\n  variables: {\n    eventId: $json.data.events.edges[0].node.id,\n    internalNotes: ($json.data.events.edges[0].node.internalNotes ?? '')\n      + '<p>REGISTER LEARNERS VIA SPREADSHEET: '\n      + [].concat($('Combine status messages').item.json.message ?? [], $('Combine status messages').item.json.Message ?? []).join(', ')\n      + '</p>'\n  }\n}) }}"
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        11072,
+        720
+      ],
+      "id": "2ad69571-932d-4917-ba69-f7f98bcd05d3",
+      "name": "Apply status messages to Event Internal Notes",
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "2611af56-d837-49d0-b073-2c02380c0630",
+              "name": "message",
+              "value": "= | {{ new Date().toLocaleString('en-GB') }} Contact {{ $json.data.event.registerContacts.learners[0].contact.personalName.firstName }} {{ $json.data.event.registerContacts.learners[0].contact.personalName.lastName }} was successfully registered on to Event",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        7216,
+        448
+      ],
+      "id": "74d3f492-347d-4296-b811-0c5b99cdd0b4",
+      "name": "Record Contact Registered message"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "45dd6920-9e01-4e01-a1f1-bb9c55201e96",
+              "name": "data.contacts.edges[0].node.id",
+              "value": "={{ $('If ContactID Exists').item.json.data.contacts.edges[0].node.id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        5792,
+        464
+      ],
+      "id": "940865e5-6615-48d9-a153-092d651069bf",
+      "name": "Collect ContactIDs for Registering"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1dceab0c-5a04-49b0-a76d-c3c536840eb8",
+              "name": "data.contacts.edges[0].node.id",
+              "value": "={{ $('If ContactID Exists').item.json.data.contacts.edges[0].node.id }}",
+              "type": "string"
+            },
+            {
+              "id": "2a937b7f-f3fe-40cc-99c2-c06de5ead95a",
+              "name": "First Name",
+              "value": "={{ $('Set EventID on each Result from Excel').item.json['First Name'] }}",
+              "type": "string"
+            },
+            {
+              "id": "cf1aa823-c88a-4c1d-8141-242cca6edd43",
+              "name": "Last Name",
+              "value": "={{ $('Set EventID on each Result from Excel').item.json['Last Name'] }}",
+              "type": "string"
+            },
+            {
+              "id": "c0f0e155-0877-429f-8ea9-565fae2aae03",
+              "name": "email",
+              "value": "={{ $('Set EventID on each Result from Excel').item.json.email }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        6240,
+        128
+      ],
+      "id": "54cf0cb7-dbda-4034-81fa-c45eee0f40b6",
+      "name": "Collect Details of already registered Contact"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "9d05f06f-fa5e-448b-bebc-40d48f5b69c4",
+              "name": "message",
+              "value": "= | {{ new Date().toLocaleString('en-GB') }} Contact {{ $json['First Name'] }} {{ $json['Last Name'] }} is already registered on Event",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        6816,
+        128
+      ],
+      "id": "2b6ceaab-7fe4-42d6-9e35-170a86f0a779",
+      "name": "Record Contact Already Registered message"
+    },
+    {
+      "parameters": {
+        "content": "## About this workflow\n**Prerequisites**\n- An **Administrate OAuth2** credential (see the Credentials note)\n- Optional: a DMS folder for import files (`dmsFolderName` in **Config**, reference only)\n\n**How to use it**\nCreate a spreadsheet (.xlsx) whose first row holds these headers (names are set in **Config**):\n- Account Name\n- email\n- First Name\n- Last Name\n\nAttach the file to the Event (Documents section on the Outline tab), then run **Import Learners from Spreadsheet** from the Event's Automator menu.",
+        "height": 448,
+        "width": 912
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        0,
+        0
+      ],
+      "typeVersion": 1,
+      "id": "37a54d31-5af6-40d7-a720-00102b82a526",
+      "name": "Note – About"
+    },
+    {
+      "parameters": {
+        "content": "## What it does\nThe workflow takes the data from the Excel file, and looks at each entry:\nIt will search for existing contacts by their email address. If there is an existing contact with this email address, it will use them. If an existing Contact in the Excel file is already registered on the Event, it will not attempt to add them again.\nIf the existing Contact is not already on the Event, it will register them on to it.\n\nIf there are no existing Contacts with the email address provided, the workflow will search for the Account Name provided:\nIf the Account is not found, the contact will not be created\nIf the Account is an Individual Account, the contact will not be created\nIf the Account name is found, a new Contact will be created under it.\nIt will then register this new Contact on to the Event.\n\nAll above scenarios record a message for each Contact in the Excel file. These will then be added to the Event's internal notes to give a summary of what contacts have been added/not added/created/not created, and why.\n\nNames and values containing quotes or apostrophes are sent as GraphQL variables, so they can't break the queries.",
+        "height": 448,
+        "width": 800
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        928,
+        0
+      ],
+      "typeVersion": 1,
+      "id": "3b80b21e-1c7f-435e-8602-d66c3b69785e",
+      "name": "Note – What It Does"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "a1",
+              "leftValue": "={{ $json[$('Config').item.json.colEmail] }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        2928,
+        752
+      ],
+      "id": "284a3594-835b-4ffe-8646-0be6ebc64fe9",
+      "name": "If any Excel files empty"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "2364b3d1-6b46-484d-8c95-fb0a9fac5c30",
+              "leftValue": "={{ $json.data.event.registerContacts.errors }}",
+              "rightValue": "",
+              "operator": {
+                "type": "array",
+                "operation": "empty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        6656,
+        464
+      ],
+      "id": "cf319189-e001-492a-87f3-3f4336e6c688",
+      "name": "If registration successful"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "865c822d-6f90-4591-ae44-86803f82e8c5",
+              "name": "message",
+              "value": "=| {{ new Date().toLocaleString('en-GB') }} Contact {{ $('If ContactID Exists').item.json['First Name'] }} {{ $('If ContactID Exists').item.json['Last Name'] }} was not registered on Event. Reason: {{ $json.data.event.registerContacts.errors[0].message }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        7216,
+        688
+      ],
+      "id": "46d90845-cd74-4492-96d0-bcf793a680f4",
+      "name": "Record error message"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        7632,
+        672
+      ],
+      "id": "d2fe6f84-4c3e-4e57-9aeb-ae423a593628",
+      "name": "Collect status messages4"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "bcf6a61a-1ab4-4d8e-a044-1392475d1a75",
+              "leftValue": "={{ $json.data.event.registerContacts.errors }}",
+              "rightValue": "",
+              "operator": {
+                "type": "array",
+                "operation": "empty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        7856,
+        1328
+      ],
+      "id": "e3080133-6da0-4e71-aa82-baf18576b3f9",
+      "name": "If registration successful1"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c3cf4a58-bc44-4411-be1e-68154927bda6",
+              "name": "message",
+              "value": "= | {{ new Date().toLocaleString('en-GB') }} {{ $('Split Out Contacts').item.json.contact.personalName.firstName }} {{ $('Split Out Contacts').item.json.contact.personalName.lastName }} was created but not registered on Event. Reason: {{ $json.data.event.registerContacts.errors[0].message }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        8864,
+        1424
+      ],
+      "id": "034c3adc-b12c-463c-9e6e-43e95eddd18d",
+      "name": "Record error message1"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        9376,
+        1120
+      ],
+      "id": "4bdbcd8d-d71c-4427-b122-1fb4a156e164",
+      "name": "Collect status messages5"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        9168,
+        1728
+      ],
+      "id": "b7c32c38-4f14-4f82-9175-05f6caf41ab0",
+      "name": "Merge1"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "170e870c-0e56-4ab9-a926-9c395fe80bcf",
+              "leftValue": "={{ $json.errors }}",
+              "rightValue": "",
+              "operator": {
+                "type": "array",
+                "operation": "empty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        5792,
+        1312
+      ],
+      "id": "b569aa40-73e7-4137-bfb7-3241086d4b04",
+      "name": "If Contact Creation Successful"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "6a49c3c5-f8bc-40c6-b9f2-d3fea4ee6e25",
+              "name": "message",
+              "value": "= |{{ new Date().toLocaleString() }} Contact {{ $('If ContactID Exists').item.json['First Name'] }} {{ $('If ContactID Exists').item.json['Last Name'] }} was not created or registered on to Event. Reason: {{ $json.data.contact.create.errors[0].message }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        5824,
+        1744
+      ],
+      "id": "aec1580e-cb85-412c-8551-029d1c27a058",
+      "name": "Record Contact Creation Error"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "8641a44d-f96e-49d5-99e2-ca17f27a6c33",
+              "name": "FirstName",
+              "value": "={{ $('If ContactID Exists').item.json['First Name'] }}",
+              "type": "string"
+            },
+            {
+              "id": "4596778f-befe-421e-9a25-e2f3030c7904",
+              "name": "LastName",
+              "value": "={{ $('If ContactID Exists').item.json['Last Name'] }}",
+              "type": "string"
+            },
+            {
+              "id": "b08c5904-8fec-427c-b628-3e846809a9c9",
+              "name": "email",
+              "value": "={{ $('If ContactID Exists').item.json.email }}",
+              "type": "string"
+            },
+            {
+              "id": "b590806b-a87c-4c41-8072-ceb8df1e7037",
+              "name": "AccountId",
+              "value": "={{ $json.data.accounts.edges[0].node.id }}",
+              "type": "string"
+            },
+            {
+              "id": "e5fddd36-0177-47e5-9784-a5528cd6af0a",
+              "name": "eventId",
+              "value": "={{ $('Set EventID on each Result from Excel').item.json.eventId }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        4720,
+        1568
+      ],
+      "id": "cc9f5f04-bc1f-42b4-98ff-992efe3616f9",
+      "name": "Collect Contact Details"
+    },
+    {
+      "parameters": {
+        "jsCode": "const contactCreateInput = $input.all().map(item => {\n  return {\n      \"personalName\": {\n        \"firstName\": item.json.FirstName,\n        \"lastName\": item.json.LastName\n      },\n      \"accountId\": item.json.AccountId,\n      \"emailAddresses\": [\n        {\n          \"usage\": \"primary\",\n          \"address\": item.json.email\n        }\n      ],\n      \n  };\n})\n\nreturn {\n  \"contactCreateInput\": contactCreateInput\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4944,
+        1392
+      ],
+      "id": "27d7f830-50b2-41e8-81b4-727d03dad8cd",
+      "name": "Prepare for Batch Contact Creation"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "data.contact.createBatch",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        5584,
+        1312
+      ],
+      "id": "00c38dc7-5005-4fc0-a84f-3381a396d081",
+      "name": "Split Out Contacts"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        6048,
+        1552
+      ],
+      "id": "a4ce343e-27ed-4092-a118-9205289d1a22",
+      "name": "Collect ContactIDs and EventID"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "980081e8-9cff-4a01-bf3b-f16f4f268331",
+              "name": "contact.id",
+              "value": "={{$json[\"contact\"] ? $json[\"contact\"][\"id\"] : undefined}}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        6224,
+        1552
+      ],
+      "id": "fbb5bdc5-ac1b-49a7-98be-21632d51bfd0",
+      "name": "Collect ContactIDs and EventID1"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "b76a9c46-52b5-4c9f-bcd7-d88efc1d170f",
+              "leftValue": "={{ $json.contact.id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.3,
+      "position": [
+        6416,
+        1552
+      ],
+      "id": "99a21bef-1eb3-47ef-b73d-e2b8c9ff31b4",
+      "name": "Collect ContactIDs and EventID2"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "6a27f887-4e55-4a15-bcba-26ed9980d238",
+              "name": "eventId",
+              "value": "={{ $items(\"Collect ContactIDs and EventID\").map(item => item.json.eventId).filter(id => id)[0] }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        6624,
+        1552
+      ],
+      "id": "57ecb84e-c3cd-4a53-8dd1-e98adf1c242f",
+      "name": "Collect ContactIDs and EventID3"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "d7239395-5d24-4831-b0cc-777378749059",
+              "name": "eventId",
+              "value": "={{ $json.eventId }}",
+              "type": "string"
+            },
+            {
+              "id": "c87b826c-ab86-4589-84bf-e0c9f2f71515",
+              "name": "contact.id",
+              "value": "={{ $('Collect ContactIDs and EventID1').item.json.contact.id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        6832,
+        1552
+      ],
+      "id": "874f7ffe-cf81-4d26-a05d-e703de7abb43",
+      "name": "Collect ContactIDs and EventID4"
+    },
+    {
+      "parameters": {
+        "events": "V2ViaG9va1R5cGU6bWFudWFsX2V2ZW50",
+        "name": "Import Learners from Spreadsheet"
+      },
+      "type": "CUSTOM.administrateTrigger",
+      "typeVersion": 1,
+      "position": [
+        624,
+        768
+      ],
+      "id": "2979286a-e481-4a31-9647-a9fbdd15dcde",
+      "name": "Import from Excel Webhook",
+      "webhookId": "b76dc500-06ba-4ea9-b397-b0f7e91bffba",
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c1",
+              "name": "apiUrl",
+              "value": "https://api.getadministrate.com/graphql",
+              "type": "string"
+            },
+            {
+              "id": "c2",
+              "name": "allowedFileExtensions",
+              "value": "xlsx,xls",
+              "type": "string"
+            },
+            {
+              "id": "c3",
+              "name": "documentNameFirstChoice",
+              "value": "attendees",
+              "type": "string"
+            },
+            {
+              "id": "c4",
+              "name": "documentNameSecondChoice",
+              "value": "import",
+              "type": "string"
+            },
+            {
+              "id": "c5",
+              "name": "colEmail",
+              "value": "email",
+              "type": "string"
+            },
+            {
+              "id": "c6",
+              "name": "colFirstName",
+              "value": "First Name",
+              "type": "string"
+            },
+            {
+              "id": "c7",
+              "name": "colLastName",
+              "value": "Last Name",
+              "type": "string"
+            },
+            {
+              "id": "c8",
+              "name": "colAccountName",
+              "value": "Account Name",
+              "type": "string"
+            },
+            {
+              "id": "c9",
+              "name": "dmsFolderName",
+              "value": "Student Import Files",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "719a0d20-5707-45bd-871e-ed34a42edc2b",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        832,
+        768
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Config Explained\nEvery value that might need changing lives in the **Config** node below. Edit it there once; everything downstream reads from it.\n\n**apiUrl** — The Administrate GraphQL endpoint every API call uses. The default public endpoint works for every instance; the OAuth2 credential decides which instance is used.\n\n**allowedFileExtensions** — Comma-separated file types the workflow will treat as the import spreadsheet (default `xlsx,xls`). Widen only if you start uploading other formats.\n\n**documentNameFirstChoice / documentNameSecondChoice** — If an Event has several attached files, the workflow picks the one whose name contains the first choice (`attendees`), then the second (`import`), then falls back to the first spreadsheet found. Change these to match how you name your upload.\n\n**colEmail / colFirstName / colLastName / colAccountName** — The exact column header names in your Excel file. Update these if your spreadsheet uses different headers.\n\n**dmsFolderName** — The DMS folder learners' files live in (default `Student Import Files`). Reference only — used in the instructions, not enforced by logic.\n\n**Credentials** — Not in Config. Select the Administrate OAuth2 credential on each Administrate node after importing.",
+        "height": 756,
+        "width": 572,
+        "color": 4
+      },
+      "id": "95ad304f-b55f-4942-950a-1f896456652f",
+      "name": "Config Explained",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        864,
+        1024
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Administrate API - Get DmsDoc URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File": {
+      "main": [
+        [
+          {
+            "node": "If any Excel files empty",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get EventID and EventType": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request - Get Event Docs",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "HTTP Request - Get Event Docs": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Administrate API - Get DmsDoc URL": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request - Get Excel Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request - Look up if Contacts already Exist": {
+      "main": [
+        [
+          {
+            "node": "Set ContactIDs and Account info on each row from Excel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If ContactID Exists": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request - check Contact not already registered on Event",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "HTTP Request - Get AccountID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request - Get AccountID": {
+      "main": [
+        [
+          {
+            "node": "Check Account Exists and is not Individual",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Account Exists and is not Individual": {
+      "main": [
+        [
+          {
+            "node": "If Account IsIndividual",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Collect Contact Details",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request - check Contact not already registered on Event": {
+      "main": [
+        [
+          {
+            "node": "If already on Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If already on Event": {
+      "main": [
+        [
+          {
+            "node": "Collect Details of already registered Contact",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Collect ContactIDs for Registering",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request - create Contact": {
+      "main": [
+        [
+          {
+            "node": "Split Out Contacts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request - Register Existing Contacts to Event": {
+      "main": [
+        [
+          {
+            "node": "If registration successful",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request - Register New Contact to Event": {
+      "main": [
+        [
+          {
+            "node": "If registration successful1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If Account IsIndividual": {
+      "main": [
+        [
+          {
+            "node": "Record IsIndividual error message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Record Account Does Not Exist error message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Record IsIndividual error message": {
+      "main": [
+        [
+          {
+            "node": "Collect status messages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Record Account Does Not Exist error message": {
+      "main": [
+        [
+          {
+            "node": "Collect status messages",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Record Contact Created and Registered message": {
+      "main": [
+        [
+          {
+            "node": "Collect status messages5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collect status messages": {
+      "main": [
+        [
+          {
+            "node": "Collect status messages1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collect status messages1": {
+      "main": [
+        [
+          {
+            "node": "Collect status messages2",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Collect status messages2": {
+      "main": [
+        [
+          {
+            "node": "Collect status messages3",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Collect status messages3": {
+      "main": [
+        [
+          {
+            "node": "Combine status messages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Combine status messages": {
+      "main": [
+        [
+          {
+            "node": "Retrieve Existing Event Internal Notes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Retrieve Existing Event Internal Notes": {
+      "main": [
+        [
+          {
+            "node": "Apply status messages to Event Internal Notes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Record Contact Registered message": {
+      "main": [
+        [
+          {
+            "node": "Collect status messages4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collect ContactIDs for Registering": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request - Register Existing Contacts to Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collect Details of already registered Contact": {
+      "main": [
+        [
+          {
+            "node": "Record Contact Already Registered message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Record Contact Already Registered message": {
+      "main": [
+        [
+          {
+            "node": "Collect status messages3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If registration successful": {
+      "main": [
+        [
+          {
+            "node": "Record Contact Registered message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Record error message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Record error message": {
+      "main": [
+        [
+          {
+            "node": "Collect status messages4",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Collect status messages4": {
+      "main": [
+        [
+          {
+            "node": "Collect status messages2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If registration successful1": {
+      "main": [
+        [
+          {
+            "node": "Record Contact Created and Registered message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Record error message1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Record error message1": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collect status messages5": {
+      "main": [
+        [
+          {
+            "node": "Collect status messages1",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge1": {
+      "main": [
+        [
+          {
+            "node": "Collect status messages5",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "If Contact Creation Successful": {
+      "main": [
+        [
+          {
+            "node": "Collect ContactIDs and EventID",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Record Contact Creation Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Record Contact Creation Error": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Collect Contact Details": {
+      "main": [
+        [
+          {
+            "node": "Prepare for Batch Contact Creation",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Collect ContactIDs and EventID",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Prepare for Batch Contact Creation": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request - create Contact",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out Contacts": {
+      "main": [
+        [
+          {
+            "node": "If Contact Creation Successful",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collect ContactIDs and EventID": {
+      "main": [
+        [
+          {
+            "node": "Collect ContactIDs and EventID1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collect ContactIDs and EventID1": {
+      "main": [
+        [
+          {
+            "node": "Collect ContactIDs and EventID2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collect ContactIDs and EventID2": {
+      "main": [
+        [
+          {
+            "node": "Collect ContactIDs and EventID3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collect ContactIDs and EventID3": {
+      "main": [
+        [
+          {
+            "node": "Collect ContactIDs and EventID4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collect ContactIDs and EventID4": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request - Register New Contact to Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request - Get Excel Data": {
+      "main": [
+        [
+          {
+            "node": "Extract from File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set EventID on each Result from Excel": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request - Look up if Contacts already Exist",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set ContactIDs and Account info on each row from Excel": {
+      "main": [
+        [
+          {
+            "node": "If ContactID Exists",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If any Excel files empty": {
+      "main": [
+        [
+          {
+            "node": "Set EventID on each Result from Excel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Import from Excel Webhook": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Get EventID and EventType",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "availableInMCP": true
+  },
+  "tags": []
+}

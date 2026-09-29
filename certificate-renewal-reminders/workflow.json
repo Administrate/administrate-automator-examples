@@ -1,0 +1,1038 @@
+{
+  "name": "Certificate Renewal Reminders",
+  "nodes": [
+    {
+      "id": "da0e068a-3400-442a-8f96-7965fe41f7bf",
+      "name": "Daily 07:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 7 * * *"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "61d0b9e0-9323-4add-b1a6-152ba1d2e7fc",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        220,
+        0
+      ],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a1",
+              "name": "GRAPHQL_URL",
+              "type": "string",
+              "value": "https://api.getadministrate.com/graphql"
+            },
+            {
+              "id": "a2",
+              "name": "RENEWABLE_ACHIEVEMENT_TYPE_IDS",
+              "type": "string",
+              "value": "REPLACE_WITH_ACHIEVEMENT_TYPE_IDS_COMMA_SEPARATED"
+            },
+            {
+              "id": "a3",
+              "name": "NOTICE_PERIOD_MONTHS",
+              "type": "number",
+              "value": 6
+            },
+            {
+              "id": "a4",
+              "name": "FLOOR_DATE",
+              "type": "string",
+              "value": "2021-01-01"
+            },
+            {
+              "id": "a5",
+              "name": "WINDOW_DAYS",
+              "type": "number",
+              "value": 31
+            },
+            {
+              "id": "a6",
+              "name": "DRY_RUN",
+              "type": "boolean",
+              "value": true
+            },
+            {
+              "id": "a7",
+              "name": "MAX_PER_RUN",
+              "type": "number",
+              "value": 400
+            },
+            {
+              "id": "a8",
+              "name": "SENDING_ADDRESS_ID",
+              "type": "string",
+              "value": "REPLACE_WITH_SENDING_EMAIL_ADDRESS_ID"
+            },
+            {
+              "id": "a9",
+              "name": "TEMPLATE_ID",
+              "type": "string",
+              "value": "REPLACE_WITH_COMMUNICATION_TEMPLATE_ID"
+            },
+            {
+              "id": "a10",
+              "name": "ORIGIN_IDENTIFIER",
+              "type": "string",
+              "value": "Automator - Certificate Renewal Reminder"
+            },
+            {
+              "id": "a11",
+              "name": "CATCHUP_FROM",
+              "type": "string",
+              "value": ""
+            },
+            {
+              "id": "a12",
+              "name": "CATCHUP_TO",
+              "type": "string",
+              "value": ""
+            },
+            {
+              "id": "a13",
+              "name": "TIMEZONE",
+              "type": "string",
+              "value": "Europe/London"
+            },
+            {
+              "id": "a14",
+              "name": "PAGE_SIZE",
+              "type": "number",
+              "value": 100
+            },
+            {
+              "id": "a15",
+              "name": "SEND_AUDIENCE",
+              "type": "string",
+              "value": "passed"
+            },
+            {
+              "id": "a16",
+              "name": "ABORT_ABOVE",
+              "type": "number",
+              "value": 2000
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "7b47cb2d-0fb4-4b49-8c78-a47777698a71",
+      "name": "Count Course Templates",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        440,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.GRAPHQL_URL }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\"query\":\"query CountTemplates { courseTemplates(first: 1) { pageInfo { totalRecords } } }\"}",
+        "options": {}
+      },
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      },
+      "executeOnce": true
+    },
+    {
+      "id": "b8e15196-624b-45e6-aa33-3187aa1cfa47",
+      "name": "Build Register Page Offsets",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        660,
+        0
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const pageSize_int = Number($('Config').first().json.PAGE_SIZE || 100);\nconst count_obj = $input.first().json;\n\n/*\tAdministrate returns a failed query as HTTP 200 with an errors array and\t*/\n/*\tno data block. Reading straight through one produces zero pages, which\t*/\n/*\tlooks exactly like a tenant with no course templates.\t*/\nif (count_obj.errors && count_obj.errors.length > 0)\n{\n\tthrow new Error('Course template count failed: ' + JSON.stringify(count_obj.errors).slice(0, 400));\n}\n\nif (!count_obj.data || !count_obj.data.courseTemplates || !count_obj.data.courseTemplates.pageInfo)\n{\n\tthrow new Error('Course template count returned no data block, so the register size is unknown and nothing downstream can be trusted.');\n}\n\nconst total_int = Number(count_obj.data.courseTemplates.pageInfo.totalRecords || 0);\nconst query_str = 'query Register($after: String, $size: Int) { courseTemplates(first: $size, after: $after) { pageInfo { totalRecords hasNextPage } edges { node { id legacyId title lifecycleState achievementTypes(first: 5) { edges { node { id autoAward achievementType { id name validityPeriod { unit value } } } } } } } } }';\nconst out_ary = [];\nlet offset_int = 0;\n\nwhile (offset_int < total_int)\n{\n\tlet after_var = null;\n\tif (offset_int > 0)\n\t{\n\t\tconst raw_str = 'Cursor:' + (offset_int - 1);\n\t\tif (typeof Buffer !== 'undefined')\n\t\t{\n\t\t\tafter_var = Buffer.from(raw_str, 'utf8').toString('base64');\n\t\t} else {\n\t\t\tafter_var = btoa(raw_str);\n\t\t}\n\t}\n\n\tout_ary.push({ json: {\n\t\toffset: offset_int,\n\t\tgqlBody: JSON.stringify({ query: query_str, variables: { after: after_var, size: pageSize_int } })\n\t} });\n\toffset_int = offset_int + pageSize_int;\n}\n\nif (out_ary.length === 0)\n{\n\tthrow new Error('Register read produced no pages. totalRecords came back as ' + total_int + ', which should never happen on a live tenant.');\n}\n\nreturn out_ary;"
+      }
+    },
+    {
+      "id": "e55107d2-9212-4fc2-bd72-0c0f10f9bdf6",
+      "name": "Read Register Page",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        880,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').first().json.GRAPHQL_URL }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.gqlBody }}",
+        "options": {}
+      },
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "id": "dfb91be8-ba66-4d21-86d7-d8176ede3951",
+      "name": "Extract Renewable Courses",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1100,
+        0
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const wantedRaw_str = String($('Config').first().json.RENEWABLE_ACHIEVEMENT_TYPE_IDS || '');\nconst wanted_ary = [];\nconst parts_ary = wantedRaw_str.split(',');\nlet p_int = 0;\n\nwhile (p_int < parts_ary.length)\n{\n\tconst trimmed_str = parts_ary[p_int].trim();\n\tif (trimmed_str !== '') { wanted_ary.push(trimmed_str); }\n\tp_int = p_int + 1;\n}\n\nconst out_ary = [];\nconst seen_ary = [];\nconst items_ary = $input.all();\nlet coursesSeen_int = 0;\nlet expectedTotal_int = 0;\nlet i_int = 0;\n\nwhile (i_int < items_ary.length)\n{\n\tconst page_obj = items_ary[i_int].json;\n\n\t/*\tA failed page used to fall through to an empty edge list, dropping up\t*/\n\t/*\tto a hundred course templates without a word and leaving the run green.\t*/\n\tif (page_obj.errors && page_obj.errors.length > 0)\n\t{\n\t\tthrow new Error('Register page ' + i_int + ' failed: ' + JSON.stringify(page_obj.errors).slice(0, 400));\n\t}\n\n\tconst payload_obj = page_obj.data;\n\n\tif (!payload_obj || !payload_obj.courseTemplates)\n\t{\n\t\tthrow new Error('Register page ' + i_int + ' returned no data block.');\n\t}\n\n\tconst pageInfo_obj = payload_obj.courseTemplates.pageInfo || {};\n\n\tif (Number(pageInfo_obj.totalRecords || 0) > expectedTotal_int)\n\t{\n\t\texpectedTotal_int = Number(pageInfo_obj.totalRecords || 0);\n\t}\n\n\tconst edges_ary = payload_obj.courseTemplates.edges || [];\n\tlet e_int = 0;\n\n\twhile (e_int < edges_ary.length)\n\t{\n\t\tconst course_obj = edges_ary[e_int].node;\n\t\tcoursesSeen_int = coursesSeen_int + 1;\n\t\tconst attachments_ary = (course_obj.achievementTypes && course_obj.achievementTypes.edges) ? course_obj.achievementTypes.edges : [];\n\t\tlet a_int = 0;\n\n\t\twhile (a_int < attachments_ary.length)\n\t\t{\n\t\t\tconst type_obj = attachments_ary[a_int].node.achievementType;\n\t\t\tconst period_obj = type_obj ? type_obj.validityPeriod : null;\n\n\t\t\tif (type_obj && wanted_ary.indexOf(type_obj.id) !== -1 && period_obj)\n\t\t\t{\n\t\t\t\tlet months_int = 0;\n\t\t\t\tif (period_obj.unit === 'years') { months_int = Number(period_obj.value) * 12; }\n\t\t\t\tif (period_obj.unit === 'months') { months_int = Number(period_obj.value); }\n\n\t\t\t\tif (months_int > 0 && seen_ary.indexOf(course_obj.id) === -1)\n\t\t\t\t{\n\t\t\t\t\tseen_ary.push(course_obj.id);\n\t\t\t\t\tout_ary.push({ json: {\n\t\t\t\t\t\tcourseTemplateId: course_obj.id,\n\t\t\t\t\t\tcourseLegacyId: course_obj.legacyId,\n\t\t\t\t\t\tcourseTitle: String(course_obj.title || '').trim(),\n\t\t\t\t\t\tlifecycleState: course_obj.lifecycleState,\n\t\t\t\t\t\tachievementTypeId: type_obj.id,\n\t\t\t\t\t\tachievementTypeName: String(type_obj.name || '').trim(),\n\t\t\t\t\t\tvalidityMonths: months_int\n\t\t\t\t\t} });\n\t\t\t\t}\n\t\t\t}\n\n\t\t\ta_int = a_int + 1;\n\t\t}\n\n\t\te_int = e_int + 1;\n\t}\n\n\ti_int = i_int + 1;\n}\n\n/*\tCount the work, not the runs. Administrate caps a page at 100 whatever\t*/\n/*\tyou ask for, so a truncated read is indistinguishable from a good one\t*/\n/*\tuntil the totals are compared.\t*/\nif (coursesSeen_int < expectedTotal_int)\n{\n\tthrow new Error('Register read is short: ' + coursesSeen_int + ' course templates read across ' + items_ary.length + ' pages, tenant reports ' + expectedTotal_int + '. A template deleted mid run is a benign cause, anything larger is a truncated read.');\n}\n\nif (out_ary.length === 0)\n{\n\tthrow new Error('No course template carries a renewable achievement type. Expected at least one of: ' + wanted_ary.join(', ') + '. Either every attachment was removed, or RENEWABLE_ACHIEVEMENT_TYPE_IDS holds ids from another tenant.');\n}\n\nreturn out_ary;"
+      }
+    },
+    {
+      "id": "d56dd61b-e32d-4e4c-aa37-3a6527f94743",
+      "name": "Build Interval Windows",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1320,
+        0
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const config_obj = $('Config').first().json;\nconst notice_int = Number(config_obj.NOTICE_PERIOD_MONTHS || 6);\nconst windowDays_int = Number(config_obj.WINDOW_DAYS || 1);\nconst zone_str = String(config_obj.TIMEZONE || 'Europe/London');\nconst floor_str = String(config_obj.FLOOR_DATE || '').trim();\nconst catchupFrom_str = String(config_obj.CATCHUP_FROM || '').trim();\nconst catchupTo_str = String(config_obj.CATCHUP_TO || '').trim();\nconst isCatchup_bln = catchupFrom_str !== '' && catchupTo_str !== '';\n\nconst groups_obj = {};\nconst items_ary = $input.all();\nlet i_int = 0;\n\nwhile (i_int < items_ary.length)\n{\n\tconst row_obj = items_ary[i_int].json;\n\tconst key_str = 'm' + row_obj.validityMonths;\n\n\tif (!groups_obj[key_str])\n\t{\n\t\tgroups_obj[key_str] = { validityMonths: row_obj.validityMonths, courseTemplateIds: [], achievementTypeId: row_obj.achievementTypeId };\n\t}\n\n\tgroups_obj[key_str].courseTemplateIds.push(row_obj.courseTemplateId);\n\ti_int = i_int + 1;\n}\n\nconst today_obj = DateTime.now().setZone(zone_str).startOf('day');\nconst keys_ary = Object.keys(groups_obj);\nconst out_ary = [];\nconst dropped_ary = [];\nconst summary_ary = [];\nlet k_int = 0;\n\nwhile (k_int < keys_ary.length)\n{\n\tconst group_obj = groups_obj[keys_ary[k_int]];\n\tconst dueOffset_int = group_obj.validityMonths - notice_int;\n\tlet from_str = '';\n\tlet to_str = '';\n\n\tif (isCatchup_bln)\n\t{\n\t\tfrom_str = catchupFrom_str;\n\t\tto_str = catchupTo_str;\n\t} else {\n\t\tconst to_obj = today_obj.minus({ months: dueOffset_int });\n\t\tconst from_obj = to_obj.minus({ days: windowDays_int - 1 });\n\t\tfrom_str = from_obj.toFormat('yyyy-MM-dd');\n\t\tto_str = to_obj.toFormat('yyyy-MM-dd');\n\t}\n\n\tconst rawFrom_str = from_str;\n\tlet clamped_bln = false;\n\n\tif (floor_str !== '' && from_str < floor_str)\n\t{\n\t\tfrom_str = floor_str;\n\t\tclamped_bln = true;\n\t}\n\n\tif (from_str <= to_str)\n\t{\n\t\tconst countQuery_str = 'query CountDue($ct: [String], $from: String, $to: String) { learners(first: 1, filters: [{ field: courseTemplateId, operation: in, values: $ct }, { field: hasPassed, operation: eq, value: \"true\" }, { field: isCancelled, operation: eq, value: \"false\" }, { field: eventEndDate, operation: ge, value: $from }, { field: eventEndDate, operation: le, value: $to }]) { pageInfo { totalRecords } } }';\n\n\t\tout_ary.push({ json: {\n\t\t\tvalidityMonths: group_obj.validityMonths,\n\t\t\tachievementTypeId: group_obj.achievementTypeId,\n\t\t\tcourseTemplateIds: group_obj.courseTemplateIds,\n\t\t\tcourseCount: group_obj.courseTemplateIds.length,\n\t\t\tdueFrom: from_str,\n\t\t\tdueTo: to_str,\n\t\t\trunMode: isCatchup_bln ? 'catchup' : 'scheduled',\n\t\t\tgqlBody: JSON.stringify({ query: countQuery_str, variables: { ct: group_obj.courseTemplateIds, from: from_str, to: to_str } })\n\t\t} });\n\t} else {\n\t\t/*\tFLOOR_DATE sits after this interval due date, so the whole group\t*/\n\t\t/*\tvanishes. A five year certificate comes due 54 months after the\t*/\n\t\t/*\tevent and a three year one at 30, so a floor chosen with the three\t*/\n\t\t/*\tyear cohort in mind can delete the five year cohort entirely.\t*/\n\t\tdropped_ary.push({\n\t\t\tvalidityMonths: group_obj.validityMonths,\n\t\t\tcourseCount: group_obj.courseTemplateIds.length,\n\t\t\tcomputedDueFrom: rawFrom_str,\n\t\t\tcomputedDueTo: to_str,\n\t\t\tfloorDate: floor_str,\n\t\t\treason: clamped_bln ? 'FLOOR_DATE is later than this interval due date' : 'computed window is inverted'\n\t\t});\n\n\t\t/*\tPlain prose, no JSON. n8n truncates a long message containing\t*/\n\t\t/*\tbrackets and quotes, and shows the operator the middle of it.\t*/\n\t\tsummary_ary.push('the ' + group_obj.validityMonths + ' month interval covering ' + group_obj.courseTemplateIds.length + ' courses, which comes due between ' + rawFrom_str + ' and ' + to_str);\n\t}\n\n\tk_int = k_int + 1;\n}\n\nif (out_ary.length === 0)\n{\n\tthrow new Error('No reminder can ever be sent while FLOOR_DATE is ' + floor_str + ', because it excludes every interval in use: ' + summary_ary.join(', and ') + ' - a certificate comes due its validity period minus ' + notice_int + ' months after the event, so FLOOR_DATE has to be earlier than that');\n}\n\n/*\tCarry partial drops forward so a half disabled scheme shows up in the run\t*/\n/*\treport rather than only in the reminders nobody received.\t*/\nlet o_int = 0;\n\nwhile (o_int < out_ary.length)\n{\n\tout_ary[o_int].json.droppedGroups = dropped_ary;\n\to_int = o_int + 1;\n}\n\nreturn out_ary;"
+      }
+    },
+    {
+      "id": "1bcbf0a0-1cff-4260-9b4e-5f5c0e0d0a24",
+      "name": "Count Due Learners",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1540,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').first().json.GRAPHQL_URL }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.gqlBody }}",
+        "options": {}
+      },
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "id": "05917dbd-dfc4-49de-98db-b47c041db081",
+      "name": "Build Learner Page Offsets",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1760,
+        0
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const pageSize_int = Number($('Config').first().json.PAGE_SIZE || 100);\nconst groups_ary = $('Build Interval Windows').all();\nconst counts_ary = $input.all();\nconst query_str = 'query DueLearners($ct: [String], $from: String, $to: String, $after: String, $size: Int) { learners(first: $size, after: $after, filters: [{ field: courseTemplateId, operation: in, values: $ct }, { field: hasPassed, operation: eq, value: \"true\" }, { field: isCancelled, operation: eq, value: \"false\" }, { field: eventEndDate, operation: ge, value: $from }, { field: eventEndDate, operation: le, value: $to }]) { pageInfo { totalRecords hasNextPage } edges { node { id legacyId result contactId event { id legacyId end courseTemplate { id legacyId } } } } } }';\nconst out_ary = [];\nlet g_int = 0;\n\nwhile (g_int < counts_ary.length)\n{\n\tconst group_obj = groups_ary[g_int].json;\n\tconst count_obj = counts_ary[g_int].json;\n\n\tif (count_obj.errors && count_obj.errors.length > 0)\n\t{\n\t\tthrow new Error('Due learner count failed for the ' + group_obj.validityMonths + ' month interval: ' + JSON.stringify(count_obj.errors).slice(0, 400));\n\t}\n\n\tif (!count_obj.data || !count_obj.data.learners || !count_obj.data.learners.pageInfo)\n\t{\n\t\tthrow new Error('Due learner count returned no data block for the ' + group_obj.validityMonths + ' month interval, so the page count would be zero and the whole interval would be skipped in silence.');\n\t}\n\n\tconst total_int = Number(count_obj.data.learners.pageInfo.totalRecords || 0);\n\tlet offset_int = 0;\n\n\twhile (offset_int < total_int)\n\t{\n\t\tlet after_var = null;\n\t\tif (offset_int > 0)\n\t\t{\n\t\t\tconst raw_str = 'Cursor:' + (offset_int - 1);\n\t\t\tif (typeof Buffer !== 'undefined')\n\t\t\t{\n\t\t\t\tafter_var = Buffer.from(raw_str, 'utf8').toString('base64');\n\t\t\t} else {\n\t\t\t\tafter_var = btoa(raw_str);\n\t\t\t}\n\t\t}\n\n\t\tout_ary.push({ json: {\n\t\t\tvalidityMonths: group_obj.validityMonths,\n\t\t\tachievementTypeId: group_obj.achievementTypeId,\n\t\t\trunMode: group_obj.runMode,\n\t\t\tdueFrom: group_obj.dueFrom,\n\t\t\tdueTo: group_obj.dueTo,\n\t\t\tdueTotal: total_int,\n\t\t\tgqlBody: JSON.stringify({ query: query_str, variables: { ct: group_obj.courseTemplateIds, from: group_obj.dueFrom, to: group_obj.dueTo, after: after_var, size: pageSize_int } })\n\t\t} });\n\t\toffset_int = offset_int + pageSize_int;\n\t}\n\n\tg_int = g_int + 1;\n}\n\nreturn out_ary;"
+      }
+    },
+    {
+      "id": "1e355d83-bc8d-43e2-abb2-5d661d7dd39f",
+      "name": "Read Due Learners Page",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1980,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').first().json.GRAPHQL_URL }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.gqlBody }}",
+        "options": {}
+      },
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "id": "8ea4104c-c057-4032-89aa-a507b82ea580",
+      "name": "Flatten Due Learners",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2200,
+        0
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const pages_ary = $('Build Learner Page Offsets').all();\nconst items_ary = $input.all();\nconst out_ary = [];\nconst expected_obj = {};\nconst seen_obj = {};\nlet i_int = 0;\n\nwhile (i_int < items_ary.length)\n{\n\tconst context_obj = pages_ary[i_int].json;\n\tconst page_obj = items_ary[i_int].json;\n\n\t/*\tA dropped page here means those learners silently miss their reminder\t*/\n\t/*\tand, because nothing is written to the dedupe table for them, they are\t*/\n\t/*\tpicked up tomorrow only if the window still covers them. With\t*/\n\t/*\tWINDOW_DAYS at 1 it will not.\t*/\n\tif (page_obj.errors && page_obj.errors.length > 0)\n\t{\n\t\tthrow new Error('Due learner page ' + i_int + ' failed: ' + JSON.stringify(page_obj.errors).slice(0, 400));\n\t}\n\n\tconst payload_obj = page_obj.data;\n\n\tif (!payload_obj || !payload_obj.learners)\n\t{\n\t\tthrow new Error('Due learner page ' + i_int + ' returned no data block.');\n\t}\n\n\tconst key_str = 'm' + context_obj.validityMonths;\n\texpected_obj[key_str] = Number(context_obj.dueTotal || 0);\n\tif (!seen_obj[key_str]) { seen_obj[key_str] = 0; }\n\n\tconst edges_ary = payload_obj.learners.edges || [];\n\tseen_obj[key_str] = seen_obj[key_str] + edges_ary.length;\n\tlet e_int = 0;\n\n\twhile (e_int < edges_ary.length)\n\t{\n\t\tconst learner_obj = edges_ary[e_int].node;\n\t\tconst event_obj = learner_obj.event || {};\n\t\tconst course_obj = event_obj.courseTemplate || {};\n\n\t\tout_ary.push({ json: {\n\t\t\tlearnerId: learner_obj.id,\n\t\t\tlearnerLegacyId: learner_obj.legacyId,\n\t\t\tcontactId: learner_obj.contactId,\n\t\t\tresult: learner_obj.result,\n\t\t\teventId: event_obj.id,\n\t\t\teventLegacyId: event_obj.legacyId,\n\t\t\teventEnd: event_obj.end,\n\t\t\tcourseTemplateId: course_obj.id,\n\t\t\tcourseTemplateLegacyId: course_obj.legacyId,\n\t\t\tvalidityMonths: context_obj.validityMonths,\n\t\t\tachievementTypeId: context_obj.achievementTypeId,\n\t\t\trunMode: context_obj.runMode\n\t\t} });\n\t\te_int = e_int + 1;\n\t}\n\n\ti_int = i_int + 1;\n}\n\nconst checkKeys_ary = Object.keys(expected_obj);\nlet c_int = 0;\n\nwhile (c_int < checkKeys_ary.length)\n{\n\tconst key_str = checkKeys_ary[c_int];\n\n\tif (seen_obj[key_str] < expected_obj[key_str])\n\t{\n\t\tthrow new Error('Due learner read is short for interval ' + key_str + ': read ' + seen_obj[key_str] + ' of ' + expected_obj[key_str] + '. A truncated read means real delegates silently miss their reminder.');\n\t}\n\n\tc_int = c_int + 1;\n}\n\nreturn out_ary;"
+      }
+    },
+    {
+      "id": "8ce46130-e41a-4c20-9f9f-ca9ac0364654",
+      "name": "Read Sent Log",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        2640,
+        0
+      ],
+      "parameters": {
+        "dataTableId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "REPLACE_WITH_SENT_LOG_DATA_TABLE_ID"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "condition": "eq",
+              "keyName": "event_id",
+              "keyValue": "={{ $json.eventId }}"
+            }
+          ]
+        },
+        "matchType": "allConditions",
+        "operation": "get",
+        "returnAll": true
+      },
+      "executeOnce": false,
+      "alwaysOutputData": true
+    },
+    {
+      "id": "17ffeb59-1508-48c8-9d55-ece140c81c54",
+      "name": "Select Sendable",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2860,
+        0
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const config_obj = $('Config').first().json;\nconst cap_int = Number(config_obj.MAX_PER_RUN || 50);\nconst abortAbove_int = Number(config_obj.ABORT_ABOVE || 0);\nconst due_ary = $('Flatten Due Learners').all();\nconst sent_ary = $('Read Sent Log').all();\n\n/*\tThe sent log is now read once per due event rather than in full, so this\t*/\n/*\tholds only the rows for events actually in play. A Set rather than an array\t*/\n/*\tscan because a catch up run makes both sides large at once.\t*/\nconst sentKeys_set = new Set();\nlet s_int = 0;\n\nwhile (s_int < sent_ary.length)\n{\n\tconst row_obj = sent_ary[s_int].json;\n\n\t/*\talwaysOutputData synthesises an empty item when an event has no rows\t*/\n\t/*\tyet, which is the normal case on a first run.\t*/\n\tif (row_obj && row_obj.learner_id)\n\t{\n\t\tsentKeys_set.add(String(row_obj.learner_id) + '|' + String(row_obj.event_id));\n\t}\n\n\ts_int = s_int + 1;\n}\n\nconst candidates_ary = [];\nlet skippedDuplicate_int = 0;\nlet d_int = 0;\n\nwhile (d_int < due_ary.length)\n{\n\tconst row_obj = due_ary[d_int].json;\n\tconst key_str = String(row_obj.learnerId) + '|' + String(row_obj.eventId);\n\n\tif (sentKeys_set.has(key_str))\n\t{\n\t\tskippedDuplicate_int = skippedDuplicate_int + 1;\n\t} else {\n\t\trow_obj.dedupeKey = key_str;\n\t\tcandidates_ary.push(row_obj);\n\t}\n\n\td_int = d_int + 1;\n}\n\n/*\tMAX_PER_RUN throttles, it does not protect. If the selection itself has gone\t*/\n/*\twrong, a throttle still mails whatever fits and calls it a good day's work.\t*/\n/*\tABORT_ABOVE refuses the whole run instead, which is the right answer when\t*/\n/*\tthe number is absurd rather than merely large.\t*/\nif (abortAbove_int > 0 && candidates_ary.length > abortAbove_int)\n{\n\tthrow new Error('Refusing to send: ' + candidates_ary.length + ' learners are due after deduplication, which is above ABORT_ABOVE of ' + abortAbove_int + '. A number this size usually means the selection is wrong rather than the day being busy. Nothing has been sent');\n}\n\nconst out_ary = [];\nlet c_int = 0;\n\nwhile (c_int < candidates_ary.length && out_ary.length < cap_int)\n{\n\tout_ary.push({ json: candidates_ary[c_int] });\n\tc_int = c_int + 1;\n}\n\nconst suppressed_int = candidates_ary.length - out_ary.length;\nlet o_int = 0;\n\nwhile (o_int < out_ary.length)\n{\n\tout_ary[o_int].json.dueCount = due_ary.length;\n\tout_ary[o_int].json.skippedDuplicate = skippedDuplicate_int;\n\tout_ary[o_int].json.suppressedByCap = suppressed_int;\n\tout_ary[o_int].json.sentRowsRead = sent_ary.length;\n\to_int = o_int + 1;\n}\n\nreturn out_ary;"
+      }
+    },
+    {
+      "id": "3e3e188b-cb9c-46bd-b72f-34a7fa9d340d",
+      "name": "Group By Event",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3080,
+        0
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const config_obj = $('Config').first().json;\nconst templateId_str = String(config_obj.TEMPLATE_ID || '').trim();\nconst sendingAddressId_str = String(config_obj.SENDING_ADDRESS_ID || '').trim();\nconst audienceRaw_str = String(config_obj.SEND_AUDIENCE || '').trim();\nconst isDryRun_bln = String(config_obj.DRY_RUN) === 'true';\n\n/*\tsendBulkLearnerAdhocEmail accepts the call with neither a template nor a\t*/\n/*\tsending address, so without this guard the only thing between a flipped\t*/\n/*\tDRY_RUN and a batch of unbranded mail is whoever flipped it. Leave both\t*/\n/*\tempty until they are known and this guard keeps the run from sending.\t*/\nif (!isDryRun_bln)\n{\n\tconst missing_ary = [];\n\tif (templateId_str === '') { missing_ary.push('TEMPLATE_ID'); }\n\tif (sendingAddressId_str === '') { missing_ary.push('SENDING_ADDRESS_ID'); }\n\n\tif (missing_ary.length > 0)\n\t{\n\t\tthrow new Error('Refusing to send: ' + missing_ary.join(' and ') + ' empty in Config. Fill them for this tenant, or set DRY_RUN back to true.');\n\t}\n}\n\nconst mutation_str = 'mutation SendReminder($input: SendBulkLearnerAdhocEmailInput!) { bulkAdhocEmails { sendBulkLearnerAdhocEmail(input: $input) { errors { label message value } } } }';\nconst groups_obj = {};\nconst items_ary = $input.all();\nlet i_int = 0;\n\nwhile (i_int < items_ary.length)\n{\n\tconst row_obj = items_ary[i_int].json;\n\tconst key_str = String(row_obj.eventId);\n\n\tif (!groups_obj[key_str])\n\t{\n\t\tgroups_obj[key_str] = { eventId: row_obj.eventId, eventLegacyId: row_obj.eventLegacyId, learners: [] };\n\t}\n\n\tgroups_obj[key_str].learners.push(row_obj);\n\ti_int = i_int + 1;\n}\n\n/*\tlearnerIds and audience intersect rather than union. Audience can only narrow,\t*/\n/*\tso setting passed means a dropped learner list can never reach a whole event.\t*/\nconst audience_ary = [];\nconst parts_ary = audienceRaw_str.split(',');\nlet a_int = 0;\n\nwhile (a_int < parts_ary.length)\n{\n\tconst trimmed_str = parts_ary[a_int].trim();\n\tif (trimmed_str !== '') { audience_ary.push(trimmed_str); }\n\ta_int = a_int + 1;\n}\n\nconst keys_ary = Object.keys(groups_obj);\nconst out_ary = [];\nlet k_int = 0;\n\nwhile (k_int < keys_ary.length)\n{\n\tconst group_obj = groups_obj[keys_ary[k_int]];\n\tconst learnerIds_ary = [];\n\tlet l_int = 0;\n\n\twhile (l_int < group_obj.learners.length)\n\t{\n\t\tlearnerIds_ary.push(group_obj.learners[l_int].learnerId);\n\t\tl_int = l_int + 1;\n\t}\n\n\tconst input_obj = { eventId: group_obj.eventId, learnerIds: learnerIds_ary };\n\tif (audience_ary.length > 0) { input_obj.audience = audience_ary; }\n\tif (templateId_str !== '') { input_obj.templateId = templateId_str; }\n\tif (sendingAddressId_str !== '') { input_obj.sendingAddressId = sendingAddressId_str; }\n\n\tout_ary.push({ json: {\n\t\teventId: group_obj.eventId,\n\t\teventLegacyId: group_obj.eventLegacyId,\n\t\tlearnerCount: learnerIds_ary.length,\n\t\taudience: audience_ary,\n\t\tlearners: group_obj.learners,\n\t\tgqlBody: JSON.stringify({ query: mutation_str, variables: { input: input_obj } })\n\t} });\n\tk_int = k_int + 1;\n}\n\nreturn out_ary;"
+      }
+    },
+    {
+      "id": "f0e15e11-cffe-4cdc-95d8-a151f5122d0d",
+      "name": "Dry Run?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        3300,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $('Config').first().json.DRY_RUN }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "573db8a6-0b3b-427a-ac63-5171583c7edd",
+      "name": "Dry Run Report",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3520,
+        -160
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const items_ary = $input.all();\nconst rows_ary = [];\nlet totalLearners_int = 0;\nlet i_int = 0;\n\nwhile (i_int < items_ary.length)\n{\n\tconst group_obj = items_ary[i_int].json;\n\tlet l_int = 0;\n\n\twhile (l_int < group_obj.learners.length)\n\t{\n\t\tconst learner_obj = group_obj.learners[l_int];\n\t\trows_ary.push({\n\t\t\tlearnerId: learner_obj.learnerId,\n\t\t\tcontactId: learner_obj.contactId,\n\t\t\teventId: learner_obj.eventId,\n\t\t\teventEnd: learner_obj.eventEnd,\n\t\t\tvalidityMonths: learner_obj.validityMonths,\n\t\t\trunMode: learner_obj.runMode\n\t\t});\n\t\ttotalLearners_int = totalLearners_int + 1;\n\t\tl_int = l_int + 1;\n\t}\n\n\ti_int = i_int + 1;\n}\n\nconst first_obj = (items_ary.length > 0 && items_ary[0].json.learners.length > 0) ? items_ary[0].json.learners[0] : {};\nlet dropped_ary = [];\n\ntry\n{\n\tdropped_ary = $('Build Interval Windows').first().json.droppedGroups || [];\n} catch (error) {}\n\nreturn [{ json: {\n\tmode: 'DRY RUN, nothing sent',\n\ttenant: 'YOUR-INSTANCE',\n\tevents: items_ary.length,\n\tlearners: totalLearners_int,\n\tdueCount: first_obj.dueCount || 0,\n\tskippedDuplicate: first_obj.skippedDuplicate || 0,\n\tsuppressedByCap: first_obj.suppressedByCap || 0,\n\tsentRowsRead: first_obj.sentRowsRead || 0,\n\tdroppedGroups: dropped_ary,\n\trows: rows_ary\n} }];"
+      }
+    },
+    {
+      "id": "daeee61d-4182-4c54-9921-2efe408b0dc3",
+      "name": "Send Reminder",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3740,
+        320
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').first().json.GRAPHQL_URL }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.gqlBody }}",
+        "options": {}
+      },
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "id": "1096f2e5-dd18-4a33-9fca-a226e1f93241",
+      "name": "Send Errors?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        3960,
+        320
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ (Array.isArray($json.errors) && $json.errors.length > 0) || !$json.data || !$json.data.bulkAdhocEmails || !$json.data.bulkAdhocEmails.sendBulkLearnerAdhocEmail || (Array.isArray($json.data.bulkAdhocEmails.sendBulkLearnerAdhocEmail.errors) && $json.data.bulkAdhocEmails.sendBulkLearnerAdhocEmail.errors.length > 0) }}",
+              "operator": {
+                "operation": "true",
+                "singleValue": true,
+                "type": "boolean"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "272ba6f1-c321-4940-942f-874861f43bab",
+      "name": "Log Failure",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        4180,
+        500
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').first().json.GRAPHQL_URL }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ query: \"mutation Log($originIdentifier: String!, $nodeId: ID!, $message: String!, $status: ExternalLogTypeStatus!, $payload: String) { externalLog { createExternalIntegrationLog(input: { originIdentifier: $originIdentifier, nodeId: $nodeId, message: $message, status: $status, payload: $payload }) { errors { label message value } } } }\", variables: { originIdentifier: $(\"Config\").first().json.ORIGIN_IDENTIFIER, nodeId: $(\"Send Loop\").first().json.eventId, message: \"Certificate renewal reminder failed\", status: \"failed\", payload: JSON.stringify($json).slice(0, 2000) } }) }}",
+        "options": {}
+      },
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "id": "200470f8-166b-4c51-ac70-6024bb03b438",
+      "name": "Stop and Error",
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        4180,
+        -100
+      ],
+      "parameters": {
+        "errorMessage": "={{ $json.runError }}"
+      }
+    },
+    {
+      "id": "99c008f8-b70d-4063-b336-19926ad9775a",
+      "name": "Expand Sent Learners",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4180,
+        260
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "/*\tOne event per iteration, so the current group is the loop's single item.\t*/\n/*\tThis used to index positionally into Group By Event, which was wrong the\t*/\n/*\tmoment any event failed: the false branch of Send Errors? carries fewer\t*/\n/*\titems than Group By Event produced, so every event after a failure was\t*/\n/*\trecorded against the wrong one.\t*/\nconst group_obj = $('Send Loop').first().json;\nconst learners_ary = group_obj.learners || [];\n\nif (!group_obj.eventId || learners_ary.length === 0)\n{\n\tthrow new Error('Expand Sent Learners could not read the current loop item. Refusing to write dedupe rows that may belong to another event.');\n}\n\nconst sentAt_str = DateTime.now().toISO();\nconst out_ary = [];\nlet l_int = 0;\n\nwhile (l_int < learners_ary.length)\n{\n\tconst learner_obj = learners_ary[l_int];\n\tout_ary.push({ json: {\n\t\tlearner_id: String(learner_obj.learnerId),\n\t\tevent_id: String(learner_obj.eventId),\n\t\tcontact_id: String(learner_obj.contactId || ''),\n\t\tcourse_template_id: String(learner_obj.courseTemplateId || ''),\n\t\tachievement_type_id: String(learner_obj.achievementTypeId || ''),\n\t\tevent_end: String(learner_obj.eventEnd || ''),\n\t\tvalidity_months: Number(learner_obj.validityMonths || 0),\n\t\tsent_at: sentAt_str,\n\t\trun_mode: String(learner_obj.runMode || 'scheduled')\n\t} });\n\tl_int = l_int + 1;\n}\n\nreturn out_ary;"
+      }
+    },
+    {
+      "id": "f18bc535-8506-4eca-88de-8f4327354e12",
+      "name": "Record Sent",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        4400,
+        260
+      ],
+      "parameters": {
+        "operation": "insert",
+        "dataTableId": {
+          "__rl": true,
+          "value": "REPLACE_WITH_SENT_LOG_DATA_TABLE_ID",
+          "mode": "id"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {}
+        }
+      }
+    },
+    {
+      "id": "a990e390-2d1c-456c-9b66-6d2cd5d490ce",
+      "name": "Log Success",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        4620,
+        260
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').first().json.GRAPHQL_URL }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ query: \"mutation Log($originIdentifier: String!, $nodeId: ID!, $message: String!, $status: ExternalLogTypeStatus!) { externalLog { createExternalIntegrationLog(input: { originIdentifier: $originIdentifier, nodeId: $nodeId, message: $message, status: $status }) { errors { label message value } } } }\", variables: { originIdentifier: $(\"Config\").first().json.ORIGIN_IDENTIFIER, nodeId: $(\"Send Loop\").first().json.eventId, message: \"Certificate renewal reminder sent\", status: \"success\" } }) }}",
+        "options": {}
+      },
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      },
+      "executeOnce": false
+    },
+    {
+      "id": "17dc4eef-6e57-4ca0-a192-2fdca5702d04",
+      "name": "Done",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        4180,
+        100
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "0da14368-0054-4c9a-a7ea-3f704b4177ec",
+      "name": "Config Explained",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        700,
+        220
+      ],
+      "parameters": {
+        "width": 480,
+        "height": 520,
+        "color": 4,
+        "content": "## Config Explained\n\nEvery value lives in the **Config** node. Leave **DRY_RUN** set to true until a dry run report looks right.\n\n**RENEWABLE_ACHIEVEMENT_TYPE_IDS** Comma-separated achievement type IDs this reminder acts on. Anything not listed is ignored, even if it has a validity period. The IDs differ per instance, so look them up by name in your own instance. Do not copy them from another instance.\n\n**NOTICE_PERIOD_MONTHS** How far ahead of expiry the reminder goes. Default 6.\n\n**FLOOR_DATE** No reminder for any event that ended before this date.\n\nA floor is **not interval neutral**. A five year certificate comes due 54 months after the event and a three year one at 30. A floor chosen for the three year group can exclude the five year group entirely. The workflow reports which intervals it excluded. If it excluded all of them, it stops with an explanation instead of running quietly.\n\n**WINDOW_DAYS** Width of the due window, looking back from today's due date. 7 is a good production value because a missed run is picked up by the next one. Use a wider window while testing.\n\n**DRY_RUN** True writes a report and sends nothing.\n\n**MAX_PER_RUN** Throttle. It caps learners, not events, and applies before grouping, so a busy day can split one event across two runs. Anything held back turns the run red and is named in the run summary.\n\n**ABORT_ABOVE** Safety net. A throttle limits how much is sent, but it still sends whatever fits even if the selection has gone wrong. ABORT_ABOVE refuses the whole run and sends nothing when the number of due learners is implausible.\n\n**SENDING_ADDRESS_ID** The sending email address ID from your instance.\n\n**TEMPLATE_ID** The communication template ID for the reminder email. The workflow refuses to send while this or the sending address is empty.\n\n**SEND_AUDIENCE** `passed`. Sent alongside the learner list. The two intersect, so it can only narrow the recipients, never widen them.\n\n**CATCHUP_FROM and CATCHUP_TO** An explicit event end date range that overrides the rolling window, for a one-time catch-up. Clear them afterwards. FLOOR_DATE still applies.\n\n**TIMEZONE** Timezone the due window is calculated in. The Schedule Trigger uses the workflow timezone setting, not this value. Set both to the same zone, or 07:00 fires at the wrong hour.\n\n**PAGE_SIZE** 100, the most Administrate returns per page.\n\n---\n\n**There is no list of courses.** This is deliberate. Add or remove courses on each course's Achievements tab in Administrate. The workflow does not need to change.\n\n**Test instances.** A test instance may accept and log email without delivering it. A run there with DRY_RUN false tests the mutation, logging and deduplication, but not delivery."
+      }
+    },
+    {
+      "id": "821c899f-0759-4546-b0b7-d672c1c288d1",
+      "name": "Send Loop",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        3520,
+        160
+      ],
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "notes": "One event per iteration. Batch size 1 is load bearing: it is what makes Record Sent run per event instead of once at the end."
+    },
+    {
+      "id": "c7c500c9-1436-4f82-aaca-b3a10085e755",
+      "name": "Mark Sent",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4840,
+        260
+      ],
+      "parameters": {
+        "jsCode": "/*\tOne status item per iteration, fed back into Send Loop. The loop collects\t*/\n/*\tthese and releases them all on its done output for Run Summary to read.\t*/\nconst group_obj = $('Send Loop').first().json;\n\nreturn [{ json: {\n\teventId: group_obj.eventId,\n\teventLegacyId: group_obj.eventLegacyId,\n\tlearnerCount: group_obj.learnerCount,\n\tstatus: 'sent'\n} }];",
+        "mode": "runOnceForAllItems"
+      }
+    },
+    {
+      "id": "4aa7146a-ea65-4e0c-bb80-24118c6400ce",
+      "name": "Mark Failed",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4400,
+        500
+      ],
+      "parameters": {
+        "jsCode": "/*\tRecord why this event failed, then hand control back to Send Loop so the\t*/\n/*\tremaining events still get their turn. Run Summary re-raises at the end.\t*/\nconst group_obj = $('Send Loop').first().json;\nlet message_str = 'Unknown error';\n\ntry\n{\n\tconst response_obj = $('Send Reminder').first().json;\n\tconst top_ary = response_obj.errors || [];\n\tconst data_obj = response_obj.data || {};\n\tconst bulk_obj = data_obj.bulkAdhocEmails || {};\n\tconst send_obj = bulk_obj.sendBulkLearnerAdhocEmail || {};\n\tconst nested_ary = send_obj.errors || [];\n\n\tif (top_ary.length > 0)\n\t{\n\t\tmessage_str = JSON.stringify(top_ary).slice(0, 500);\n\t} else if (nested_ary.length > 0) {\n\t\tmessage_str = JSON.stringify(nested_ary).slice(0, 500);\n\t} else {\n\t\tmessage_str = 'Send returned no usable data block';\n\t}\n} catch (error) {\n\tmessage_str = 'Could not read the send response: ' + String(error.message || error);\n}\n\nreturn [{ json: {\n\teventId: group_obj.eventId,\n\teventLegacyId: group_obj.eventLegacyId,\n\tlearnerCount: group_obj.learnerCount,\n\tstatus: 'failed',\n\terror: message_str\n} }];",
+        "mode": "runOnceForAllItems"
+      }
+    },
+    {
+      "id": "17d1fdaf-1ddd-4a90-83d4-23882a0adfc9",
+      "name": "Run Summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3740,
+        0
+      ],
+      "parameters": {
+        "jsCode": "/*\tFired once on the loop's done output, holding one status item per event.\t*/\n/*\tFailures are collected rather than raised inline so that a failure on one\t*/\n/*\tevent does not stop the events behind it from sending.\t*/\nconst items_ary = $input.all();\nconst failed_ary = [];\nlet sentEvents_int = 0;\nlet sentLearners_int = 0;\nlet i_int = 0;\n\nwhile (i_int < items_ary.length)\n{\n\tconst row_obj = items_ary[i_int].json;\n\n\tif (row_obj.status === 'failed')\n\t{\n\t\tfailed_ary.push({ eventId: row_obj.eventId, error: row_obj.error });\n\t} else {\n\t\tsentEvents_int = sentEvents_int + 1;\n\t\tsentLearners_int = sentLearners_int + Number(row_obj.learnerCount || 0);\n\t}\n\n\ti_int = i_int + 1;\n}\n\nlet dropped_ary = [];\nlet suppressed_int = 0;\n\ntry\n{\n\tdropped_ary = $('Build Interval Windows').first().json.droppedGroups || [];\n} catch (error) {}\n\ntry\n{\n\tsuppressed_int = Number($('Select Sendable').first().json.suppressedByCap || 0);\n} catch (error) {}\n\n/*\tA run that quietly did nine tenths of its work is the defect class this whole\t*/\n/*\tbuild exists to remove, so anything left undone turns the execution red.\t*/\n/*\tDropped intervals are reported but deliberately do NOT turn it red: that is a\t*/\n/*\tstanding configuration state rather than an event, and it would fire every\t*/\n/*\tday until FLOOR_DATE changed, which is how alerts get ignored.\t*/\n/*\tCounts are phrased as labels rather than sentences so the message reads\t*/\n/*\tcorrectly at one as well as at many.\t*/\nconst problems_ary = [];\n\nif (failed_ary.length > 0)\n{\n\tproblems_ary.push('events that failed to send ' + failed_ary.length + ' of ' + items_ary.length);\n}\n\nif (suppressed_int > 0)\n{\n\tproblems_ary.push('learners held back by MAX_PER_RUN ' + suppressed_int + ', who stay unreminded until a later run has room');\n}\n\nlet runError_str = '';\n\nif (problems_ary.length > 0)\n{\n\trunError_str = 'Certificate renewal reminder finished with work outstanding: ' + problems_ary.join(', and ') + '. Already sent and recorded in the dedupe table this run, so a re-run will not duplicate them: events ' + sentEvents_int + ', learners ' + sentLearners_int;\n}\n\nreturn [{ json: {\n\teventsProcessed: items_ary.length,\n\teventsSent: sentEvents_int,\n\tlearnersSent: sentLearners_int,\n\teventsFailed: failed_ary.length,\n\tsuppressedByCap: suppressed_int,\n\tfailures: failed_ary,\n\tdroppedGroups: dropped_ary,\n\trunError: runError_str\n} }];",
+        "mode": "runOnceForAllItems"
+      }
+    },
+    {
+      "id": "84815ab9-8de4-4173-95f6-3d599b1ff47d",
+      "name": "Any Failures?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        3960,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "combinator": "and",
+          "conditions": [
+            {
+              "leftValue": "={{ $json.runError }}",
+              "operator": {
+                "operation": "notEmpty",
+                "singleValue": true,
+                "type": "string"
+              }
+            }
+          ],
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          }
+        }
+      }
+    },
+    {
+      "id": "7a18457b-1a74-4bbf-8347-81e013d5783e",
+      "name": "Distinct Due Events",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2420,
+        0
+      ],
+      "parameters": {
+        "jsCode": "/*\tThe dedupe read used to pull every row in the table and filter in memory.\t*/\n/*\tFine at a few hundred a month, not fine once a catch up run has put tens of thousands\t*/\n/*\tof rows in it. Reading once per due event keeps the daily cost flat as the\t*/\n/*\ttable grows, because the number of events due on a given day does not.\t*/\nconst items_ary = $input.all();\nconst seen_ary = [];\nconst out_ary = [];\nlet i_int = 0;\n\nwhile (i_int < items_ary.length)\n{\n\tconst eventId_str = String(items_ary[i_int].json.eventId || '');\n\n\tif (eventId_str !== '' && seen_ary.indexOf(eventId_str) === -1)\n\t{\n\t\tseen_ary.push(eventId_str);\n\t\tout_ary.push({ json: { eventId: eventId_str } });\n\t}\n\n\ti_int = i_int + 1;\n}\n\n/*\tFalling quiet here would mean the dedupe read has nothing to filter on, so\t*/\n/*\tevery learner would look unsent and every one of them would be mailed again.\t*/\nif (items_ary.length > 0 && out_ary.length === 0)\n{\n\tthrow new Error('Due learners were found but none carried an event id, so the dedupe read would match nothing and every learner would be treated as never reminded');\n}\n\nreturn out_ary;",
+        "mode": "runOnceForAllItems"
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Daily 07:00": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Count Course Templates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Count Course Templates": {
+      "main": [
+        [
+          {
+            "node": "Build Register Page Offsets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Register Page Offsets": {
+      "main": [
+        [
+          {
+            "node": "Read Register Page",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Register Page": {
+      "main": [
+        [
+          {
+            "node": "Extract Renewable Courses",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Renewable Courses": {
+      "main": [
+        [
+          {
+            "node": "Build Interval Windows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Interval Windows": {
+      "main": [
+        [
+          {
+            "node": "Count Due Learners",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Count Due Learners": {
+      "main": [
+        [
+          {
+            "node": "Build Learner Page Offsets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Learner Page Offsets": {
+      "main": [
+        [
+          {
+            "node": "Read Due Learners Page",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Due Learners Page": {
+      "main": [
+        [
+          {
+            "node": "Flatten Due Learners",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Sent Log": {
+      "main": [
+        [
+          {
+            "node": "Select Sendable",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Select Sendable": {
+      "main": [
+        [
+          {
+            "node": "Group By Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Group By Event": {
+      "main": [
+        [
+          {
+            "node": "Dry Run?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Dry Run?": {
+      "main": [
+        [
+          {
+            "node": "Dry Run Report",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Loop",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Reminder": {
+      "main": [
+        [
+          {
+            "node": "Send Errors?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Errors?": {
+      "main": [
+        [
+          {
+            "node": "Log Failure",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Expand Sent Learners",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Expand Sent Learners": {
+      "main": [
+        [
+          {
+            "node": "Record Sent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Record Sent": {
+      "main": [
+        [
+          {
+            "node": "Log Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Loop": {
+      "main": [
+        [
+          {
+            "node": "Run Summary",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Reminder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run Summary": {
+      "main": [
+        [
+          {
+            "node": "Any Failures?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Any Failures?": {
+      "main": [
+        [
+          {
+            "node": "Stop and Error",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Done",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Success": {
+      "main": [
+        [
+          {
+            "node": "Mark Sent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Sent": {
+      "main": [
+        [
+          {
+            "node": "Send Loop",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Failure": {
+      "main": [
+        [
+          {
+            "node": "Mark Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Failed": {
+      "main": [
+        [
+          {
+            "node": "Send Loop",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Flatten Due Learners": {
+      "main": [
+        [
+          {
+            "node": "Distinct Due Events",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Distinct Due Events": {
+      "main": [
+        [
+          {
+            "node": "Read Sent Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true,
+    "timezone": "Europe/London"
+  },
+  "tags": []
+}

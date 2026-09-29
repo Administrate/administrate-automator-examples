@@ -1,0 +1,393 @@
+{
+  "name": "1.0 QR Check-in - URL Generator (on Event)",
+  "nodes": [
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "s1",
+              "name": "eventId",
+              "type": "string",
+              "value": "={{ (($('Generate QR Code Webhook').item.json.payload || {}).node || {}).id || ((($('Generate QR Code Webhook').item.json.body || {}).payload || {}).node || {}).id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "ddc473d4-bb92-475e-93b8-749c86f0a831",
+      "name": "Extract eventId",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1216,
+        544
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "u1",
+              "name": "eventId",
+              "value": "={{ $json.eventId }}",
+              "type": "string"
+            },
+            {
+              "id": "u2",
+              "name": "qrUrl",
+              "value": "={{ $('Config').item.json.BASE_URL + '?eventId=' + encodeURIComponent($json.eventId) }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "e2a6a49f-2fff-4c06-9843-918327cc6db8",
+      "name": "Build URL",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1440,
+        544
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').item.json.GRAPHQL_URL }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ query: 'mutation SetQrUrl($eventId: ID!, $key: ID!, $val: String!){ event { update(eventId:$eventId, input:{ customFieldValues:[{ definitionKey:$key, value:$val }] }){ event{ id customFieldValues{ definitionKey value } } errors{ label message value } } } }', variables: { eventId: $json.eventId, key: $('Config').item.json.QR_FIELD_KEY, val: $json.qrUrl } }) }}",
+        "options": {}
+      },
+      "id": "c847ae49-6e54-444f-bc89-546f0d7e3f5e",
+      "name": "Write QR URL",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1664,
+        544
+      ],
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "093d3c84-aa20-4cde-9909-7d9237944e87",
+      "name": "Done",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        2336,
+        640
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 1.0 URL Generator (on Event)\n\nStaff run this FROM an Event in Administrate as a manual action, shown in the Automator menu as **QR Code for Attendance**.\n\nIt reads the event id from the trigger payload, builds the QR page link as BASE_URL + ?eventId=<id>, writes that link into an Event custom field (for example **QR Code Generator URL**), and records the outcome in the External Integration Log.\n\n**FLOW**\nGenerate QR Code Webhook -> Config -> Extract eventId -> Build URL -> Write QR URL -> IF Write Errors? -> Log Failure -> Stop, or Log Success -> Done\n\n**SETUP**\n1. Attach your Administrate OAuth2 credential to four nodes: Generate QR Code Webhook, Write QR URL, Log Failure, Log Success. Re-check all four after any edit: a node can look configured and have nothing attached.\n2. Set the Config values. See the Config sticky.\n3. Activate the workflow. This registers the manual action on Events.\n4. Check in Administrate that the webhook registration is active, then run it from one event and verify.\n\n**RULES**\n- Activating this does NOT make the QR page live. The page is 2.0, a separate workflow that must also be active.\n- Verify by reading that event's custom field values in a SEPARATE query. The mutation response is not proof.\n- Administrate returns refusals inside an HTTP 200. IF Write Errors? tests both the top-level and the nested errors arrays, and a failure stops rather than passing quietly. Do not remove it.\n- Extract eventId reads payload.node.id, falling back to body.payload.node.id. If the manual payload ever changes shape, that node is the single place to adjust.",
+        "height": 900,
+        "width": 460,
+        "color": 4
+      },
+      "id": "2000b093-6db2-4cd7-8d7f-5853def20aa3",
+      "name": "Sticky - Start Here",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        192,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "err1",
+              "leftValue": "={{ (($json.errors || []).length > 0) || ((((($json.data || {}).event || {}).update || {}).errors || []).length > 0) }}",
+              "operator": {
+                "operation": "true",
+                "singleValue": true,
+                "type": "boolean"
+              },
+              "rightValue": ""
+            }
+          ],
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          }
+        },
+        "options": {}
+      },
+      "id": "436f7aaf-5e29-4229-bc5d-fb4621061bb3",
+      "name": "IF Write Errors?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1888,
+        544
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').item.json.GRAPHQL_URL }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ query: \"mutation Log($originIdentifier: String!, $nodeId: ID!, $message: String!, $status: ExternalLogTypeStatus!, $payload: String){ externalLog{ createExternalIntegrationLog(input:{ originIdentifier:$originIdentifier, nodeId:$nodeId, message:$message, status:$status, payload:$payload }){ errors{ label message value } } } }\", variables: { originIdentifier: $('Config').item.json.ORIGIN_IDENTIFIER, nodeId: $('Build URL').item.json.eventId, message: 'Failed to write QR Code Generator URL', status: 'failed', payload: JSON.stringify($json) } }) }}",
+        "options": {}
+      },
+      "id": "b0259bd0-fe21-4bb3-88cf-10e412280f4b",
+      "name": "Log Failure",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2112,
+        448
+      ],
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').item.json.GRAPHQL_URL }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ query: \"mutation Log($originIdentifier: String!, $nodeId: ID!, $message: String!, $status: ExternalLogTypeStatus!, $payload: String){ externalLog{ createExternalIntegrationLog(input:{ originIdentifier:$originIdentifier, nodeId:$nodeId, message:$message, status:$status, payload:$payload }){ errors{ label message value } } } }\", variables: { originIdentifier: $('Config').item.json.ORIGIN_IDENTIFIER, nodeId: $('Build URL').item.json.eventId, message: 'QR Code Generator URL written to event', status: 'success', payload: JSON.stringify({ eventId: $('Build URL').item.json.eventId, url: $('Build URL').item.json.qrUrl }) } }) }}",
+        "options": {}
+      },
+      "id": "15a80ea5-d466-40e0-80cd-1a8560a97ea7",
+      "name": "Log Success",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2112,
+        640
+      ],
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "errorMessage": "Write QR URL failed: Administrate returned errors (check both errors arrays)."
+      },
+      "id": "89c3dbcc-e36f-42e4-b0e1-930725cc0f19",
+      "name": "Stop",
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        2336,
+        448
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c1",
+              "name": "GRAPHQL_URL",
+              "type": "string",
+              "value": "https://api.getadministrate.com/graphql"
+            },
+            {
+              "id": "c2",
+              "name": "BASE_URL",
+              "type": "string",
+              "value": "https://YOUR-N8N-HOST/webhook/da5461d5-73ca-4f3a-9222-2730bd6ca8d2"
+            },
+            {
+              "id": "c3",
+              "name": "QR_FIELD_KEY",
+              "type": "string",
+              "value": "REPLACE_WITH_QR_URL_CUSTOM_FIELD_KEY"
+            },
+            {
+              "id": "c4",
+              "name": "ORIGIN_IDENTIFIER",
+              "type": "string",
+              "value": "Automator - QR Code Generator URL"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "56d93d53-a683-4b1f-863b-c5c07a36e1f0",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        992,
+        544
+      ]
+    },
+    {
+      "parameters": {
+        "events": "V2ViaG9va1R5cGU6bWFudWFsX2V2ZW50",
+        "name": "QR Code for Attendance"
+      },
+      "type": "CUSTOM.administrateTrigger",
+      "typeVersion": 1,
+      "position": [
+        768,
+        544
+      ],
+      "id": "b1bd27ea-778b-48d3-9d23-a001d0c702d9",
+      "name": "Generate QR Code Webhook",
+      "webhookId": "3be36618-88fb-4f29-8f9e-cb79efac1e88",
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## Config\n\n**GRAPHQL_URL**\nAdministrate GraphQL endpoint. Identical in every instance.\n\n**BASE_URL**\nThe QR page link, which is 2.0's production webhook URL: https://YOUR-N8N-HOST/webhook/<path of 2.0's QR Page (Webhook) node>. Replace YOUR-N8N-HOST with your n8n host. If 2.0's webhook node is ever recreated or its path changes, this value silently points at nothing, so re-check it after any change to 2.0.\n\n**QR_FIELD_KEY**\nThe definitionKey of the Event custom field that stores the link (a text field such as 'QR Code Generator URL'). Read it from customFieldTemplate(type: Event) or from a live event record. Match on the key, never on the label: a rename in Administrate keeps the key.\n\n**ORIGIN_IDENTIFIER**\nThe label on this workflow's External Integration Log entries.\n\nBASE_URL and QR_FIELD_KEY are specific to your n8n host and Administrate instance. GRAPHQL_URL and ORIGIN_IDENTIFIER carry over unchanged.",
+        "height": 760,
+        "width": 460,
+        "color": 6
+      },
+      "id": "06d87b26-96cf-4d1f-bbec-4bea17b3c756",
+      "name": "Sticky - Config",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        816,
+        -496
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Extract eventId": {
+      "main": [
+        [
+          {
+            "node": "Build URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build URL": {
+      "main": [
+        [
+          {
+            "node": "Write QR URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write QR URL": {
+      "main": [
+        [
+          {
+            "node": "IF Write Errors?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Write Errors?": {
+      "main": [
+        [
+          {
+            "node": "Log Failure",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Failure": {
+      "main": [
+        [
+          {
+            "node": "Stop",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Success": {
+      "main": [
+        [
+          {
+            "node": "Done",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Extract eventId",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate QR Code Webhook": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true,
+    "timezone": "Europe/London"
+  },
+  "tags": []
+}

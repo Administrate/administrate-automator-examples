@@ -1,0 +1,349 @@
+{
+  "name": "Waitlist 04 - Learner Cancelled",
+  "nodes": [
+    {
+      "id": "8bc7c2b2-8b05-4f48-a650-895ad02900d4",
+      "name": "Learner Cancelled Trigger",
+      "type": "CUSTOM.administrateTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "events": "V2ViaG9va1R5cGU6bGVhcm5lcl9jYW5jZWxsZWQ=",
+        "name": "Waitlist - Learner Cancelled",
+        "query": "query webhook($objectid: ID!){ node(id: $objectid){ id ... on Learner{ isCancelled event { id customFieldValues { definitionKey value } } } } }",
+        "filterExpression": "length((data.node || node || payload.node).event.customFieldValues[?definitionKey=='REPLACE_WITH_WAITLIST_FLAG_DEFINITION_KEY' && value=='true']) > `0`"
+      },
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      },
+      "webhookId": "5ed368e3-6667-42a0-a511-c658728a8032"
+    },
+    {
+      "id": "e0c8bf30-f164-4bcf-935e-ea1218e2365d",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        220,
+        0
+      ],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": true,
+        "options": {},
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c01",
+              "name": "WAITLIST_FLAG_KEY",
+              "type": "string",
+              "value": "REPLACE_WITH_WAITLIST_FLAG_DEFINITION_KEY"
+            },
+            {
+              "id": "c02",
+              "name": "WAITLIST_FLAG_VALUE",
+              "type": "string",
+              "value": "true"
+            },
+            {
+              "id": "c03",
+              "name": "CORE_WORKFLOW_ID",
+              "type": "string",
+              "value": "REPLACE_WITH_ID_OF_WAITLIST_AUTOMATION"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "b4397367-b277-48f2-98f7-a55233177035",
+      "name": "Extract Learner Id",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        440,
+        0
+      ],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": true,
+        "options": {},
+        "assignments": {
+          "assignments": [
+            {
+              "id": "lid",
+              "name": "learnerId",
+              "type": "string",
+              "value": "={{ $('Learner Cancelled Trigger').item.json.payload?.node?.id ?? $('Learner Cancelled Trigger').item.json.body?.payload?.node?.id ?? $('Learner Cancelled Trigger').item.json.data?.node?.id ?? $('Learner Cancelled Trigger').item.json.body?.data?.node?.id ?? $('Learner Cancelled Trigger').item.json.node?.id ?? $('Learner Cancelled Trigger').item.json.payload?.id ?? $('Learner Cancelled Trigger').item.json.body?.id }}"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "7a1743b4-3597-4733-8260-eb8fe71e9f9a",
+      "name": "Fetch Learner Event",
+      "type": "CUSTOM.administrate",
+      "typeVersion": 1,
+      "position": [
+        660,
+        0
+      ],
+      "parameters": {
+        "options": {},
+        "query": "query WaitlistLearnerEvent($learnerId: String!) { learners(filters: [{ field: id, operation: eq, value: $learnerId }]) { edges { node { id isCancelled event { id title customFieldValues { definitionKey value } } } } } }",
+        "variables": "={{ { learnerId: $json.learnerId } }}"
+      },
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "id": "67d8d512-85df-4b6e-b738-4a27f89828fc",
+      "name": "IF Waitlist Enabled?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        880,
+        0
+      ],
+      "parameters": {
+        "options": {},
+        "conditions": {
+          "combinator": "and",
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "flag",
+              "leftValue": "={{ ($json.learners?.edges?.[0]?.node?.event?.customFieldValues ?? []).some(field_obj => field_obj.definitionKey === $('Config').item.json.WAITLIST_FLAG_KEY && field_obj.value === $('Config').item.json.WAITLIST_FLAG_VALUE) }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              },
+              "rightValue": ""
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "acdb725c-344a-4380-9b43-b63b65dd84ba",
+      "name": "Extract Event Id",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1100,
+        -100
+      ],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": false,
+        "options": {},
+        "assignments": {
+          "assignments": [
+            {
+              "id": "eid",
+              "name": "eventId",
+              "type": "string",
+              "value": "={{ $json.learners?.edges?.[0]?.node?.event?.id }}"
+            },
+            {
+              "id": "src",
+              "name": "source",
+              "type": "string",
+              "value": "learnerCancelled"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "941ffeee-8c6b-45e4-811c-bf2cff202a5e",
+      "name": "Done",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1540,
+        -100
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "48bb6acb-0175-4105-a38b-28c1bca52620",
+      "name": "Sticky - Config Explained",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -60,
+        160
+      ],
+      "parameters": {
+        "color": 4,
+        "content": "## Config Explained\n\n**WAITLIST_FLAG_KEY** - the definitionKey of the `Waitlist On?` Event checkbox custom field. This is the opt-in. A cancellation on an event without it ticked stops here and does nothing, which is intended. The same key must also be pasted into the **Learner Cancelled Trigger**'s `filterExpression` (it cannot read Config).\n\n**WAITLIST_FLAG_VALUE** - what a ticked box reads back as. Checkbox custom fields return the **string** `true`, not a boolean.\n\n**CORE_WORKFLOW_ID** - the id of your imported **Waitlist Automation** workflow (from its URL: `/workflow/<id>`).\n\n### Finding the flag key\n\n`query { customFieldTemplate(type: Event){ customFieldDefinitions { key label type } } }`\n\nMatch on the label `Waitlist On?` and take its `key`.\n",
+        "height": 400,
+        "width": 660
+      }
+    },
+    {
+      "id": "9e3c5ff3-7667-4272-a0c9-5ecd37e3b682",
+      "name": "Sticky - Overview",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -60,
+        -580
+      ],
+      "parameters": {
+        "color": 5,
+        "content": "## Waitlist 04 - Learner Cancelled\n\n**Why this exists.** Cancelling a learner does **not** fire `event_updated`. Capacity is derived from learner records, so `learner.cancel` writes to the learner and never touches the event row. Without this workflow the offer engine would never wake for the most common way a waitlist place opens up.\n\nIt listens for `Learner Cancelled`, resolves the learner to its event, checks the event is opted in, and hands the event id to Waitlist Automation.\n\n**It stays thin.** All the offer logic lives in Waitlist Automation.\n\n**The false branch of `IF Waitlist Enabled?` is deliberately unwired.** A cancellation on an event without the checkbox stops there and does nothing.\n\n`Call Waitlist Core` does not wait for the sub-workflow, so a green run here means the event id was handed over, not that anyone was offered a place. Read the core's execution, or `bookedPlaces` and `reserved` on the event.\n\n### Setup\n\n- Attach the Administrate OAuth2 credential to the trigger and to Fetch Learner Event.\n- Set WAITLIST_FLAG_KEY in Config, and the same key in the trigger's `filterExpression`.\n- Set CORE_WORKFLOW_ID to your copy of Waitlist Automation.\n- Set the Error Workflow (Settings > Error workflow) to Waitlist 03 - Error Handler.\n\n### Verify on first run\n\n- Read the webhook registration back after publishing and confirm `lifecycleState` is **active** and `filterExpression` is set. Webhooks are created inactive.\n- Use both controls: cancel a learner on an event with the checkbox ticked and see an execution, then on an event with it unticked and see none.\n- Read the event and confirm `bookedPlaces` actually moved.\n",
+        "height": 620,
+        "width": 1000
+      }
+    },
+    {
+      "id": "9881d0b2-ee0f-4c71-bb91-9d9da73ddfe8",
+      "name": "Call Waitlist Core",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        1320,
+        -100
+      ],
+      "parameters": {
+        "mode": "once",
+        "options": {
+          "waitForSubWorkflow": false
+        },
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "cachedResultName": "Waitlist Automation",
+          "mode": "id",
+          "value": "={{ $('Config').item.json.CORE_WORKFLOW_ID }}"
+        },
+        "workflowInputs": {
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true,
+          "mappingMode": "defineBelow",
+          "matchingColumns": [],
+          "schema": [
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "eventId",
+              "id": "eventId",
+              "required": false,
+              "type": "string"
+            }
+          ],
+          "value": {
+            "eventId": "={{ $json.eventId }}"
+          }
+        },
+        "notes": "waitForSubWorkflow is false on purpose: the core carries its own error workflow and logging, so waiting here would raise two incidents for one cancellation. The consequence is that a green run of THIS workflow means the event id was handed over, not that anyone was offered a place. To find out whether an offer was made, read the core's execution, or better, read bookedPlaces and reserved on the event."
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Learner Cancelled Trigger": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Extract Learner Id",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Learner Id": {
+      "main": [
+        [
+          {
+            "node": "Fetch Learner Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Learner Event": {
+      "main": [
+        [
+          {
+            "node": "IF Waitlist Enabled?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Waitlist Enabled?": {
+      "main": [
+        [
+          {
+            "node": "Extract Event Id",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Event Id": {
+      "main": [
+        [
+          {
+            "node": "Call Waitlist Core",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call Waitlist Core": {
+      "main": [
+        [
+          {
+            "node": "Done",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true
+  },
+  "tags": []
+}

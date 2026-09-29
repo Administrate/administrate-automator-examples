@@ -33,6 +33,18 @@ For detailed setup instructions, visit the [Automator documentation](https://sup
 | [Auto Assign Instructors to Event](./auto-assign-instructors-to-event) | Automatically assign available Approved Instructors to new Events based on availability and workplace location | 1.0.0 |
 | [OAuth - Authorization Code](./oauth-authorization-code) | Implement OAuth Authorization Code flow to execute API requests with the authenticated user's permissions | 1.0.0 |
 | [Create Booking from Event](./create-booking-from-event) | Create a Booking directly from an Event with the Event automatically added as an Interest | 1.0.0 |
+| [Certificate Renewal Reminders](./certificate-renewal-reminders) | Remind learners before their certificates or achievements expire, with dry-run mode, a send cap and a dedupe log | 1.0.0 |
+| [QR Code Check-in and Attendance](./qr-code-check-in-attendance) | QR code self check-in for classroom events, with walk-in registration, a daily reconciliation report and a live dashboard | 1.0.0 |
+| [Review and Cancel Under-Subscribed Events](./cancel-under-subscribed-events) | Flag low-fill events for human approval, re-check them, then cancel and notify instructors and learners | 1.0.0 |
+| [Import Learners from a Spreadsheet](./import-learners-from-spreadsheet) | Upload an Excel or CSV file to bulk-register learners onto an Event, creating Contacts and Accounts as needed | 1.0.0 |
+| [Waitlist: Timed Offers with Accept/Decline](./waitlist-offer-accept) | Offer freed places to waitlisted learners in turn, hold the place for a set time and record their accept/decline response | 1.0.0 |
+| [Bulk Register Delegates and Record Attendance](./bulk-register-delegates-record-attendance) | A web form to register delegates onto an Event and record their attendance and results in one go | 1.0.0 |
+| [Daily Event Resourcing Gaps Digest](./event-resourcing-digest) | Daily email listing upcoming Events that are missing instructors, rooms or other resources | 1.0.0 |
+| [Sync Event Total Session Hours](./event-total-session-hours) | Keep an Event custom field equal to the total hours of its published Sessions | 1.0.0 |
+| [Normalise Contact Mobile Numbers](./normalise-contact-mobile-numbers) | Clean up Contact mobile number formatting whenever a Contact is created or updated (UK rules by default) | 1.0.0 |
+| [Instructor and Resource Utilization Dashboards](./utilization-dashboards) | Password-protected dashboards showing instructor and resource utilisation from Administrate data | 1.0.0 |
+| [Administrate MCP Server](./administrate-mcp-server) | Expose Administrate search and update tools to AI agents such as Claude over the Model Context Protocol | 1.0.0 |
+| [Log Automation Failures to Administrate](./error-logging-to-administrate) | Shared error workflow, logging sub-workflow and daily digest for recording automation failures in Administrate | 1.0.0 |
 
 ## How to Import a Workflow
 
@@ -43,6 +55,8 @@ For detailed setup instructions, visit the [Automator documentation](https://sup
 5. Choose the downloaded JSON file
 6. Configure your Administrate OAuth credentials
 7. Update any instance-specific URLs or parameters as noted in the workflow's README
+
+Some examples are made up of several workflows. These have a `workflows/` folder instead of a single `workflow.json`. Import every file in the numbered order, then follow that example's README to link them together.
 
 ## Contributing
 

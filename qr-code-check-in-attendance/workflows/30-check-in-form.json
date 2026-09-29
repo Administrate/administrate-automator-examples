@@ -1,0 +1,2257 @@
+{
+  "name": "3.0 QR Check-in - Check-in Form",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "Class Check-In",
+        "formDescription": "Welcome! Please enter your email to check in.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Email address",
+              "fieldType": "email",
+              "requiredField": true
+            },
+            {
+              "fieldName": "eventId",
+              "fieldType": "hiddenField"
+            },
+            {
+              "fieldName": "sessionId",
+              "fieldType": "hiddenField"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "86bbfc67-9554-4fc2-a001-1bfb14c469d0",
+      "name": "Class Check-In (QR)",
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.2,
+      "position": [
+        -1008,
+        800
+      ],
+      "webhookId": "2d8a46fd-8e1e-4fbf-b313-a3beab2f782b"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "GRAPHQL_URL",
+              "name": "GRAPHQL_URL",
+              "type": "string",
+              "value": "https://api.getadministrate.com/graphql"
+            },
+            {
+              "id": "EMAIL_USAGE",
+              "name": "EMAIL_USAGE",
+              "type": "string",
+              "value": "primary"
+            },
+            {
+              "id": "ATTENDED",
+              "name": "ATTENDED",
+              "type": "string",
+              "value": "true"
+            },
+            {
+              "id": "ORIGIN_IDENTIFIER",
+              "name": "ORIGIN_IDENTIFIER",
+              "type": "string",
+              "value": "Automator - QR Check-in"
+            },
+            {
+              "id": "OPEN_MINUTES_BEFORE",
+              "name": "OPEN_MINUTES_BEFORE",
+              "type": "string",
+              "value": "120"
+            },
+            {
+              "id": "CLOSE_HOURS_AFTER",
+              "name": "CLOSE_HOURS_AFTER",
+              "type": "string",
+              "value": "12"
+            },
+            {
+              "id": "SELF_REGISTER_EVENT_TYPES",
+              "name": "SELF_REGISTER_EVENT_TYPES",
+              "type": "string",
+              "value": "private"
+            },
+            {
+              "id": "CHECKIN_WINDOW_OVERRIDE",
+              "name": "CHECKIN_WINDOW_OVERRIDE",
+              "type": "string",
+              "value": "off"
+            },
+            {
+              "id": "CHECKIN_LOG_TABLE_ID",
+              "name": "CHECKIN_LOG_TABLE_ID",
+              "type": "string",
+              "value": "REPLACE_WITH_CHECKIN_LOG_TABLE_ID"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "e050a5f2-af8b-4a1f-89f0-b7f989efc1a8",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -784,
+        800
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').item.json.GRAPHQL_URL }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ query: \"query FindContact($email:String!){ contacts(filters:[{field:emailAddress,operation:eq,value:$email}]){ edges{ node{ id emailAddress personalName{ firstName lastName } account{ name } } } } }\", variables: { email: $('Resolve Session').first().json.email } }) }}",
+        "options": {}
+      },
+      "id": "31ce0643-20a8-4e35-a2f7-c7b14271d624",
+      "name": "Find Contact by Email",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        560,
+        896
+      ],
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ ($json.data && $json.data.contacts && $json.data.contacts.edges) ? $json.data.contacts.edges.length : 0 }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "8109a1cd-0a10-462a-968c-dc79e535c982",
+      "name": "IF Contact found?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        784,
+        896
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "contactId",
+              "name": "contactId",
+              "type": "string",
+              "value": "={{ $json.data.contacts.edges[0].node.id }}"
+            },
+            {
+              "id": "email",
+              "name": "email",
+              "type": "string",
+              "value": "={{ $('Class Check-In (QR)').item.json['Email address'] }}"
+            },
+            {
+              "id": "eventId",
+              "name": "eventId",
+              "type": "string",
+              "value": "={{ ($('Class Check-In (QR)').item.json.eventId || '').toString().trim() }}"
+            },
+            {
+              "id": "status",
+              "name": "status",
+              "type": "string",
+              "value": "={{ $json.data.contacts.edges.length > 1 ? 'needs-review-multiple-contact' : 'found-existing' }}"
+            },
+            {
+              "id": "matchMethod",
+              "name": "matchMethod",
+              "type": "string",
+              "value": "={{ $json.data.contacts.edges.length > 1 ? 'existing-contact-ambiguous' : 'existing-contact' }}"
+            },
+            {
+              "id": "accountId",
+              "name": "accountId",
+              "type": "string",
+              "value": ""
+            },
+            {
+              "id": "suggestedAccountName",
+              "name": "suggestedAccountName",
+              "type": "string",
+              "value": ""
+            },
+            {
+              "id": "company",
+              "name": "company",
+              "type": "string",
+              "value": ""
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "57a0ea3b-1b05-401f-89f4-7d61b740fbc8",
+      "name": "Use Existing Contact",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        3696,
+        704
+      ]
+    },
+    {
+      "parameters": {
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "First name",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Last name",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Confirm your email",
+              "placeholder": "you@example.com",
+              "defaultValue": "={{ $('Class Check-In (QR)').item.json['Email address'] }}",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Company (optional)"
+            },
+            {
+              "fieldLabel": "Mobile (optional)",
+              "placeholder": "Your mobile number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "f508ef9a-367a-4333-ae2c-68d8f819faf7",
+      "name": "Ask Name",
+      "type": "n8n-nodes-base.form",
+      "typeVersion": 1,
+      "position": [
+        1008,
+        992
+      ],
+      "webhookId": "23b83efd-b76d-4684-abed-d7fed6c59e64"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').item.json.GRAPHQL_URL }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ query: \"mutation CreateContact($accountId:ID!,$firstName:String!,$lastName:String!,$emailUsage:ContactEmailAddressUsage!,$email:String,$phoneNumbers:[ContactPhoneNumberInput]){ contact{ create(input:{ accountId:$accountId, personalName:{ firstName:$firstName, lastName:$lastName }, emailAddresses:[{ usage:$emailUsage, address:$email }], phoneNumbers:$phoneNumbers }){ contact{ id } errors{ label value message } } } }\", variables: { accountId: $('Resolve Account').item.json.accountId, firstName: $('Ask Name').item.json['First name'], lastName: $('Ask Name').item.json['Last name'], emailUsage: $('Config').item.json.EMAIL_USAGE, email: ($('Ask Name').item.json['Confirm your email'] || $('Class Check-In (QR)').item.json['Email address']), phoneNumbers: (String($('Ask Name').item.json['Mobile (optional)'] || '').trim() !== '' ? [{ usage: 'mobile', number: String($('Ask Name').item.json['Mobile (optional)']).trim() }] : []) } }) }}",
+        "options": {}
+      },
+      "id": "8c6a2d50-176f-492d-a343-fe45f92e9dcc",
+      "name": "Create Contact",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3248,
+        896
+      ],
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "/*\tFail the run if Administrate returned any error.\t*/\n/*\tHTTP 200 does not mean success - inspect the top-level AND nested errors arrays.\t*/\nconst items_ary = $input.all();\n\nfor (const item_obj of items_ary)\n{\n\tconst response_obj = item_obj.json || {};\n\tconst topErrors_ary = Array.isArray(response_obj.errors) ? response_obj.errors : [];\n\tconst nested_ary = [];\n\tconst data_obj = response_obj.data || null;\n\n\tif (data_obj)\n\t{\n\t\tfor (const domain_str of Object.keys(data_obj))\n\t\t{\n\t\t\tconst domain_obj = data_obj[domain_str];\n\t\t\tif (domain_obj && typeof domain_obj === 'object')\n\t\t\t{\n\t\t\t\tfor (const field_str of Object.keys(domain_obj))\n\t\t\t\t{\n\t\t\t\t\tconst field_var = domain_obj[field_str];\n\t\t\t\t\tif (field_var && Array.isArray(field_var.errors) && field_var.errors.length > 0)\n\t\t\t\t\t{\n\t\t\t\t\t\tnested_ary.push(...field_var.errors);\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t}\n\t\t}\n\t}\n\n\tif (topErrors_ary.length > 0 || nested_ary.length > 0)\n\t{\n\t\tconst all_ary = topErrors_ary.concat(nested_ary);\n\t\tthrow new Error('Administrate returned errors: ' + JSON.stringify(all_ary));\n\t}\n}\n\nreturn items_ary;\n"
+      },
+      "id": "7322cafd-3f2b-4953-929a-0ae750aedf0b",
+      "name": "Check Errors (Create)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3472,
+        896
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "contactId",
+              "name": "contactId",
+              "type": "string",
+              "value": "={{ $json.data.contact.create.contact.id }}"
+            },
+            {
+              "id": "email",
+              "name": "email",
+              "type": "string",
+              "value": "={{ $('Ask Name').item.json['Confirm your email'] || $('Class Check-In (QR)').item.json['Email address'] }}"
+            },
+            {
+              "id": "eventId",
+              "name": "eventId",
+              "type": "string",
+              "value": "={{ ($('Class Check-In (QR)').item.json.eventId || '').toString().trim() }}"
+            },
+            {
+              "id": "status",
+              "name": "status",
+              "type": "string",
+              "value": "={{ $('Resolve Account').item.json.status }}"
+            },
+            {
+              "id": "matchMethod",
+              "name": "matchMethod",
+              "type": "string",
+              "value": "={{ $('Resolve Account').item.json.matchMethod }}"
+            },
+            {
+              "id": "accountId",
+              "name": "accountId",
+              "type": "string",
+              "value": "={{ $('Resolve Account').item.json.accountId }}"
+            },
+            {
+              "id": "suggestedAccountName",
+              "name": "suggestedAccountName",
+              "type": "string",
+              "value": "={{ $('Resolve Account').item.json.suggestedAccountName }}"
+            },
+            {
+              "id": "company",
+              "name": "company",
+              "type": "string",
+              "value": "={{ $('Resolve Account').item.json.company }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "249c1ca3-7123-4598-8fcc-cb941a2890a2",
+      "name": "Use New Contact",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        3696,
+        896
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "contactId",
+              "name": "contactId",
+              "value": "={{ $json.contactId }}",
+              "type": "string"
+            },
+            {
+              "id": "email",
+              "name": "email",
+              "value": "={{ $json.email }}",
+              "type": "string"
+            },
+            {
+              "id": "eventId",
+              "name": "eventId",
+              "value": "={{ $json.eventId }}",
+              "type": "string"
+            },
+            {
+              "id": "status",
+              "name": "status",
+              "value": "={{ $json.status }}",
+              "type": "string"
+            },
+            {
+              "id": "matchMethod",
+              "name": "matchMethod",
+              "value": "={{ $json.matchMethod }}",
+              "type": "string"
+            },
+            {
+              "id": "accountId",
+              "name": "accountId",
+              "value": "={{ $json.accountId }}",
+              "type": "string"
+            },
+            {
+              "id": "suggestedAccountName",
+              "name": "suggestedAccountName",
+              "value": "={{ $json.suggestedAccountName }}",
+              "type": "string"
+            },
+            {
+              "id": "company",
+              "name": "company",
+              "value": "={{ $json.company }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "c7405ccf-1a29-46cb-b6c4-a49f19cac202",
+      "name": "Set Contact Context",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        3920,
+        896
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').item.json.GRAPHQL_URL }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ query: \"query CheckRegistration($contactId:String!,$eventId:String!){ learners(filters:[{field:contactId,operation:eq,value:$contactId},{field:eventId,operation:eq,value:$eventId},{field:isCancelled,operation:eq,value:\\\"false\\\"}]){ edges{ node{ id } } } }\", variables: { contactId: $json.contactId, eventId: $json.eventId } }) }}",
+        "options": {}
+      },
+      "id": "7766ab3d-6c72-4c8f-babb-5c6144262382",
+      "name": "Check Registration",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        4144,
+        896
+      ],
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "/*\tCollapse the filtered learners result to zero or one learner id.\t*/\nconst contactId_str = $('Set Contact Context').item.json.contactId;\nconst eventId_str = $('Set Contact Context').item.json.eventId;\nconst email_str = $('Set Contact Context').item.json.email;\n\nconst response_obj = $input.first().json || {};\nlet learnerId_var = null;\ntry\n{\n\tlearnerId_var = response_obj.data.learners.edges[0].node.id || null;\n} catch (error) {\n\tlearnerId_var = null;\n}\n\nconst alreadyRegistered_bln = (learnerId_var !== null);\n\nreturn [{ json: {\n\talreadyRegistered: alreadyRegistered_bln,\n\tlearnerId: learnerId_var,\n\tcontactId: contactId_str,\n\teventId: eventId_str,\n\temail: email_str\n} }];\n"
+      },
+      "id": "285515fb-ddb3-4019-a4c2-2a5c3636438f",
+      "name": "Evaluate Registration",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4368,
+        896
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ $json.alreadyRegistered }}",
+              "operator": {
+                "operation": "true",
+                "type": "boolean"
+              },
+              "rightValue": ""
+            }
+          ],
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          }
+        },
+        "options": {}
+      },
+      "id": "2fd00f4a-7468-4795-a860-ec0b51744a64",
+      "name": "IF Already registered?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        4592,
+        896
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "8ee55c0a-dee4-4931-a2b0-051fc51e39ca",
+      "name": "Already Registered",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        5264,
+        704
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').item.json.GRAPHQL_URL }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ query: \"mutation Register($input:[EventRegisterNamedLearnerInput]!){ event{ registerNamedLearners(input:$input){ learners{ id contact{ id } } errors{ label message value } } } }\", variables: { input: [{ eventId: $('Set Contact Context').item.json.eventId, contactId: $('Set Contact Context').item.json.contactId }] } }) }}",
+        "options": {}
+      },
+      "id": "1fded8ea-b99d-414a-a2ac-0dc51d2b257a",
+      "name": "Register Contact",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        4816,
+        992
+      ],
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "/*\tRead the new learner id straight off the registerNamedLearners payload. Check Errors (Register) has\t*/\n/*\talready proved it is there.\t*/\nconst context_obj = $('Set Contact Context').first().json;\nconst response_obj = $input.first().json || {};\n\nlet learnerId_var = null;\ntry\n{\n\tlearnerId_var = response_obj.data.event.registerNamedLearners[0].learners[0].id || null;\n} catch (error) {\n\tlearnerId_var = null;\n}\n\nif (learnerId_var === null)\n{\n\tthrow new Error('Could not read the new learner id from the registerNamedLearners response for contact ' + context_obj.contactId);\n}\n\nreturn [{ json: {\n\talreadyRegistered: false,\n\tlearnerId: learnerId_var,\n\tcontactId: context_obj.contactId,\n\teventId: context_obj.eventId,\n\temail: context_obj.email\n} }];\n"
+      },
+      "id": "96983c72-062b-4d13-a7ba-5125facdf23a",
+      "name": "Extract Learner Id",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5264,
+        896
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').item.json.GRAPHQL_URL }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ query: \"mutation RecordAttendance($learnerId:ID!,$sessionId:ID!,$attended:Boolean){ learner{ recordAttendance(input:{ learnerId:$learnerId, sessionId:$sessionId, attended:$attended }){ learner{ id attendance{ sessionsAttended sessionsMissed totalSessions } } errors{ label message value } } } }\", variables: { learnerId: $json.learnerId, sessionId: $json.sessionId, attended: ($('Config').item.json.ATTENDED !== 'false') } }) }}",
+        "options": {}
+      },
+      "id": "7d251aee-33dc-4de2-96ef-afad2b0a4628",
+      "name": "Record Attendance",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        6160,
+        736
+      ],
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "completion",
+        "completionTitle": "={{ $('Build Log Row').first().json.screenTitle }}",
+        "completionMessage": "={{ $('Build Log Row').first().json.screenMessage }}",
+        "options": {}
+      },
+      "id": "ec3ada21-da9c-4008-b7b1-969db792b400",
+      "name": "Show Result",
+      "type": "n8n-nodes-base.form",
+      "typeVersion": 1,
+      "position": [
+        7504,
+        720
+      ],
+      "webhookId": "6c920506-0088-4b8e-bf87-79fe306b0036"
+    },
+    {
+      "parameters": {
+        "content": "## START HERE - 3.0 Check-in Form\n\nOne form handles every scan. Page 1 asks for an email address. The QR code fills in the event (and, in session mode, the session) as hidden fields.\n\n**Order of work:**\n1. **Fetch Event** reads the event, its type and its sessions.\n2. **Resolve Session** decides whether check-in is open. Nothing is written to Administrate before this point, so a scan outside the window registers nobody and marks nothing.\n3. Known email: already booked goes straight to attendance. Not booked: **private** events register them, **public** events send them to reception.\n4. Unknown email: **private** events show page 2 (name, email, company, mobile) and create them. **Public** events send them to reception.\n5. Attendance is recorded against the resolved session.\n6. **Every path ends in Build Log Row**, which writes one row to the check-in log Data Table, one entry in Administrate's External Integration Log, and shows the one result screen.\n\n**Public vs private** is Administrate's own Event type field, read live. SELF_REGISTER_EVENT_TYPES in Config says which types allow self-registration.\n\n**Registration uses registerNamedLearners.** Check Errors (Register) walks the whole response because the mutation returns a list.\n\n**Chain check.** The form is served at https://YOUR-N8N-HOST/form/<this Form Trigger's webhook id>, and 2.0's BASE_URL must match it. Avoid deleting and recreating this node once codes are printed: printed codes point at that address.",
+        "height": 900,
+        "width": 520,
+        "color": 5
+      },
+      "id": "c294f384-1527-46be-a5cb-78ec946a4fe4",
+      "name": "Sticky - Start Here",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -1000,
+        -400
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Config\n\n**GRAPHQL_URL** - Administrate endpoint. The instance is decided by the credential, not this URL.\n\n**EMAIL_USAGE** - usage for a new walk-in's email, 'primary' or 'secondary'.\n\n**ATTENDED** - 'true' marks Present, 'false' marks Absent. Leave alone: Build Log Row and 4.0 assume Present.\n\n**ORIGIN_IDENTIFIER** - heading every scan is filed under in Administrate's integration log.\n\n**OPEN_MINUTES_BEFORE** - how early check-in opens, in minutes before the session starts. 120 = 2 hours.\n\n**CLOSE_HOURS_AFTER** - how long after the session STARTS check-in stays open. 12 = until 12 hours after the start. Covers late arrivals on the day without letting tomorrow's delegates check into today's session.\n  A session spanning several days gets this window on each day it covers, from its own start time that day.\n\n**SELF_REGISTER_EVENT_TYPES** - comma list of Administrate event types whose unmatched delegates may register themselves. Default 'private'. Anything else (public) sends them to reception. Empty = nobody self-registers.\n\n**CHECKIN_WINDOW_OVERRIDE** - TESTING ONLY. 'off' in normal use. 'any' ignores the window and uses the scanned session, or the one nearest now, so an old event can be tested. MUST be 'off' in production: at 'any' a printed code checks people in whenever it is scanned.\n\n**CHECKIN_LOG_TABLE_ID** - id of the EventCheckInLog n8n Data Table (see the README for its columns). 4.0 and 5.0 read the same table.\n\n**Must match elsewhere:** 5.0 Check-in Dashboard has its own OPEN_MINUTES_BEFORE and CLOSE_HOURS_AFTER for its labels. Change both together.",
+        "height": 1200,
+        "width": 440,
+        "color": 4
+      },
+      "id": "96b0e3ae-9e1b-4572-a5db-575335b496f7",
+      "name": "Sticky - Config Explained",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -1500,
+        944
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Credentials\n\nTwelve HTTP Request nodes use your **Administrate OAuth2** credential: Fetch Event, Find Contact by Email, Domain Lookup, Company Lookup, Create Contact, Create Account, Create Contact (Individual), Make Individual, Check Registration, Register Contact, Record Attendance, Log Check-in.\n\n**SETUP:** select the credential on all twelve, and set CHECKIN_LOG_TABLE_ID in Config.\n\n**VERIFY ON FIRST RUN:** a row in the check-in log and the attendance counter moving in Administrate. An empty errors array is not proof.\n\n**Error workflow:** set Workflow Settings -> Error Workflow to 6.0 QR Check-in - Failure Handler. It fires on production runs only.",
+        "height": 600,
+        "width": 380,
+        "color": 3
+      },
+      "id": "fbe7d407-f551-46ec-af2e-673900df6692",
+      "name": "Sticky - Credentials",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -420,
+        -160
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Create Contact + account reconciliation\n\nNew attendees only. Account is chosen by a short cascade (Domain Lookup -> Company Lookup -> Resolve Account):\n1. contacts with the same email DOMAIN -> if exactly ONE distinct account, file there (reconciled-domain).\n2. else if a Company was entered -> accounts by name -> if exactly ONE, file there (reconciled-company).\n3. else -> create an INDIVIDUAL account for the person (status needs-review-*).\n\nGeneric domains (gmail, outlook) return many accounts -> ambiguous -> individual, so they are never mis-filed. Resolve Account also emits status + matchMethod for the reconciliation report.",
+        "height": 416,
+        "width": 420,
+        "color": 2
+      },
+      "id": "82758241-09e2-4e8a-bb50-1a1a05e07d6c",
+      "name": "Sticky - Create Contact shape",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        944,
+        1232
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Two-page form (n8n)\n\nPage 1 = Form Trigger (email). Page 2 = 'Ask Name' Form node (only reached for new walk-ins). Final screen = 'Show Result' Form completion node.\n\nMulti-page Form node parameters have shifted between n8n versions - sanity-check the 'Ask Name' and 'Show Result' nodes render correctly in your n8n version.",
+        "height": 332,
+        "width": 400,
+        "color": 6
+      },
+      "id": "62505690-c426-428d-a770-019239093b5c",
+      "name": "Sticky - Multi-page form note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2320,
+        224
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Session, window and attendance\n\n**Resolve Session** runs straight after Fetch Event:\n- Check-in for a session is open from OPEN_MINUTES_BEFORE before its start to CLOSE_HOURS_AFTER after its start, measured on timeZonedStart, which carries its own UTC offset. The server clock's timezone does not matter.\n- A scanned ?sessionId= is honoured only while that session's own window is open. Otherwise the open session nearest its start wins, so a day-one code scanned on day two marks day two (staleScan in the log).\n- Nothing open: 'not-open-yet' with the time it opens, or 'closed' if every window has passed.\n\n**Prepare Attendance** takes the learner from whichever branch ran and the session from Resolve Session. **Record Attendance** calls learner.recordAttendance. A refusal (commonly 'Learners missing from session' when a session was added after booking) goes to the attendance-refused outcome, not a raw error.\n\n**Check Registration** now excludes cancelled learners, so a cancelled booking is treated as not booked.\n\n**Outcomes** (Build Log Row turns each into the delegate's screen and the log's attendanceMark 'blocked-<outcome>'):\nchecked-in, not-open-yet, closed, no-sessions, invalid-event, reception-unknown-email, reception-not-booked, registration-refused, walk-in-failed, attendance-refused.",
+        "height": 1248,
+        "width": 440,
+        "color": 4
+      },
+      "id": "808c9e64-484b-4871-b994-fad45248de41",
+      "name": "Sticky - Completion (native)",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        3184,
+        -592
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Logging (every path)\n\n**Build Log Row** is reached from every outcome. It reads earlier nodes by name and tolerates them not having run.\n\n**Insert Log Row** writes to the EventCheckInLog Data Table, by the id in Config CHECKIN_LOG_TABLE_ID. 18 columns. outcome is the registration result (already-registered, registered-now, new-created-registered, not-registered). attendanceMark is 'Present' or 'blocked-<outcome>'. 4.0 and 5.0 read this table.\n\n**Log Check-in** files one entry in Administrate's External Integration Log against the learner, else the contact, else the event. status is success, warning (window or reception) or failed. onError continues, so logging can never cost a delegate their result screen.\n\n**Show Result** is the single completion screen; its title and message come from Build Log Row.",
+        "height": 900,
+        "width": 380,
+        "color": 5
+      },
+      "id": "f0d6361a-2dde-4cf8-be12-33054823526f",
+      "name": "Sticky - Dedupe and Log",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        3936,
+        -800
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "/*\tFail fast only when Config itself is broken.\t*/\n/*\tA missing or unknown eventId is an attendee problem, not a configuration one, so it is deliberately\t*/\n/*\tNOT thrown here. Fetch Event returns nothing, Resolve Session sets outcome 'invalid-event', and the\t*/\n/*\tattendee reaches the 'Check-in unavailable' screen through Build Log Row instead of a raw n8n error page.\t*/\nconst config_obj = $('Config').item.json;\nconst missing_ary = [];\n\nif (String(config_obj.GRAPHQL_URL || '').trim() === '')\n{\n\tmissing_ary.push('GRAPHQL_URL');\n}\n\nif (missing_ary.length > 0)\n{\n\tthrow new Error('Cannot check in - missing Config: ' + missing_ary.join(', '));\n}\n\nreturn $input.all();\n"
+      },
+      "id": "d1569765-1bb7-45fe-b4b9-1db0760424d7",
+      "name": "Validate Config",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -560,
+        800
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "/*\tOnly EMAIL_USAGE is required to create a walk-in contact. The account is derived from the\t*/\n/*\tDomain Lookup / Company Lookup cascade, so there is no ACCOUNT_ID in Config to fall back to.\t*/\nconst config_obj = $('Config').item.json;\nconst required_ary = ['EMAIL_USAGE'];\nconst missing_ary = [];\n\nfor (const key_str of required_ary)\n{\n\tif (String(config_obj[key_str] || '').trim() === '')\n\t{\n\t\tmissing_ary.push(key_str);\n\t}\n}\n\nif (missing_ary.length > 0)\n{\n\tthrow new Error('Cannot create a new walk-in contact - set these in Config: ' + missing_ary.join(', '));\n}\n\nreturn $input.all();\n"
+      },
+      "id": "bc3057eb-ba5e-458d-94fa-826f51d66bce",
+      "name": "Validate Walk-in Config",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1232,
+        992
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "/*\tDecide the account for the new contact: single domain match, then single company match, else an individual account.\t*/\nconst email_str = String($('Class Check-In (QR)').item.json['Email address'] || '');\nconst company_str = String($('Ask Name').item.json['Company (optional)'] || '').trim();\n\nconst domainAccounts_obj = {};\ntry\n{\n\tfor (const edge_obj of $('Domain Lookup').item.json.data.contacts.edges)\n\t{\n\t\tconst acc_obj = edge_obj.node && edge_obj.node.account;\n\t\tif (acc_obj && acc_obj.id)\n\t\t{\n\t\t\tdomainAccounts_obj[acc_obj.id] = acc_obj.name || '';\n\t\t}\n\t}\n} catch (e_var) {}\nconst domainIds_ary = Object.keys(domainAccounts_obj);\n\nconst companyAccounts_obj = {};\nif (company_str !== '')\n{\n\ttry\n\t{\n\t\tfor (const edge_obj of $('Company Lookup').item.json.data.accounts.edges)\n\t\t{\n\t\t\tconst node_obj = edge_obj.node;\n\t\t\tif (node_obj && node_obj.id)\n\t\t\t{\n\t\t\t\tcompanyAccounts_obj[node_obj.id] = node_obj.name || '';\n\t\t\t}\n\t\t}\n\t} catch (e_var) {}\n}\nconst companyIds_ary = Object.keys(companyAccounts_obj);\n\nlet accountId_str = '';\nlet status_str = '';\nlet method_str = '';\nlet suggestedName_str = '';\n\nif (domainIds_ary.length === 1)\n{\n\taccountId_str = domainIds_ary[0];\n\tsuggestedName_str = domainAccounts_obj[accountId_str];\n\tstatus_str = 'reconciled-domain';\n\tmethod_str = 'domain';\n} else if (company_str !== '' && companyIds_ary.length === 1) {\n\taccountId_str = companyIds_ary[0];\n\tsuggestedName_str = companyAccounts_obj[accountId_str];\n\tstatus_str = 'reconciled-company';\n\tmethod_str = 'company';\n} else if (domainIds_ary.length > 1) {\n\tstatus_str = 'needs-review-multiple-domain';\n\tmethod_str = 'domain-ambiguous';\n} else if (company_str !== '' && companyIds_ary.length > 1) {\n\tstatus_str = 'needs-review-multiple-company';\n\tmethod_str = 'company-ambiguous';\n} else {\n\tstatus_str = 'needs-review-none';\n\tmethod_str = 'none';\n}\n\n/*\tReconciled to a single real account -> file there; otherwise create an individual account.\t*/\nconst mode_str = accountId_str !== '' ? 'account' : 'individual';\n\nreturn [{ json: {\n\tmode: mode_str,\n\taccountId: accountId_str,\n\tstatus: status_str,\n\tmatchMethod: method_str,\n\tsuggestedAccountName: suggestedName_str,\n\tcompany: company_str,\n\temail: email_str\n} }];\n"
+      },
+      "id": "a3f93a19-7aff-4322-a981-681b120e5fd0",
+      "name": "Resolve Account",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1904,
+        992
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').item.json.GRAPHQL_URL }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ query: \"query DomainMatch($v:String!){ contacts(first:200, filters:[{field:emailAddress,operation:like,value:$v}]){ edges{ node{ id emailAddress account{ id name } } } } }\", variables: { v: ('%@' + (($('Class Check-In (QR)').item.json['Email address'] || '').split('@')[1] || '')) } }) }}",
+        "options": {}
+      },
+      "id": "3afe2d34-1ade-4ac9-b5be-c618001de5c4",
+      "name": "Domain Lookup",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1456,
+        992
+      ],
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').item.json.GRAPHQL_URL }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ query: \"query AccountByName($v:String!){ accounts(first:50, filters:[{field:name,operation:like,value:$v}]){ edges{ node{ id name } } } }\", variables: { v: ( (String($('Ask Name').item.json['Company (optional)'] || '').trim()) ? ('%' + String($('Ask Name').item.json['Company (optional)']).trim() + '%') : 'ZZZ_NO_COMPANY_MATCH_ZZZ' ) } }) }}",
+        "options": {}
+      },
+      "id": "6bbfb254-ba7a-47df-a694-e86f2bcc0107",
+      "name": "Company Lookup",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1680,
+        992
+      ],
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "/*\t=== One log row per scan, whatever happened ===\t*/\n/*\tEvery path through this workflow ends here carrying an outcome in $json.outcome. Earlier nodes are\t*/\n/*\tread by name and may not have run, since most paths skip most nodes.\t*/\nconst result_str = String($json.outcome || 'unknown');\n\nfunction read(nodeName_str)\n{\n\ttry\n\t{\n\t\tif (!$(nodeName_str).isExecuted)\n\t\t{\n\t\t\treturn {};\n\t\t}\n\t\treturn $(nodeName_str).first().json || {};\n\t} catch (error) {\n\t\treturn {};\n\t}\n}\n\nconst session_obj = read('Resolve Session');\nconst context_obj = read('Set Contact Context');\nconst evaluate_obj = read('Evaluate Registration');\nconst extract_obj = read('Extract Learner Id');\nconst attendance_obj = read('Prepare Attendance');\nconst askName_obj = read('Ask Name');\nconst found_obj = read('Find Contact by Email');\n\nlet foundNode_obj = {};\ntry\n{\n\tfoundNode_obj = found_obj.data.contacts.edges[0].node || {};\n} catch (error) {\n\tfoundNode_obj = {};\n}\n\nconst email_str = String(context_obj.email || askName_obj['Confirm your email'] || session_obj.email || '');\nconst domain_str = email_str.indexOf('@') !== -1 ? email_str.split('@')[1] : '';\n\nlet first_str = String(askName_obj['First name'] || '');\nlet last_str = String(askName_obj['Last name'] || '');\nif (first_str === '' && last_str === '' && foundNode_obj.personalName)\n{\n\tfirst_str = String(foundNode_obj.personalName.firstName || '');\n\tlast_str = String(foundNode_obj.personalName.lastName || '');\n}\n\nlet company_str = String(context_obj.company || askName_obj['Company (optional)'] || '');\nif (company_str === '' && foundNode_obj.account)\n{\n\tcompany_str = String(foundNode_obj.account.name || '');\n}\n\nconst matchMethod_str = String(context_obj.matchMethod || '');\nconst newLearner_str = String(extract_obj.learnerId || '');\n\n/*\tRegistration outcome. matchMethod, not status, decides whether an existing contact was reused, so an\t*/\n/*\tambiguous email match is still logged as an existing contact rather than a new one.\t*/\nlet registration_str = 'not-registered';\nif (String(context_obj.contactId || '') !== '')\n{\n\tif (matchMethod_str.indexOf('existing-contact') === 0)\n\t{\n\t\tif (evaluate_obj.alreadyRegistered)\n\t\t{\n\t\t\tregistration_str = 'already-registered';\n\t\t} else if (newLearner_str !== '') {\n\t\t\tregistration_str = 'registered-now';\n\t\t}\n\t} else if (newLearner_str !== '') {\n\t\tregistration_str = 'new-created-registered';\n\t}\n}\n\nconst learnerId_str = String(attendance_obj.learnerId || newLearner_str || evaluate_obj.learnerId || '');\nconst attendanceMark_str = (result_str === 'checked-in') ? 'Present' : ('blocked-' + result_str);\n\n/*\tWhat the delegate sees. Every refusal sends them to a person, because none of these can be fixed\t*/\n/*\tfrom a phone.\t*/\nconst eventTitle_str = String(session_obj.eventTitle || '');\nconst openMinutes_int = Number(session_obj.openMinutes || 120);\nlet openLead_str = openMinutes_int + ' minutes';\nif (openMinutes_int % 60 === 0)\n{\n\topenLead_str = (openMinutes_int / 60) + (openMinutes_int === 60 ? ' hour' : ' hours');\n}\n\nlet title_str = 'Please see a member of staff';\nlet message_str = 'We could not check you in automatically. Please see a member of staff, who will get you checked in.';\nlet logStatus_str = 'failed';\n\nif (result_str === 'checked-in')\n{\n\ttitle_str = 'You\\'re checked in!';\n\tmessage_str = 'Thanks, see you in class.' + ((registration_str === 'registered-now' || registration_str === 'new-created-registered') ? ' We have added you to the class list too.' : '');\n\tlogStatus_str = 'success';\n} else if (result_str === 'not-open-yet') {\n\ttitle_str = 'Check-in isn\\'t open yet';\n\tmessage_str = 'Check-in' + (eventTitle_str !== '' ? ' for ' + eventTitle_str : '') + ' opens at ' + String(session_obj.opensAtLabel || 'a later time') + ', ' + openLead_str + ' before the class starts. Please scan again then, or see reception.';\n\tlogStatus_str = 'warning';\n} else if (result_str === 'closed') {\n\ttitle_str = 'Check-in has closed';\n\tmessage_str = 'Check-in for this class is no longer open. Please see a member of staff.';\n\tlogStatus_str = 'warning';\n} else if (result_str === 'reception-unknown-email' || result_str === 'reception-not-booked') {\n\ttitle_str = 'Please see reception';\n\tmessage_str = 'We could not find a booking for you on this class. Please see reception, who will check you in.';\n\tlogStatus_str = 'warning';\n} else if (result_str === 'registration-refused') {\n\ttitle_str = 'Could not add you to this class';\n\tmessage_str = 'You reached the right page, but we were not able to register you for this class automatically. Nothing has gone wrong at your end. Please see a member of staff, who will complete your check-in.';\n} else if (result_str === 'walk-in-failed') {\n\ttitle_str = 'We could not set up your details';\n\tmessage_str = 'Nothing has gone wrong at your end. Please see a member of staff, who will complete your check-in.';\n} else if (result_str === 'attendance-refused') {\n\ttitle_str = 'Check-in not completed';\n\tmessage_str = 'You are registered for this class, so nothing is lost, but we could not mark your attendance automatically. Please see a member of staff, who will complete your check-in.';\n} else if (result_str === 'invalid-event' || result_str === 'no-sessions') {\n\ttitle_str = 'Check-in unavailable';\n\tmessage_str = 'We could not check you in automatically. Please see a member of staff, who will get you checked in.';\n}\n\nreturn [{ json: {\n\ttimestamp: new Date().toISOString(),\n\teventId: String(session_obj.eventId || context_obj.eventId || ''),\n\teventTitle: eventTitle_str,\n\temail: email_str,\n\tdomain: domain_str,\n\tfirstName: first_str,\n\tlastName: last_str,\n\tcompany: company_str,\n\tcontactId: String(context_obj.contactId || ''),\n\tlearnerId: learnerId_str,\n\toutcome: registration_str,\n\taccountId: String(context_obj.accountId || ''),\n\tstatus: String(context_obj.status || ''),\n\tmatchMethod: matchMethod_str,\n\tsuggestedAccountName: String(context_obj.suggestedAccountName || ''),\n\tsessionId: String(session_obj.sessionId || ''),\n\tattendanceMark: attendanceMark_str,\n\thasPassed: false,\n\tresult: result_str,\n\tsessionTitle: String(session_obj.sessionTitle || ''),\n\tsessionStart: String(session_obj.sessionStart || ''),\n\tstaleScan: !!session_obj.staleScan,\n\twindowOverridden: !!session_obj.windowOverridden,\n\tlogStatus: logStatus_str,\n\tscreenTitle: title_str,\n\tscreenMessage: message_str\n} }];\n"
+      },
+      "id": "a137b08c-947c-4067-8e96-bf510ed61785",
+      "name": "Build Log Row",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        6832,
+        720
+      ]
+    },
+    {
+      "parameters": {
+        "dataTableId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Config').first().json.CHECKIN_LOG_TABLE_ID }}",
+          "cachedResultName": "EventCheckInLog"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "timestamp": "={{ $json.timestamp }}",
+            "eventId": "={{ $json.eventId }}",
+            "email": "={{ $json.email }}",
+            "domain": "={{ $json.domain }}",
+            "firstName": "={{ $json.firstName }}",
+            "lastName": "={{ $json.lastName }}",
+            "company": "={{ $json.company }}",
+            "contactId": "={{ $json.contactId }}",
+            "learnerId": "={{ $json.learnerId }}",
+            "outcome": "={{ $json.outcome }}",
+            "accountId": "={{ $json.accountId }}",
+            "status": "={{ $json.status }}",
+            "matchMethod": "={{ $json.matchMethod }}",
+            "suggestedAccountName": "={{ $json.suggestedAccountName }}",
+            "hasPassed": "={{ $json.hasPassed }}",
+            "sessionId": "={{ $json.sessionId }}",
+            "attendanceMark": "={{ $json.attendanceMark }}",
+            "eventTitle": "={{ $json.eventTitle }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "timestamp",
+              "displayName": "timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "eventId",
+              "displayName": "eventId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "email",
+              "displayName": "email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "domain",
+              "displayName": "domain",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "firstName",
+              "displayName": "firstName",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "lastName",
+              "displayName": "lastName",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "company",
+              "displayName": "company",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "contactId",
+              "displayName": "contactId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "learnerId",
+              "displayName": "learnerId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "outcome",
+              "displayName": "outcome",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "accountId",
+              "displayName": "accountId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "matchMethod",
+              "displayName": "matchMethod",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "suggestedAccountName",
+              "displayName": "suggestedAccountName",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "sessionId",
+              "displayName": "sessionId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "attendanceMark",
+              "displayName": "attendanceMark",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "hasPassed",
+              "displayName": "hasPassed",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "boolean",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "eventTitle",
+              "displayName": "eventTitle",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "id": "69eb33b8-26e5-4a6c-a7a4-272e27c64aea",
+      "name": "Insert Log Row",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        7056,
+        720
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "a",
+                    "leftValue": "={{ $json.mode }}",
+                    "operator": {
+                      "operation": "equals",
+                      "type": "string"
+                    },
+                    "rightValue": "account"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "b",
+                    "leftValue": "={{ $json.mode }}",
+                    "operator": {
+                      "operation": "equals",
+                      "type": "string"
+                    },
+                    "rightValue": "individual"
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "37ba0968-8f05-4ee6-9eb3-364643ac78ca",
+      "name": "Account path?",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        2128,
+        992
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').item.json.GRAPHQL_URL }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ query: \"mutation CreateAccount($name:String!){ account{ create(input:{ name:$name }){ account{ id } errors{ label value message } } } }\", variables: { name: ((($('Ask Name').item.json['First name']||'') + ' ' + ($('Ask Name').item.json['Last name']||'')).trim() || $('Class Check-In (QR)').item.json['Email address']) } }) }}",
+        "options": {}
+      },
+      "id": "35ab4c61-0e4c-4e83-a3b8-47b8a19673f1",
+      "name": "Create Account",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2352,
+        1088
+      ],
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "/*\tFail the run if Administrate returned any error (top-level or nested).\t*/\nconst items_ary = $input.all();\nfor (const item_obj of items_ary)\n{\n\tconst response_obj = item_obj.json || {};\n\tconst topErrors_ary = Array.isArray(response_obj.errors) ? response_obj.errors : [];\n\tconst nested_ary = [];\n\tconst data_obj = response_obj.data || null;\n\tif (data_obj)\n\t{\n\t\tfor (const domain_str of Object.keys(data_obj))\n\t\t{\n\t\t\tconst domain_obj = data_obj[domain_str];\n\t\t\tif (domain_obj && typeof domain_obj === 'object')\n\t\t\t{\n\t\t\t\tfor (const field_str of Object.keys(domain_obj))\n\t\t\t\t{\n\t\t\t\t\tconst field_var = domain_obj[field_str];\n\t\t\t\t\tif (field_var && Array.isArray(field_var.errors) && field_var.errors.length > 0)\n\t\t\t\t\t{\n\t\t\t\t\t\tnested_ary.push(...field_var.errors);\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t}\n\t\t}\n\t}\n\tif (topErrors_ary.length > 0 || nested_ary.length > 0)\n\t{\n\t\tthrow new Error('Administrate returned errors: ' + JSON.stringify(topErrors_ary.concat(nested_ary)));\n\t}\n}\nreturn items_ary;\n"
+      },
+      "id": "67cb9286-c00b-4186-aae2-41eac244839e",
+      "name": "Check Errors (Account)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2576,
+        1088
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').item.json.GRAPHQL_URL }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ query: \"mutation CreateContact($accountId:ID!,$firstName:String!,$lastName:String!,$emailUsage:ContactEmailAddressUsage!,$email:String,$phoneNumbers:[ContactPhoneNumberInput]){ contact{ create(input:{ accountId:$accountId, personalName:{ firstName:$firstName, lastName:$lastName }, emailAddresses:[{ usage:$emailUsage, address:$email }], phoneNumbers:$phoneNumbers }){ contact{ id } errors{ label value message } } } }\", variables: { accountId: $('Create Account').item.json.data.account.create.account.id, firstName: $('Ask Name').item.json['First name'], lastName: $('Ask Name').item.json['Last name'], emailUsage: $('Config').item.json.EMAIL_USAGE, email: ($('Ask Name').item.json['Confirm your email'] || $('Class Check-In (QR)').item.json['Email address']), phoneNumbers: (String($('Ask Name').item.json['Mobile (optional)'] || '').trim() !== '' ? [{ usage: 'mobile', number: String($('Ask Name').item.json['Mobile (optional)']).trim() }] : []) } }) }}",
+        "options": {}
+      },
+      "id": "1af20aba-a1c5-4456-b10e-b7adcf1cb38d",
+      "name": "Create Contact (Individual)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2800,
+        1088
+      ],
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "/*\tFail the run if Administrate returned any error (top-level or nested).\t*/\nconst items_ary = $input.all();\nfor (const item_obj of items_ary)\n{\n\tconst response_obj = item_obj.json || {};\n\tconst topErrors_ary = Array.isArray(response_obj.errors) ? response_obj.errors : [];\n\tconst nested_ary = [];\n\tconst data_obj = response_obj.data || null;\n\tif (data_obj)\n\t{\n\t\tfor (const domain_str of Object.keys(data_obj))\n\t\t{\n\t\t\tconst domain_obj = data_obj[domain_str];\n\t\t\tif (domain_obj && typeof domain_obj === 'object')\n\t\t\t{\n\t\t\t\tfor (const field_str of Object.keys(domain_obj))\n\t\t\t\t{\n\t\t\t\t\tconst field_var = domain_obj[field_str];\n\t\t\t\t\tif (field_var && Array.isArray(field_var.errors) && field_var.errors.length > 0)\n\t\t\t\t\t{\n\t\t\t\t\t\tnested_ary.push(...field_var.errors);\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t}\n\t\t}\n\t}\n\tif (topErrors_ary.length > 0 || nested_ary.length > 0)\n\t{\n\t\tthrow new Error('Administrate returned errors: ' + JSON.stringify(topErrors_ary.concat(nested_ary)));\n\t}\n}\nreturn items_ary;\n"
+      },
+      "id": "6b73de4b-98b2-48eb-b9aa-1a1848277ec3",
+      "name": "Check Errors (Contact Ind)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3024,
+        1088
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').item.json.GRAPHQL_URL }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ query: \"mutation MakeIndividual($accountId:ID!){ account{ makeIndividual(input:{ accountId:$accountId }){ account{ isIndividual } errors{ label value message } } } }\", variables: { accountId: $('Create Account').item.json.data.account.create.account.id } }) }}",
+        "options": {}
+      },
+      "id": "aa35021b-8d3e-47e2-a893-5544c5017e9f",
+      "name": "Make Individual",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3248,
+        1088
+      ],
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "/*\tFail the run if Administrate returned any error (top-level or nested).\t*/\nconst items_ary = $input.all();\nfor (const item_obj of items_ary)\n{\n\tconst response_obj = item_obj.json || {};\n\tconst topErrors_ary = Array.isArray(response_obj.errors) ? response_obj.errors : [];\n\tconst nested_ary = [];\n\tconst data_obj = response_obj.data || null;\n\tif (data_obj)\n\t{\n\t\tfor (const domain_str of Object.keys(data_obj))\n\t\t{\n\t\t\tconst domain_obj = data_obj[domain_str];\n\t\t\tif (domain_obj && typeof domain_obj === 'object')\n\t\t\t{\n\t\t\t\tfor (const field_str of Object.keys(domain_obj))\n\t\t\t\t{\n\t\t\t\t\tconst field_var = domain_obj[field_str];\n\t\t\t\t\tif (field_var && Array.isArray(field_var.errors) && field_var.errors.length > 0)\n\t\t\t\t\t{\n\t\t\t\t\t\tnested_ary.push(...field_var.errors);\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t}\n\t\t}\n\t}\n\tif (topErrors_ary.length > 0 || nested_ary.length > 0)\n\t{\n\t\tthrow new Error('Administrate returned errors: ' + JSON.stringify(topErrors_ary.concat(nested_ary)));\n\t}\n}\nreturn items_ary;\n"
+      },
+      "id": "ac0ddd02-aa57-47ae-9d68-83f2f2129495",
+      "name": "Check Errors (Make Ind)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3472,
+        1088
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "contactId",
+              "name": "contactId",
+              "type": "string",
+              "value": "={{ $('Create Contact (Individual)').item.json.data.contact.create.contact.id }}"
+            },
+            {
+              "id": "email",
+              "name": "email",
+              "type": "string",
+              "value": "={{ $('Ask Name').item.json['Confirm your email'] || $('Class Check-In (QR)').item.json['Email address'] }}"
+            },
+            {
+              "id": "eventId",
+              "name": "eventId",
+              "type": "string",
+              "value": "={{ ($('Class Check-In (QR)').item.json.eventId || '').toString().trim() }}"
+            },
+            {
+              "id": "status",
+              "name": "status",
+              "type": "string",
+              "value": "={{ $('Resolve Account').item.json.status }}"
+            },
+            {
+              "id": "matchMethod",
+              "name": "matchMethod",
+              "type": "string",
+              "value": "individual"
+            },
+            {
+              "id": "accountId",
+              "name": "accountId",
+              "type": "string",
+              "value": "={{ $('Create Account').item.json.data.account.create.account.id }}"
+            },
+            {
+              "id": "suggestedAccountName",
+              "name": "suggestedAccountName",
+              "type": "string",
+              "value": ""
+            },
+            {
+              "id": "company",
+              "name": "company",
+              "type": "string",
+              "value": "={{ $('Resolve Account').item.json.company }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "747f3b71-1bc7-4681-83f8-49b6a9d4bc18",
+      "name": "Use New Contact (Individual)",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        3696,
+        1088
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').item.json.GRAPHQL_URL }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ query: \"query FetchEvent($eventId:String!){ events(filters:[{field:id,operation:eq,value:$eventId}]){ edges{ node{ id title type lifecycleState sessions{ edges{ node{ id title timeZoneName timeZonedStart timeZonedEnd } } } } } } }\", variables: { eventId: ($('Class Check-In (QR)').item.json.eventId || '').toString().trim() } }) }}",
+        "options": {}
+      },
+      "id": "a8b42525-0d54-4ec6-b0b0-e4ae761795c1",
+      "name": "Fetch Event",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -336,
+        800
+      ],
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "/*\tregisterNamedLearners returns a LIST of responses, one per learner, so its errors sit inside an array.\t*/\n/*\tWalk the whole response rather than assuming a shape: a refusal missed here would read as success.\t*/\nfunction collectErrors(value_var, found_ary)\n{\n\tif (Array.isArray(value_var))\n\t{\n\t\tfor (const entry_var of value_var)\n\t\t{\n\t\t\tcollectErrors(entry_var, found_ary);\n\t\t}\n\t\treturn;\n\t}\n\tif (value_var && typeof value_var === 'object')\n\t{\n\t\tfor (const key_str of Object.keys(value_var))\n\t\t{\n\t\t\tif (key_str === 'errors' && Array.isArray(value_var[key_str]))\n\t\t\t{\n\t\t\t\tfound_ary.push(...value_var[key_str]);\n\t\t\t} else {\n\t\t\t\tcollectErrors(value_var[key_str], found_ary);\n\t\t\t}\n\t\t}\n\t}\n}\n\nconst items_ary = $input.all();\n\nfor (const item_obj of items_ary)\n{\n\tconst found_ary = [];\n\tcollectErrors(item_obj.json || {}, found_ary);\n\n\tif (found_ary.length > 0)\n\t{\n\t\t/*\tKeep the message SHORT. A long JSON dump is truncated from the front on the error output.\t*/\n\t\tconst summary_str = found_ary.map(function (error_obj)\n\t\t{\n\t\t\treturn (String(error_obj.label || 'error') + ': ' + String(error_obj.message || ''));\n\t\t}).join('; ');\n\t\tthrow new Error('Administrate refused registration - ' + summary_str);\n\t}\n\n\tlet learnerId_var = null;\n\ttry\n\t{\n\t\tlearnerId_var = item_obj.json.data.event.registerNamedLearners[0].learners[0].id || null;\n\t} catch (error) {\n\t\tlearnerId_var = null;\n\t}\n\n\tif (learnerId_var === null)\n\t{\n\t\tthrow new Error('Administrate returned no errors but no learner either, so registration is treated as refused.');\n\t}\n}\n\nreturn items_ary;\n"
+      },
+      "id": "46c9ffd4-c7fb-4495-a073-3e29dd4b2417",
+      "name": "Check Errors (Register)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5040,
+        992
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "/*\tFail the run if Administrate returned any error.\t*/\n/*\tHTTP 200 does not mean success - inspect the top-level AND nested errors arrays.\t*/\nconst items_ary = $input.all();\n\nfor (const item_obj of items_ary)\n{\n\tconst response_obj = item_obj.json || {};\n\tconst topErrors_ary = Array.isArray(response_obj.errors) ? response_obj.errors : [];\n\tconst nested_ary = [];\n\tconst data_obj = response_obj.data || null;\n\n\tif (data_obj)\n\t{\n\t\tfor (const domain_str of Object.keys(data_obj))\n\t\t{\n\t\t\tconst domain_obj = data_obj[domain_str];\n\t\t\tif (domain_obj && typeof domain_obj === 'object')\n\t\t\t{\n\t\t\t\tfor (const field_str of Object.keys(domain_obj))\n\t\t\t\t{\n\t\t\t\t\tconst field_var = domain_obj[field_str];\n\t\t\t\t\tif (field_var && Array.isArray(field_var.errors) && field_var.errors.length > 0)\n\t\t\t\t\t{\n\t\t\t\t\t\tnested_ary.push(...field_var.errors);\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t}\n\t\t}\n\t}\n\n\tif (topErrors_ary.length > 0 || nested_ary.length > 0)\n\t{\n\t\tconst all_ary = topErrors_ary.concat(nested_ary);\n\t\t/*\tShort message for the same reason as Check Errors (Register). 'Learners missing from session'\t*/\n\t\t/*\tis the one that matters here: event registration does not imply session membership.\t*/\n\t\tconst summary_str = all_ary.map(function (error_obj)\n\t\t{\n\t\t\treturn (String(error_obj.label || 'error') + ': ' + String(error_obj.message || ''));\n\t\t}).join('; ');\n\t\tthrow new Error('Administrate refused the attendance mark - ' + summary_str);\n\t}\n}\n\nreturn items_ary;\n"
+      },
+      "id": "a784e9e8-47c7-4310-8e4c-bd6e7358ed34",
+      "name": "Check Errors (Completion)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        6384,
+        736
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').item.json.GRAPHQL_URL }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ query: \"mutation Log($originIdentifier: String!, $nodeId: ID!, $message: String!, $status: ExternalLogTypeStatus!, $payload: String){ externalLog{ createExternalIntegrationLog(input:{ originIdentifier:$originIdentifier, nodeId:$nodeId, message:$message, status:$status, payload:$payload }){ errors{ label message value } } } }\", variables: { originIdentifier: ($('Config').first().json.ORIGIN_IDENTIFIER || 'Automator - QR Check-in'), nodeId: ($('Build Log Row').first().json.learnerId || $('Build Log Row').first().json.contactId || $('Build Log Row').first().json.eventId || 'none'), message: ($('Build Log Row').first().json.attendanceMark === 'Present' ? 'QR check-in: attendance recorded' : 'QR check-in: attendance NOT recorded (' + $('Build Log Row').first().json.result + ')'), status: $('Build Log Row').first().json.logStatus, payload: JSON.stringify({ eventId: $('Build Log Row').first().json.eventId, sessionId: $('Build Log Row').first().json.sessionId, email: $('Build Log Row').first().json.email, contactId: $('Build Log Row').first().json.contactId, learnerId: $('Build Log Row').first().json.learnerId, registration: $('Build Log Row').first().json.outcome, result: $('Build Log Row').first().json.result, status: $('Build Log Row').first().json.status, matchMethod: $('Build Log Row').first().json.matchMethod, staleScan: $('Build Log Row').first().json.staleScan, windowOverridden: $('Build Log Row').first().json.windowOverridden }) } }) }}",
+        "options": {}
+      },
+      "id": "74604097-96cc-4652-ac59-bed41379f448",
+      "name": "Log Check-in",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        7280,
+        720
+      ],
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "06d421f4-0c9f-4471-ade6-17af028d7647",
+      "name": "IF Can Proceed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        112,
+        800
+      ],
+      "parameters": {
+        "conditions": {
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "IFCanProceed",
+              "leftValue": "={{ $json.proceed }}",
+              "operator": {
+                "operation": "true",
+                "singleValue": true,
+                "type": "boolean"
+              },
+              "rightValue": ""
+            }
+          ],
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          }
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "c1a2a3ff-e14e-490b-bc8e-adfa2e6397bf",
+      "name": "IF Walk-in Allowed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        896,
+        1184
+      ],
+      "parameters": {
+        "conditions": {
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "IFWalk-inAll",
+              "leftValue": "={{ $('Resolve Session').first().json.selfRegister }}",
+              "operator": {
+                "operation": "true",
+                "singleValue": true,
+                "type": "boolean"
+              },
+              "rightValue": ""
+            }
+          ],
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          }
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "406cc883-1475-4fbb-b7e7-50ab250f948d",
+      "name": "Outcome Reception (Unknown Email)",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1120,
+        1376
+      ],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "outcome",
+              "name": "outcome",
+              "type": "string",
+              "value": "reception-unknown-email"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "b7935cf3-0d02-4818-8eb9-499cd51af8d2",
+      "name": "Outcome Walk-in Failed",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        3696,
+        1344
+      ],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "outcome",
+              "name": "outcome",
+              "type": "string",
+              "value": "walk-in-failed"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "fb4a9ad8-c5f3-4e2b-9dbc-bc8777cdfa87",
+      "name": "IF Self-register Allowed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        4704,
+        1184
+      ],
+      "parameters": {
+        "conditions": {
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "IFSelf-regis",
+              "leftValue": "={{ $('Resolve Session').first().json.selfRegister }}",
+              "operator": {
+                "operation": "true",
+                "singleValue": true,
+                "type": "boolean"
+              },
+              "rightValue": ""
+            }
+          ],
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          }
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "67f1c012-da95-4fc5-ba04-cac20f017fa9",
+      "name": "Outcome Reception (Not Booked)",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        4928,
+        1376
+      ],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "outcome",
+              "name": "outcome",
+              "type": "string",
+              "value": "reception-not-booked"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "4f8147aa-05e6-46d4-a952-54c18848caa7",
+      "name": "Outcome Registration Refused",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        5264,
+        1088
+      ],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "outcome",
+              "name": "outcome",
+              "type": "string",
+              "value": "registration-refused"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "924674b3-de68-42b8-a863-2b9b7b9523d2",
+      "name": "Outcome Checked In",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        6608,
+        560
+      ],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "outcome",
+              "name": "outcome",
+              "type": "string",
+              "value": "checked-in"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "8cbb3f2b-9e54-446e-b6f9-28a3ee0c9f9e",
+      "name": "Outcome Attendance Refused",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        6608,
+        880
+      ],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "outcome",
+              "name": "outcome",
+              "type": "string",
+              "value": "attendance-refused"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "35b24c68-4c3d-4e64-9a7e-3a43c83fab41",
+      "name": "Resolve Session",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -112,
+        800
+      ],
+      "parameters": {
+        "jsCode": "/*\t=== Decide which session this scan is for, and whether check-in is open for it ===\t*/\n/*\tCheck-in opens OPEN_MINUTES_BEFORE before a session starts and closes CLOSE_HOURS_AFTER after it\t*/\n/*\tstarts. Both are measured from timeZonedStart, which carries its own UTC offset, so the answer is\t*/\n/*\tthe same whatever clock the n8n server runs on. This runs BEFORE anything is written to Administrate,\t*/\n/*\tso a scan outside the window registers nobody and marks nothing.\t*/\nconst config_obj = $('Config').first().json;\nconst form_obj = $('Class Check-In (QR)').first().json;\nconst response_obj = $input.first().json || {};\n\nconst email_str = String(form_obj['Email address'] || '').trim();\nconst eventIdIn_str = String(form_obj.eventId || '').trim();\nconst scannedSessionId_str = String(form_obj.sessionId || '').trim();\n\nconst openParsed_int = parseInt(String(config_obj.OPEN_MINUTES_BEFORE || '120').trim(), 10);\nconst openMinutes_int = isNaN(openParsed_int) ? 120 : openParsed_int;\nconst closeParsed_num = parseFloat(String(config_obj.CLOSE_HOURS_AFTER || '12').trim());\nconst closeHours_num = isNaN(closeParsed_num) ? 12 : closeParsed_num;\nconst override_str = String(config_obj.CHECKIN_WINDOW_OVERRIDE || 'off').trim().toLowerCase();\nconst selfTypes_ary = String(config_obj.SELF_REGISTER_EVENT_TYPES || '').split(',').map(function (type_str) { return type_str.trim().toLowerCase(); }).filter(function (type_str) { return type_str !== ''; });\n\nlet event_obj = null;\ntry\n{\n\tevent_obj = response_obj.data.events.edges[0].node || null;\n} catch (error) {\n\tevent_obj = null;\n}\n\nfunction formatWhen(ms_int, timeZone_str)\n{\n\tconst zone_str = timeZone_str || 'Europe/London';\n\ttry\n\t{\n\t\tconst date_var = new Date(ms_int);\n\t\tconst time_str = date_var.toLocaleTimeString('en-GB', { timeZone: zone_str, hour: '2-digit', minute: '2-digit' });\n\t\tconst day_str = date_var.toLocaleDateString('en-GB', { timeZone: zone_str, weekday: 'long', day: 'numeric', month: 'long' });\n\t\treturn time_str + ' on ' + day_str;\n\t} catch (error) {\n\t\treturn new Date(ms_int).toISOString();\n\t}\n}\n\nconst out_obj = {\n\temail: email_str,\n\teventId: eventIdIn_str,\n\teventTitle: event_obj ? String(event_obj.title || '') : '',\n\teventType: event_obj ? String(event_obj.type || '') : '',\n\tscannedSessionId: scannedSessionId_str,\n\tsessionId: '',\n\tsessionTitle: '',\n\tsessionStart: '',\n\tsessionTimeZone: '',\n\tstaleScan: false,\n\twindowOverridden: false,\n\topensAtLabel: '',\n\topenMinutes: openMinutes_int,\n\tcloseHours: closeHours_num,\n\tselfRegister: false,\n\tproceed: false,\n\toutcome: ''\n};\n\nif (eventIdIn_str === '' || event_obj === null)\n{\n\tout_obj.outcome = 'invalid-event';\n\treturn [{ json: out_obj }];\n}\n\nout_obj.selfRegister = (selfTypes_ary.indexOf(String(event_obj.type || '').toLowerCase()) !== -1);\n\nlet sessions_ary = [];\ntry\n{\n\tsessions_ary = event_obj.sessions.edges.map(function (edge_obj) { return edge_obj.node; });\n} catch (error) {\n\tsessions_ary = [];\n}\n\nconst now_int = Date.now();\nconst candidates_ary = [];\n\n/*\tA session that spans several days (for example one session from Monday to Wednesday)\t*/\n/*\tgets a window on EACH day it covers, starting at the session's own start time on that day. Without\t*/\n/*\tthis, nobody could check in on day two, because day two is more than 12 hours after the start.\t*/\nfor (const session_obj of sessions_ary)\n{\n\tconst start_int = Date.parse(String(session_obj.timeZonedStart || ''));\n\tif (isNaN(start_int))\n\t{\n\t\tcontinue;\n\t}\n\tconst endParsed_int = Date.parse(String(session_obj.timeZonedEnd || ''));\n\tconst end_int = isNaN(endParsed_int) ? start_int : endParsed_int;\n\tfor (let day_int = 0; day_int < 60; day_int++)\n\t{\n\t\tconst occurrence_int = start_int + (day_int * 86400000);\n\t\tif (day_int > 0 && occurrence_int > end_int)\n\t\t{\n\t\t\tbreak;\n\t\t}\n\t\tconst open_int = occurrence_int - (openMinutes_int * 60000);\n\t\tconst close_int = occurrence_int + Math.round(closeHours_num * 3600000);\n\t\tcandidates_ary.push({\n\t\t\tsession: session_obj,\n\t\t\tstart: occurrence_int,\n\t\t\topen: open_int,\n\t\t\tinWindow: (now_int >= open_int && now_int <= close_int),\n\t\t\tdistance: Math.abs(now_int - occurrence_int)\n\t\t});\n\t}\n}\n\nif (candidates_ary.length === 0)\n{\n\tout_obj.outcome = 'no-sessions';\n\treturn [{ json: out_obj }];\n}\n\n/*\tA scanned session code is honoured only while its own window is open. Otherwise the open session\t*/\n/*\tnearest its start wins, so a day-one code scanned on day two marks day two, not day one.\t*/\nlet chosen_var = null;\nfor (const candidate_obj of candidates_ary)\n{\n\tif (scannedSessionId_str !== '' && String(candidate_obj.session.id) === scannedSessionId_str && candidate_obj.inWindow)\n\t{\n\t\tchosen_var = candidate_obj;\n\t}\n}\n\nif (chosen_var === null)\n{\n\tfor (const candidate_obj of candidates_ary)\n\t{\n\t\tif (candidate_obj.inWindow && (chosen_var === null || candidate_obj.distance < chosen_var.distance))\n\t\t{\n\t\t\tchosen_var = candidate_obj;\n\t\t}\n\t}\n}\n\n/*\tTEST OVERRIDE ONLY. 'any' ignores the window entirely: the scanned session if there is one,\t*/\n/*\totherwise the session nearest now. Must be 'off' in production.\t*/\nif (chosen_var === null && override_str === 'any')\n{\n\tfor (const candidate_obj of candidates_ary)\n\t{\n\t\tif (scannedSessionId_str !== '' && String(candidate_obj.session.id) === scannedSessionId_str)\n\t\t{\n\t\t\tchosen_var = candidate_obj;\n\t\t}\n\t}\n\tif (chosen_var === null)\n\t{\n\t\tfor (const candidate_obj of candidates_ary)\n\t\t{\n\t\t\tif (chosen_var === null || candidate_obj.distance < chosen_var.distance)\n\t\t\t{\n\t\t\t\tchosen_var = candidate_obj;\n\t\t\t}\n\t\t}\n\t}\n\tout_obj.windowOverridden = true;\n}\n\nif (chosen_var === null)\n{\n\tlet nextOpen_var = null;\n\tfor (const candidate_obj of candidates_ary)\n\t{\n\t\tif (candidate_obj.open > now_int && (nextOpen_var === null || candidate_obj.open < nextOpen_var.open))\n\t\t{\n\t\t\tnextOpen_var = candidate_obj;\n\t\t}\n\t}\n\tif (nextOpen_var !== null)\n\t{\n\t\tout_obj.outcome = 'not-open-yet';\n\t\tout_obj.opensAtLabel = formatWhen(nextOpen_var.open, nextOpen_var.session.timeZoneName);\n\t\tout_obj.sessionId = String(nextOpen_var.session.id || '');\n\t\tout_obj.sessionTitle = String(nextOpen_var.session.title || '');\n\t\tout_obj.sessionStart = String(nextOpen_var.session.timeZonedStart || '');\n\t} else {\n\t\tout_obj.outcome = 'closed';\n\t}\n\treturn [{ json: out_obj }];\n}\n\nout_obj.sessionId = String(chosen_var.session.id || '');\nout_obj.sessionTitle = String(chosen_var.session.title || '');\nout_obj.sessionStart = String(chosen_var.session.timeZonedStart || '');\nout_obj.sessionTimeZone = String(chosen_var.session.timeZoneName || '');\nout_obj.staleScan = (scannedSessionId_str !== '' && scannedSessionId_str !== out_obj.sessionId);\nout_obj.proceed = true;\n\nreturn [{ json: out_obj }];\n"
+      }
+    },
+    {
+      "id": "6223eef0-8a9e-4c89-9513-ecba741b4d8d",
+      "name": "Prepare Attendance",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5712,
+        800
+      ],
+      "parameters": {
+        "jsCode": "/*\tThe session was settled by Resolve Session before anything was written. The learner id comes from\t*/\n/*\twhichever registration branch ran: a new registration, or the existing one Check Registration found.\t*/\nlet learnerId_str = '';\nif ($('Extract Learner Id').isExecuted)\n{\n\tlearnerId_str = String($('Extract Learner Id').first().json.learnerId || '');\n}\nif (learnerId_str === '' && $('Evaluate Registration').isExecuted)\n{\n\tlearnerId_str = String($('Evaluate Registration').first().json.learnerId || '');\n}\n\nconst session_obj = $('Resolve Session').first().json;\n\nreturn [{ json: {\n\tlearnerId: learnerId_str,\n\tsessionId: String(session_obj.sessionId || ''),\n\teventId: String(session_obj.eventId || '')\n} }];\n"
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Class Check-In (QR)": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Contact by Email": {
+      "main": [
+        [
+          {
+            "node": "IF Contact found?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Contact found?": {
+      "main": [
+        [
+          {
+            "node": "Use Existing Contact",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "IF Walk-in Allowed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Use Existing Contact": {
+      "main": [
+        [
+          {
+            "node": "Set Contact Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Contact": {
+      "main": [
+        [
+          {
+            "node": "Check Errors (Create)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Errors (Create)": {
+      "main": [
+        [
+          {
+            "node": "Use New Contact",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Outcome Walk-in Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Use New Contact": {
+      "main": [
+        [
+          {
+            "node": "Set Contact Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Contact Context": {
+      "main": [
+        [
+          {
+            "node": "Check Registration",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Registration": {
+      "main": [
+        [
+          {
+            "node": "Evaluate Registration",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Evaluate Registration": {
+      "main": [
+        [
+          {
+            "node": "IF Already registered?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Already registered?": {
+      "main": [
+        [
+          {
+            "node": "Already Registered",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "IF Self-register Allowed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Validate Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ask Name": {
+      "main": [
+        [
+          {
+            "node": "Validate Walk-in Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Walk-in Config": {
+      "main": [
+        [
+          {
+            "node": "Domain Lookup",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Domain Lookup": {
+      "main": [
+        [
+          {
+            "node": "Company Lookup",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Company Lookup": {
+      "main": [
+        [
+          {
+            "node": "Resolve Account",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Log Row": {
+      "main": [
+        [
+          {
+            "node": "Insert Log Row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resolve Account": {
+      "main": [
+        [
+          {
+            "node": "Account path?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Account path?": {
+      "main": [
+        [
+          {
+            "node": "Create Contact",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create Account",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Account": {
+      "main": [
+        [
+          {
+            "node": "Check Errors (Account)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Errors (Account)": {
+      "main": [
+        [
+          {
+            "node": "Create Contact (Individual)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Outcome Walk-in Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Contact (Individual)": {
+      "main": [
+        [
+          {
+            "node": "Check Errors (Contact Ind)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Errors (Contact Ind)": {
+      "main": [
+        [
+          {
+            "node": "Make Individual",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Outcome Walk-in Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Make Individual": {
+      "main": [
+        [
+          {
+            "node": "Check Errors (Make Ind)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Errors (Make Ind)": {
+      "main": [
+        [
+          {
+            "node": "Use New Contact (Individual)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Outcome Walk-in Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Use New Contact (Individual)": {
+      "main": [
+        [
+          {
+            "node": "Set Contact Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Config": {
+      "main": [
+        [
+          {
+            "node": "Fetch Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Register Contact": {
+      "main": [
+        [
+          {
+            "node": "Check Errors (Register)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Errors (Register)": {
+      "main": [
+        [
+          {
+            "node": "Extract Learner Id",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Outcome Registration Refused",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Record Attendance": {
+      "main": [
+        [
+          {
+            "node": "Check Errors (Completion)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Event": {
+      "main": [
+        [
+          {
+            "node": "Resolve Session",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resolve Session": {
+      "main": [
+        [
+          {
+            "node": "IF Can Proceed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Can Proceed?": {
+      "main": [
+        [
+          {
+            "node": "Find Contact by Email",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Log Row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Walk-in Allowed?": {
+      "main": [
+        [
+          {
+            "node": "Ask Name",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Outcome Reception (Unknown Email)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Outcome Reception (Unknown Email)": {
+      "main": [
+        [
+          {
+            "node": "Build Log Row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Self-register Allowed?": {
+      "main": [
+        [
+          {
+            "node": "Register Contact",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Outcome Reception (Not Booked)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Outcome Reception (Not Booked)": {
+      "main": [
+        [
+          {
+            "node": "Build Log Row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Outcome Registration Refused": {
+      "main": [
+        [
+          {
+            "node": "Build Log Row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Already Registered": {
+      "main": [
+        [
+          {
+            "node": "Prepare Attendance",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Learner Id": {
+      "main": [
+        [
+          {
+            "node": "Prepare Attendance",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Attendance": {
+      "main": [
+        [
+          {
+            "node": "Record Attendance",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Errors (Completion)": {
+      "main": [
+        [
+          {
+            "node": "Outcome Checked In",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Outcome Attendance Refused",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Outcome Checked In": {
+      "main": [
+        [
+          {
+            "node": "Build Log Row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Outcome Attendance Refused": {
+      "main": [
+        [
+          {
+            "node": "Build Log Row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Outcome Walk-in Failed": {
+      "main": [
+        [
+          {
+            "node": "Build Log Row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Log Row": {
+      "main": [
+        [
+          {
+            "node": "Log Check-in",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Check-in": {
+      "main": [
+        [
+          {
+            "node": "Show Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true,
+    "timeSavedMode": "fixed",
+    "timezone": "Europe/London"
+  },
+  "tags": []
+}

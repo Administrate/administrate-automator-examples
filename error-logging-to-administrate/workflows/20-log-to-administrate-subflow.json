@@ -1,0 +1,151 @@
+{
+  "name": "Subflow - Log to Administrate",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "message"
+            },
+            {
+              "name": "status"
+            },
+            {
+              "name": "details"
+            },
+            {
+              "name": "nodeId"
+            },
+            {
+              "name": "workflowId"
+            },
+            {
+              "name": "executionId"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "0cb99e6b-6b15-494d-ae8f-4e050e223481",
+      "name": "When Executed by Another Workflow",
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Change this to the origin name your log entries should appear under in Administrate\nconst LOG_ORIGIN_IDENTIFIER = 'Automator Integration';\n\nconst logDetails = [\n  {\n    \"details\": [\n      {\n        \"type\": \"text\",\n        \"value\": \"Automator execution URI: \" + `/workflow/${$input.first().json.workflowId || $workflow.id}/executions/${$input.first().json.executionId || $execution.id}`\n      }\n    ]\n  }\n];\n\nif ('details' in $input.first().json && $input.first().json.details !== null) {\n  logDetails.push({\n    \"details\": [\n      {\n        \"type\": \"text\",\n        \"value\": $input.first().json.details\n      }\n    ]\n  });\n}\n\n\nconst payloadData = {\"groups\": logDetails}\n\nreturn {\n  \"nodeId\": $input.first().json.nodeId,\n  \"originIdentifier\": LOG_ORIGIN_IDENTIFIER,\n  \"message\": $input.first().json.message,\n  \"status\": $input.first().json.status,\n  \"payload\": JSON.stringify(payloadData),\n  \"internalLogMetadata\": {\n    \"category\": \"n8n\",\n    \"subcategory\": \"automator\"\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        0
+      ],
+      "id": "eb379686-849e-4fb1-a012-fa47769a0479",
+      "name": "Build log data"
+    },
+    {
+      "parameters": {
+        "query": "mutation externalIntegrationLogUpsertErrors($inputData: ExternalIntegrationLogCreateInput!) {\n  externalLog {\n    createExternalIntegrationLog(input: $inputData) {\n      errors {\n        label\n        message\n        value\n      }\n    }\n  }\n}",
+        "variables": "={\n  \"inputData\": {{ $json.toJsonString() }}\n}",
+        "options": {}
+      },
+      "type": "CUSTOM.administrate",
+      "typeVersion": 1,
+      "position": [
+        448,
+        96
+      ],
+      "id": "d67c2033-8809-4325-8f02-a7a5e8b7703b",
+      "name": "Log to external log",
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        192
+      ],
+      "id": "2b27d00d-e672-45e3-bc7d-7d25497e53a4",
+      "name": "Error Trigger"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Change this to the origin name your log entries should appear under in Administrate\nconst LOG_ORIGIN_IDENTIFIER = 'Automator Integration';\n\nconst logDetails = [\n  {\n    \"details\": [\n      {\n        \"type\": \"text\",\n        \"value\": \"Automator execution URI: \" + `/workflow/${$input.first().json.workflow.id || $workflow.id}/executions/${$input.first().json.execution.id || $execution.id}`\n      }\n    ]\n  }\n];\n\nlogDetails.push({\n  \"details\": [\n    {\n      \"type\": \"text\",\n      \"value\": `Ran \"${$input.first().json.workflow.name}\" in mode ${$input.first().json.execution.mode} which failed at \"${$input.first().json.execution.lastNodeExecuted}\".`\n    }\n  ]\n});\n\n\nconst payloadData = {\"groups\": logDetails}\n\nreturn {\n  \"nodeId\": $input.first().json.nodeId,\n  \"originIdentifier\": LOG_ORIGIN_IDENTIFIER,\n  \"message\": $input.first().json.execution.error.message,\n  \"status\": \"failed\",\n  \"payload\": JSON.stringify(payloadData),\n  \"internalLogMetadata\": {\n    \"category\": \"n8n\",\n    \"subcategory\": \"automator\"\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        192
+      ],
+      "id": "e3381fe9-be64-4e77-82e7-ed365aaabc02",
+      "name": "Convert error to payload"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Build log data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build log data": {
+      "main": [
+        [
+          {
+            "node": "Log to external log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Error Trigger": {
+      "main": [
+        [
+          {
+            "node": "Convert error to payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert error to payload": {
+      "main": [
+        [
+          {
+            "node": "Log to external log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "tags": []
+}

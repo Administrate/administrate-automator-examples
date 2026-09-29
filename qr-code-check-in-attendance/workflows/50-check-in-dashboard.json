@@ -1,0 +1,304 @@
+{
+  "name": "5.0 QR Check-in - Check-in Dashboard",
+  "nodes": [
+    {
+      "id": "d30c0356-6e7c-4f0f-a391-2356fb757a13",
+      "name": "Dashboard Page",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "3db20c32-b1b6-45c0-ac70-5a4092e24a0c",
+        "responseMode": "responseNode",
+        "options": {
+          "ignoreBots": true
+        }
+      },
+      "webhookId": "f9368e1d-8239-4488-a491-0710ab36fcf1"
+    },
+    {
+      "id": "ca147155-98a7-47dc-aa54-3505506cf3b5",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        224,
+        0
+      ],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "TIME_ZONE",
+              "name": "TIME_ZONE",
+              "type": "string",
+              "value": "Europe/London"
+            },
+            {
+              "id": "REFRESH_SECONDS",
+              "name": "REFRESH_SECONDS",
+              "type": "string",
+              "value": "60"
+            },
+            {
+              "id": "OPEN_MINUTES_BEFORE",
+              "name": "OPEN_MINUTES_BEFORE",
+              "type": "string",
+              "value": "120"
+            },
+            {
+              "id": "CLOSE_HOURS_AFTER",
+              "name": "CLOSE_HOURS_AFTER",
+              "type": "string",
+              "value": "12"
+            },
+            {
+              "id": "PAGE_URL",
+              "name": "PAGE_URL",
+              "type": "string",
+              "value": "https://YOUR-N8N-HOST/webhook/3db20c32-b1b6-45c0-ac70-5a4092e24a0c"
+            },
+            {
+              "id": "PAGE_TITLE",
+              "name": "PAGE_TITLE",
+              "type": "string",
+              "value": "Check-in dashboard"
+            },
+            {
+              "id": "GRAPHQL_URL",
+              "name": "GRAPHQL_URL",
+              "type": "string",
+              "value": "https://api.getadministrate.com/graphql"
+            },
+            {
+              "id": "CHECKIN_LOG_TABLE_ID",
+              "name": "CHECKIN_LOG_TABLE_ID",
+              "type": "string",
+              "value": "REPLACE_WITH_CHECKIN_LOG_TABLE_ID"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "8bacda3c-0288-4abb-bff9-a5b32df2aa1e",
+      "name": "Day Bounds",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        0
+      ],
+      "parameters": {
+        "jsCode": "/*\tThe GraphQL filter needs plain UTC times. Take a generous 30 hours either side of now, then let\t*/\n/*\tBuild Dashboard keep only sessions whose own local date is today in TIME_ZONE.\t*/\nconst now_int = Date.now();\nreturn [{ json: {\n\tfromUtc: new Date(now_int - (30 * 3600000)).toISOString(),\n\ttoUtc: new Date(now_int + (30 * 3600000)).toISOString()\n} }];\n"
+      }
+    },
+    {
+      "id": "571e3203-cfbb-4d0d-8d39-8f292dd6bb51",
+      "name": "Fetch Todays Events",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        672,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').first().json.GRAPHQL_URL }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ query: 'query Today($from:String!,$to:String!){ events(first:100, filters:[{field:timeZonedEnd,operation:ge,value:$from},{field:timeZonedStart,operation:le,value:$to},{field:lifecycleState,operation:eq,value:\"published\"}]){ edges{ node{ id title type sessions{ edges{ node{ id title timeZonedStart timeZonedEnd } } } learners(first:100, filters:[{field:isCancelled,operation:eq,value:\"false\"}]){ edges{ node{ id contact{ id personalName{ firstName lastName } account{ name } } attendance{ sessionDetail{ edges{ node{ attendanceMark session{ id } } } } } } } } } } pageInfo{ hasNextPage } } }', variables: { from: $json.fromUtc, to: $json.toUtc } }) }}",
+        "options": {}
+      },
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "6f4ed871-13ea-4d23-ad3b-848f7b0d9578",
+      "name": "Read Check-in Log",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        896,
+        0
+      ],
+      "parameters": {
+        "resource": "row",
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Config').first().json.CHECKIN_LOG_TABLE_ID }}",
+          "cachedResultName": "EventCheckInLog"
+        },
+        "returnAll": true
+      },
+      "executeOnce": true,
+      "alwaysOutputData": true
+    },
+    {
+      "id": "30d041c4-2536-42b4-802c-13d7cbdc6003",
+      "name": "Build Dashboard",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        0
+      ],
+      "parameters": {
+        "jsCode": "/*\t=== Build the reception dashboard: one card per session running today ===\t*/\n/*\tExpected   = active learners, except anyone 3.0 registered at the door for THIS session. A door\t*/\n/*\t             registration on an earlier day of the course counts as booked by now.\t*/\n/*\tChecked in = learners Administrate holds as Present for THIS session. Read from Administrate, so it\t*/\n/*\t             includes anyone staff marked by hand, not only QR scans.\t*/\n/*\tWalk-ins   = people 3.0 registered at the door for this session. Only our log knows that, because\t*/\n/*\t             Administrate cannot tell a door registration from any other.\t*/\nconst config_obj = $('Config').first().json;\nconst query_obj = $('Dashboard Page').first().json.query || {};\nconst zone_str = String(config_obj.TIME_ZONE || 'Europe/London');\nconst self_str = String(config_obj.PAGE_URL || '');\nconst refresh_int = parseInt(String(config_obj.REFRESH_SECONDS || '60'), 10) || 60;\nconst openMinutes_int = parseInt(String(config_obj.OPEN_MINUTES_BEFORE || '120'), 10) || 120;\nconst closeHours_num = parseFloat(String(config_obj.CLOSE_HOURS_AFTER || '12')) || 12;\nconst now_int = Date.now();\n\nfunction escape(value_var)\n{\n\treturn String(value_var == null ? '' : value_var).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\"/g, '&quot;');\n}\n\nfunction localDate(ms_int)\n{\n\ttry\n\t{\n\t\treturn new Date(ms_int).toLocaleDateString('en-CA', { timeZone: zone_str });\n\t} catch (error) {\n\t\treturn new Date(ms_int).toISOString().slice(0, 10);\n\t}\n}\n\nfunction localTime(ms_int)\n{\n\ttry\n\t{\n\t\treturn new Date(ms_int).toLocaleTimeString('en-GB', { timeZone: zone_str, hour: '2-digit', minute: '2-digit' });\n\t} catch (error) {\n\t\treturn new Date(ms_int).toISOString().slice(11, 16);\n\t}\n}\n\n/*\tHeader stamp, e.g. \"Thursday 24 September 2026 at 20:55 BST\". Built from parts so the wording does\t*/\n/*\tnot depend on how the server's locale data punctuates dates. The zone label follows GMT and BST.\t*/\nfunction localStamp(ms_int)\n{\n\ttry\n\t{\n\t\tconst parts_ary = new Intl.DateTimeFormat('en-GB', { timeZone: zone_str, weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZoneName: 'short' }).formatToParts(new Date(ms_int));\n\t\tconst part_obj = {};\n\t\tparts_ary.forEach(function (item_obj)\n\t\t{\n\t\t\tpart_obj[item_obj.type] = item_obj.value;\n\t\t});\n\t\treturn part_obj.weekday + ' ' + part_obj.day + ' ' + part_obj.month + ' ' + part_obj.year + ' at ' + part_obj.hour + ':' + part_obj.minute + (part_obj.timeZoneName ? ' ' + part_obj.timeZoneName : '');\n\t} catch (error) {\n\t\treturn new Date(ms_int).toISOString().slice(0, 16).replace('T', ' ') + ' UTC';\n\t}\n}\n\nconst today_str = localDate(now_int);\n\nlet response_obj = {};\ntry\n{\n\tresponse_obj = $('Fetch Todays Events').first().json || {};\n} catch (error) {\n\tresponse_obj = {};\n}\n\nlet events_ary = [];\nlet truncated_bln = false;\nlet apiError_str = '';\ntry\n{\n\tevents_ary = response_obj.data.events.edges.map(function (edge_obj) { return edge_obj.node; });\n\ttruncated_bln = !!response_obj.data.events.pageInfo.hasNextPage;\n} catch (error) {\n\tevents_ary = [];\n\tapiError_str = 'Administrate did not return today\\'s events.';\n}\nif (Array.isArray(response_obj.errors) && response_obj.errors.length > 0)\n{\n\tapiError_str = 'Administrate returned an error: ' + String(response_obj.errors[0].message || '');\n}\n\n/*\tWalk-ins from the check-in log, by session. Distinct by learner so a second scan does not count twice.\t*/\nconst logRows_ary = $('Read Check-in Log').all().map(function (item_obj) { return item_obj.json; });\nconst walkIns_obj = {};\nfor (const row_obj of logRows_ary)\n{\n\tconst outcome_str = String(row_obj.outcome || '');\n\tif (outcome_str !== 'registered-now' && outcome_str !== 'new-created-registered')\n\t{\n\t\tcontinue;\n\t}\n\tconst learner_str = String(row_obj.learnerId || '');\n\tconst session_str = String(row_obj.sessionId || '');\n\tif (learner_str === '' || session_str === '')\n\t{\n\t\tcontinue;\n\t}\n\tif (!walkIns_obj[session_str])\n\t{\n\t\twalkIns_obj[session_str] = {};\n\t}\n\twalkIns_obj[session_str][learner_str] = (String(row_obj.firstName || '') + ' ' + String(row_obj.lastName || '')).trim() || String(row_obj.email || '');\n}\n\nconst cards_ary = [];\nfor (const event_obj of events_ary)\n{\n\tlet learners_ary = [];\n\ttry\n\t{\n\t\tlearners_ary = event_obj.learners.edges.map(function (edge_obj) { return edge_obj.node; });\n\t} catch (error) {\n\t\tlearners_ary = [];\n\t}\n\tlet sessions_ary = [];\n\ttry\n\t{\n\t\tsessions_ary = event_obj.sessions.edges.map(function (edge_obj) { return edge_obj.node; });\n\t} catch (error) {\n\t\tsessions_ary = [];\n\t}\n\n\tfor (const session_obj of sessions_ary)\n\t{\n\t\t/*\tA session spanning several days appears on each day it covers, starting at its own start time.\t*/\n\t\tconst firstStart_int = Date.parse(String(session_obj.timeZonedStart || ''));\n\t\tif (isNaN(firstStart_int))\n\t\t{\n\t\t\tcontinue;\n\t\t}\n\t\tconst endParsed_int = Date.parse(String(session_obj.timeZonedEnd || ''));\n\t\tconst end_int = isNaN(endParsed_int) ? firstStart_int : endParsed_int;\n\t\tlet start_int = NaN;\n\t\tfor (let day_int = 0; day_int < 60; day_int++)\n\t\t{\n\t\t\tconst occurrence_int = firstStart_int + (day_int * 86400000);\n\t\t\tif (day_int > 0 && occurrence_int > end_int)\n\t\t\t{\n\t\t\t\tbreak;\n\t\t\t}\n\t\t\tif (localDate(occurrence_int) === today_str)\n\t\t\t{\n\t\t\t\tstart_int = occurrence_int;\n\t\t\t}\n\t\t}\n\t\tif (isNaN(start_int))\n\t\t{\n\t\t\tcontinue;\n\t\t}\n\t\tconst sessionId_str = String(session_obj.id);\n\t\tconst expected_ary = [];\n\t\tconst checked_ary = [];\n\t\tfor (const learner_obj of learners_ary)\n\t\t{\n\t\t\tconst contact_obj = learner_obj.contact || {};\n\t\t\tconst name_obj = contact_obj.personalName || {};\n\t\t\tconst person_obj = {\n\t\t\t\tname: (String(name_obj.firstName || '') + ' ' + String(name_obj.lastName || '')).trim() || '(no name)',\n\t\t\t\tcompany: contact_obj.account ? String(contact_obj.account.name || '') : ''\n\t\t\t};\n\t\t\tlet present_bln = false;\n\t\t\ttry\n\t\t\t{\n\t\t\t\tfor (const detail_edge of learner_obj.attendance.sessionDetail.edges)\n\t\t\t\t{\n\t\t\t\t\tif (String(detail_edge.node.session.id) === sessionId_str && String(detail_edge.node.attendanceMark) === 'Present')\n\t\t\t\t\t{\n\t\t\t\t\t\tpresent_bln = true;\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t} catch (error) {}\n\t\t\t/*\tA door registration counts as a walk-in only for the session it happened in. On a later day of the\t*/\n\t\t\t/*\tsame course that person is already booked, so they are expected like anybody else.\t*/\n\t\t\tif (!(walkIns_obj[sessionId_str] && walkIns_obj[sessionId_str][String(learner_obj.id)]))\n\t\t\t{\n\t\t\t\texpected_ary.push(Object.assign({ present: present_bln }, person_obj));\n\t\t\t}\n\t\t\tif (present_bln)\n\t\t\t{\n\t\t\t\tchecked_ary.push(person_obj);\n\t\t\t}\n\t\t}\n\t\tconst walkInNames_ary = Object.keys(walkIns_obj[sessionId_str] || {}).map(function (key_str) { return { name: walkIns_obj[sessionId_str][key_str], company: '' }; });\n\t\tconst open_int = start_int - (openMinutes_int * 60000);\n\t\tconst close_int = start_int + Math.round(closeHours_num * 3600000);\n\t\tlet state_str = 'open';\n\t\tif (now_int < open_int)\n\t\t{\n\t\t\tstate_str = 'upcoming';\n\t\t} else if (now_int > close_int) {\n\t\t\tstate_str = 'closed';\n\t\t}\n\t\tif (expected_ary.length === 0 && walkInNames_ary.length === 0)\n\t\t{\n\t\t\tcontinue;\n\t\t}\n\t\tcards_ary.push({\n\t\t\tsessionId: sessionId_str,\n\t\t\ttitle: String(event_obj.title || ''),\n\t\t\ttype: String(event_obj.type || ''),\n\t\t\tstart: start_int,\n\t\t\topen: open_int,\n\t\t\tstate: state_str,\n\t\t\texpected: expected_ary,\n\t\t\tchecked: checked_ary,\n\t\t\twaiting: expected_ary.filter(function (person_obj) { return !person_obj.present; }),\n\t\t\twalkIns: walkInNames_ary\n\t\t});\n\t}\n}\n\ncards_ary.sort(function (a_obj, b_obj) { return a_obj.start - b_obj.start; });\n\nconst css_str = `\n*\n{\n\tbox-sizing: border-box;\n}\nbody\n{\n\tmargin: 0;\n\tbackground: #f4f4f5;\n\tfont-family: Arial, Helvetica, sans-serif;\n\tcolor: #1f1f1f;\n}\n.db-banner\n{\n\tbackground: #1f2937;\n\tborder-bottom: 0.25rem solid #2563eb;\n\tpadding: 1rem;\n\tcolor: #ffffff;\n\tdisplay: flex;\n\tjustify-content: space-between;\n\talign-items: baseline;\n\tflex-wrap: wrap;\n\tgap: 0.5rem;\n}\n.db-banner h1\n{\n\tmargin: 0;\n\tfont-size: 1.4rem;\n}\n.db-wrap\n{\n\tmax-width: 70rem;\n\tmargin: 0 auto;\n\tpadding: 1rem;\n\tdisplay: grid;\n\tgrid-template-columns: repeat(auto-fill, minmax(18rem, 1fr));\n\tgap: 1rem;\n}\n.db-card\n{\n\tbackground: #ffffff;\n\tborder: 1px solid #e2e2e2;\n\tborder-radius: 0.75rem;\n\tpadding: 1rem;\n}\n.db-card.db-ready\n{\n\tborder: 0.2rem solid #1a7f37;\n}\n.db-card h2\n{\n\tmargin: 0 0 0.3rem;\n\tfont-size: 1.05rem;\n}\n.db-meta\n{\n\tcolor: #5c5c5c;\n\tfont-size: 0.85rem;\n\tmargin: 0 0 0.8rem;\n}\n.db-counts\n{\n\tdisplay: grid;\n\tgrid-template-columns: repeat(3, 1fr);\n\tgap: 0.5rem;\n\ttext-align: center;\n}\n.db-counts a\n{\n\tdisplay: block;\n\ttext-decoration: none;\n\tcolor: inherit;\n\tbackground: #f4f4f5;\n\tborder-radius: 0.5rem;\n\tpadding: 0.5rem 0.2rem;\n}\n.db-counts a:hover\n{\n\tbackground: #e9e9ea;\n}\n.db-num\n{\n\tdisplay: block;\n\tfont-size: 2rem;\n\tfont-weight: 700;\n}\n.db-label\n{\n\tfont-size: 0.75rem;\n\ttext-transform: uppercase;\n\tletter-spacing: 0.04em;\n}\n.db-ready-note\n{\n\tcolor: #1a7f37;\n\tfont-weight: 700;\n\tmargin: 0.6rem 0 0;\n}\n.db-empty, .db-list\n{\n\tgrid-column: 1 / -1;\n}\n.db-list table\n{\n\twidth: 100%;\n\tborder-collapse: collapse;\n}\n.db-list td, .db-list th\n{\n\ttext-align: left;\n\tpadding: 0.4rem;\n\tborder-bottom: 1px solid #e2e2e2;\n}\n.db-waiting\n{\n\tmargin: 0.6rem 0 0;\n}\n.db-back\n{\n\tcolor: #ffffff;\n}\n.db-status\n{\n\tdisplay: flex;\n\talign-items: center;\n\tflex-wrap: wrap;\n\tgap: 0.75rem;\n\tfont-size: 0.9rem;\n}\n.db-refresh\n{\n\tdisplay: inline-block;\n\tbackground: #ffffff;\n\tcolor: #1f2937;\n\tborder-radius: 0.4rem;\n\tpadding: 0.4rem 0.9rem;\n\tfont-weight: bold;\n\ttext-decoration: none;\n}\n.db-refresh:hover,\n.db-refresh:focus\n{\n\tbackground: #e2e2e2;\n}\n`;\n\nconst listName_str = String(query_obj.list || '');\nconst listSession_str = String(query_obj.session || '');\nlet body_str = '';\nlet title_str = String(config_obj.PAGE_TITLE || 'Check-in dashboard');\n\nif (apiError_str !== '')\n{\n\tbody_str += '<div class=\"db-card db-empty\"><p>' + escape(apiError_str) + ' The numbers below may be incomplete.</p></div>';\n}\n\nif (listSession_str !== '' && listName_str !== '')\n{\n\tlet card_var = null;\n\tfor (const card_obj of cards_ary)\n\t{\n\t\tif (card_obj.sessionId === listSession_str)\n\t\t{\n\t\t\tcard_var = card_obj;\n\t\t}\n\t}\n\tconst labels_obj = { checked: 'Checked in', waiting: 'Not checked in yet', walkIns: 'Walk-ins', expected: 'Expected' };\n\tif (card_var === null || !labels_obj[listName_str])\n\t{\n\t\tbody_str += '<div class=\"db-card db-list\"><p>That session is not running today.</p></div>';\n\t} else {\n\t\tconst people_ary = card_var[listName_str] || [];\n\t\tbody_str += '<div class=\"db-card db-list\"><h2>' + escape(labels_obj[listName_str]) + ': ' + people_ary.length + '</h2><p class=\"db-meta\">' + escape(card_var.title) + ', ' + escape(localTime(card_var.start)) + '</p><table><tr><th>Name</th><th>Company</th></tr>';\n\t\tfor (const person_obj of people_ary)\n\t\t{\n\t\t\tbody_str += '<tr><td>' + escape(person_obj.name) + '</td><td>' + escape(person_obj.company) + '</td></tr>';\n\t\t}\n\t\tbody_str += '</table></div>';\n\t}\n} else if (cards_ary.length === 0) {\n\tbody_str += '<div class=\"db-card db-empty\"><p>No sessions with delegates are running today.</p></div>';\n} else {\n\tfor (const card_obj of cards_ary)\n\t{\n\t\tconst ready_bln = (card_obj.expected.length > 0 && card_obj.waiting.length === 0);\n\t\tlet state_str = 'Check-in open';\n\t\tif (card_obj.state === 'upcoming')\n\t\t{\n\t\t\tstate_str = 'Check-in opens ' + localTime(card_obj.open);\n\t\t} else if (card_obj.state === 'closed') {\n\t\t\tstate_str = 'Check-in closed';\n\t\t}\n\t\tconst base_str = escape(self_str) + '?session=' + encodeURIComponent(card_obj.sessionId) + '&list=';\n\t\tbody_str += '<section class=\"db-card' + (ready_bln ? ' db-ready' : '') + '\"><h2>' + escape(card_obj.title) + '</h2>'\n\t\t\t+ '<p class=\"db-meta\">Starts ' + escape(localTime(card_obj.start)) + ' &middot; ' + escape(state_str) + (card_obj.type !== '' ? ' &middot; ' + escape(card_obj.type) : '') + '</p>'\n\t\t\t+ '<div class=\"db-counts\">'\n\t\t\t+ '<a href=\"' + base_str + 'checked\"><span class=\"db-num\">' + card_obj.checked.length + '</span><span class=\"db-label\">Checked in</span></a>'\n\t\t\t+ '<a href=\"' + base_str + 'expected\"><span class=\"db-num\">' + card_obj.expected.length + '</span><span class=\"db-label\">Expected</span></a>'\n\t\t\t+ '<a href=\"' + base_str + 'walkIns\"><span class=\"db-num\">' + card_obj.walkIns.length + '</span><span class=\"db-label\">Walk-ins</span></a>'\n\t\t\t+ '</div>'\n\t\t\t+ (ready_bln ? '<p class=\"db-ready-note\">Everyone expected has checked in.</p>' : (card_obj.expected.length === 0 ? '<p class=\"db-meta db-waiting\">No pre-booked delegates, walk-ins only</p>' : '<p class=\"db-meta db-waiting\"><a href=\"' + base_str + 'waiting\">' + card_obj.waiting.length + ' expected still to arrive</a></p>'))\n\t\t\t+ '</section>';\n\t}\n}\n\nif (truncated_bln)\n{\n\tbody_str += '<div class=\"db-card db-empty\"><p>More than 100 events overlap today, so some may be missing.</p></div>';\n}\n\n/*\tRefresh reloads the page the user is on, list views included. An empty href is the current URL with\t*/\n/*\tits query string, so no script is needed. The 60-second background refresh stays on the main view.\t*/\nconst back_str = (listSession_str !== '') ? '<a class=\"db-back\" href=\"' + escape(self_str) + '\">Back to all sessions</a>' : '';\nconst status_str = '<div class=\"db-status\"><span>Updated ' + escape(localStamp(now_int)) + '</span><a class=\"db-refresh\" href=\"\">Refresh</a>' + back_str + '</div>';\nconst refreshMeta_str = (listSession_str !== '') ? '' : '<meta http-equiv=\"refresh\" content=\"' + refresh_int + '\">';\n\nconst html_str = '<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">'\n\t+ '<meta name=\"robots\" content=\"noindex, nofollow\">' + refreshMeta_str + '<title>' + escape(title_str) + '</title><style>' + css_str + '</style></head><body>'\n\t+ '<header class=\"db-banner\"><h1>' + escape(title_str) + '</h1>' + status_str + '</header><main class=\"db-wrap\">' + body_str + '</main></body></html>';\n\nreturn [{ json: { html: html_str, sessions: cards_ary.length } }];\n"
+      }
+    },
+    {
+      "id": "20dbb4b4-fddb-439c-ae30-50c352bc5c95",
+      "name": "Respond (HTML)",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1344,
+        0
+      ],
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $('Build Dashboard').first().json.html }}",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/html; charset=utf-8"
+              },
+              {
+                "name": "Cache-Control",
+                "value": "no-store"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "30403959-ed60-4049-9915-a96592ea080f",
+      "name": "Sticky - Start Here",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -400,
+        -640
+      ],
+      "parameters": {
+        "content": "## 5.0 Check-in Dashboard\n\nA reception screen. One card per session running today, each showing three numbers:\n\n- **Checked in** - learners Administrate holds as Present for that session. Read from Administrate, so it includes anyone staff marked by hand, not only QR scans.\n- **Expected** - learners booked before the day, i.e. every active learner who is not a walk-in.\n- **Walk-ins** - people 3.0 registered at the door for that session. Only the check-in log knows this, because Administrate cannot tell a door registration from any other.\n\nA card turns green when everyone expected has checked in, a useful 'we could start early' signal. Clicking a number lists the names. The header shows when the page was built (in TIME_ZONE) and has a Refresh button on every view. The main view also reloads itself every REFRESH_SECONDS.\n\n**Page address:** https://YOUR-N8N-HOST/webhook/<path of the Dashboard Page node> (also set as PAGE_URL in Config).\n\n**Read-only.** Nothing here writes anywhere.\n\n**ACCESS IS OPEN BY DEFAULT.** The page lists learner names, so set Authentication on the Dashboard Page node (e.g. Basic Auth) before using it for real, and do not share the URL publicly.\n\n**Limits.** Reads up to 100 events overlapping today and up to 100 learners per event, and says so on the page if the event limit is hit. Sessions with no delegates at all are left off.",
+        "height": 800,
+        "width": 520,
+        "color": 4
+      }
+    },
+    {
+      "id": "d782f1d2-3faf-45c5-b06d-8883705fea3d",
+      "name": "Sticky - Config Explained",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        160,
+        -560
+      ],
+      "parameters": {
+        "content": "## Config\n\n**TIME_ZONE** - decides what 'today' means and how times are shown.\n**REFRESH_SECONDS** - how often the page reloads itself.\n**OPEN_MINUTES_BEFORE / CLOSE_HOURS_AFTER** - used only to label each card 'opens at', 'open' or 'closed'. They must match 3.0's values of the same names, which are what actually control check-in.\n**PAGE_URL / PAGE_TITLE** - this page's own address (for its links) and heading. Replace YOUR-N8N-HOST in PAGE_URL.\n**GRAPHQL_URL** - Administrate endpoint.\n**CHECKIN_LOG_TABLE_ID** - id of the EventCheckInLog Data Table that 3.0 writes.\n\nAlso select your Administrate OAuth2 credential on Fetch Todays Events.",
+        "height": 440,
+        "width": 460,
+        "color": 6
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Dashboard Page": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Day Bounds",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Day Bounds": {
+      "main": [
+        [
+          {
+            "node": "Fetch Todays Events",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Todays Events": {
+      "main": [
+        [
+          {
+            "node": "Read Check-in Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Check-in Log": {
+      "main": [
+        [
+          {
+            "node": "Build Dashboard",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Dashboard": {
+      "main": [
+        [
+          {
+            "node": "Respond (HTML)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true,
+    "timezone": "Europe/London"
+  },
+  "tags": []
+}

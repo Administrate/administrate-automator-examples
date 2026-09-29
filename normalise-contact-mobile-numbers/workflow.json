@@ -1,0 +1,365 @@
+{
+  "name": "Normalise Contact Mobile Numbers",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Normalise Contact Mobile Numbers\n\nWhenever a Contact is created or updated in Administrate, this normalises that contact's **mobile** number to international (E.164) format.\n\n**IMPORTANT - country rules:** the defaults in **Config** are for **UK mobiles only** (country code 44, trunk prefix 0, mobiles start with 7). Numbers that do not match the configured country are left untouched. Change the Config values for another country; one country per workflow.\n\n**Flow**\n1. **Contact Created / Contact Updated** - Administrate webhook triggers (registered by the trigger nodes).\n2. **Config** - country rules and the log Data Table ID.\n3. **Get Contact** - reads that contact's phone numbers.\n4. **Normalize Contact** - for usage = mobile, e.g. 07... -> +447..., 0044 -> +44, 44 -> +44, strips spaces/brackets/dashes/dots and drops a trunk 0 after the country code (+44 (0)7... -> +447...). Emits an item ONLY if the number changes.\n5. **Update Mobile (Webhook)** - writes the corrected number. Other phone types (office/home/fax) are untouched.\n6. **Log (Webhook)** - records the change in the 'Phone Normalization Log' Data Table.\n\nLoop-safe: the update re-fires 'Contact Updated', but the second pass finds the number already correct and stops.\n",
+        "height": 720,
+        "width": 660,
+        "color": 4
+      },
+      "id": "9bf5cf51-f3a0-4c99-9ebd-5eb4f1c87ab0",
+      "name": "Sticky - Overview",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.getadministrate.com/graphql",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ ({ \"query\": \"query($id: ID!) { node(id: $id) { ... on Contact { id personalName { firstName lastName } phoneNumbers { usage number } } } }\", \"variables\": { \"id\": $json.payload.node.id } }) }}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "45b8386c-185f-4fa4-9dba-0b76b273a092",
+      "name": "Get Contact",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        320,
+        1152
+      ],
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Country rules come from the Config node. Defaults are for UK mobiles (+44, trunk 0, mobiles start 7).\nconst cfg = $('Config').first().json;\nconst CC = String(cfg.COUNTRY_CODE || \"\").replace(/^\\+/, \"\");\nconst INTL = String(cfg.INTERNATIONAL_DIAL_PREFIX || \"\");\nconst TRUNK = String(cfg.TRUNK_PREFIX || \"\");\nconst MOBILE_START = String(cfg.MOBILE_NATIONAL_PREFIX || \"\");\nconst ACCEPT_BARE_CC = cfg.ACCEPT_BARE_COUNTRY_CODE === true || String(cfg.ACCEPT_BARE_COUNTRY_CODE).toLowerCase() === \"true\";\nif (!CC) throw new Error(\"Config.COUNTRY_CODE is empty\");\n\nconst normalizeNumber = (raw) => {\n  if (raw == null) return raw;\n  const s = String(raw).trim();\n  if (s === \"\") return s;\n  const c = s.replace(/[\\s()\\-.]/g, \"\");\n  let national = null;\n  if (c.startsWith(\"+\" + CC)) national = c.slice(1 + CC.length);\n  else if (INTL && c.startsWith(INTL + CC)) national = c.slice(INTL.length + CC.length);\n  else if (ACCEPT_BARE_CC && c.startsWith(CC)) national = c.slice(CC.length);\n  else if (TRUNK && c.startsWith(TRUNK + MOBILE_START)) national = c.slice(TRUNK.length);\n  else return s;\n  // drop any trunk prefix written after the country code, e.g. +44 (0)7... -> +447...\n  while (TRUNK && national.startsWith(TRUNK)) national = national.slice(TRUNK.length);\n  if (national === \"\") return s;\n  return \"+\" + CC + national;\n};\nconst out = [];\nconst runAt = new Date().toISOString();\nfor (const item of $input.all()) {\n  const n = item.json && item.json.data && item.json.data.node;\n  if (!n) continue;\n  const phones = Array.isArray(n.phoneNumbers) ? n.phoneNumbers : [];\n  const idx = phones.findIndex(p => String((p && p.usage) || \"\").toLowerCase() === \"mobile\");\n  if (idx === -1) continue;\n  const usage = phones[idx].usage;\n  const oldNum = phones[idx].number;\n  const newNum = normalizeNumber(oldNum);\n  if (newNum == null || newNum === oldNum) continue;\n  const mutation = \"mutation { contact { update(input: { contactId: \" + JSON.stringify(n.id) + \", phoneNumbers: [{usage: \" + usage + \", number: \" + JSON.stringify(newNum) + \"}] }) { contact { id } errors { label message value } } } }\";\n  const nm = (((n.personalName && n.personalName.firstName) || \"\") + \" \" + ((n.personalName && n.personalName.lastName) || \"\")).trim();\n  out.push({ json: { contactId: n.id, contactName: nm, oldNumber: oldNum, newNumber: newNum, runAt: runAt, requestBody: JSON.stringify({ query: mutation }) } });\n}\nreturn out;"
+      },
+      "id": "2b2f5bb4-56bc-40c5-9e7f-a3b962f76a96",
+      "name": "Normalize Contact",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        544,
+        1152
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.getadministrate.com/graphql",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.parse($json.requestBody) }}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "99778652-bd6a-4714-9690-cfe00aff718a",
+      "name": "Update Mobile (Webhook)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        768,
+        1152
+      ],
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "dataTableId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Config').first().json.PHONE_LOG_TABLE_ID }}"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "run_at": "={{ $('Normalize Contact').item.json.runAt }}",
+            "contact_id": "={{ $('Normalize Contact').item.json.contactId }}",
+            "contact_name": "={{ $('Normalize Contact').item.json.contactName }}",
+            "old_number": "={{ $('Normalize Contact').item.json.oldNumber }}",
+            "new_number": "={{ $('Normalize Contact').item.json.newNumber }}",
+            "status": "={{ ($json.data && $json.data.contact && $json.data.contact.update && $json.data.contact.update.errors && $json.data.contact.update.errors.length) ? \"error\" : \"updated\" }}",
+            "detail": "={{ ($json.data && $json.data.contact && $json.data.contact.update && $json.data.contact.update.errors && $json.data.contact.update.errors.length) ? JSON.stringify($json.data.contact.update.errors) : \"webhook\" }}"
+          },
+          "schema": [
+            {
+              "id": "run_at",
+              "displayName": "run_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "contact_id",
+              "displayName": "contact_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "contact_name",
+              "displayName": "contact_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "old_number",
+              "displayName": "old_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "new_number",
+              "displayName": "new_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "detail",
+              "displayName": "detail",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "8367e0b1-eedd-42b2-b75e-bdfbd2ef34ea",
+      "name": "Log (Webhook)",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        992,
+        1152
+      ]
+    },
+    {
+      "parameters": {
+        "events": "V2ViaG9va1R5cGU6Y29udGFjdF9jcmVhdGVk",
+        "name": "Contact Created - Normalise Mobile"
+      },
+      "type": "CUSTOM.administrateTrigger",
+      "typeVersion": 1,
+      "position": [
+        -64,
+        1056
+      ],
+      "id": "845edabb-db03-4d84-bfbe-59870520b7a8",
+      "name": "Contact Created",
+      "webhookId": "33ca7978-4c8c-4eee-a222-23243eac2678",
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "events": "V2ViaG9va1R5cGU6Y29udGFjdF91cGRhdGVk",
+        "name": "Contact Updated - Normalise Mobile"
+      },
+      "type": "CUSTOM.administrateTrigger",
+      "typeVersion": 1,
+      "position": [
+        -64,
+        1248
+      ],
+      "id": "8243ca53-04b3-4695-82e8-75d648be12c6",
+      "name": "Contact Updated",
+      "webhookId": "2bbce897-700a-4733-b2f6-b0269a773084",
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "77fe9c8f-0f0e-41aa-a0da-9a7eb77de030",
+              "name": "COUNTRY_CODE",
+              "value": "44",
+              "type": "string"
+            },
+            {
+              "id": "b1679ff0-87f7-45d2-b7c7-c2dcd1be786f",
+              "name": "INTERNATIONAL_DIAL_PREFIX",
+              "value": "00",
+              "type": "string"
+            },
+            {
+              "id": "445d5e94-79c2-47a0-9f7e-c8527f49a216",
+              "name": "TRUNK_PREFIX",
+              "value": "0",
+              "type": "string"
+            },
+            {
+              "id": "c93dbd38-0810-43d5-8c9a-7ef710c06fbf",
+              "name": "MOBILE_NATIONAL_PREFIX",
+              "value": "7",
+              "type": "string"
+            },
+            {
+              "id": "fa8069ad-c565-4dd5-a7c6-1af5e9759861",
+              "name": "ACCEPT_BARE_COUNTRY_CODE",
+              "value": true,
+              "type": "boolean"
+            },
+            {
+              "id": "c6b73559-cfeb-4786-996d-038fb5e917fb",
+              "name": "PHONE_LOG_TABLE_ID",
+              "value": "REPLACE_WITH_PHONE_NORMALIZATION_LOG_TABLE_ID",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "d3b6d4e5-7788-488a-ba9a-40f7c4e8f779",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        128,
+        1152
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Get Contact": {
+      "main": [
+        [
+          {
+            "node": "Normalize Contact",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Contact": {
+      "main": [
+        [
+          {
+            "node": "Update Mobile (Webhook)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Mobile (Webhook)": {
+      "main": [
+        [
+          {
+            "node": "Log (Webhook)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Contact Created": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Contact Updated": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Get Contact",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "tags": []
+}

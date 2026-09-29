@@ -1,0 +1,454 @@
+{
+  "name": "Waitlist 01 - Response Page",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "532b76fb-d0f2-4521-a598-71eb1700f222",
+        "responseMode": "responseNode",
+        "options": {
+          "ignoreBots": true
+        }
+      },
+      "id": "faea8a66-dea3-4e73-802b-9b472090d9ab",
+      "name": "Offer Link",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        96
+      ],
+      "webhookId": "c1de3652-ba3a-4386-9be6-3daf17d01e79"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c01",
+              "name": "GRAPHQL_URL",
+              "type": "string",
+              "value": "https://api.getadministrate.com/graphql"
+            },
+            {
+              "id": "c02",
+              "name": "ORIGIN_IDENTIFIER",
+              "type": "string",
+              "value": "Automator - Waitlist Offers"
+            },
+            {
+              "id": "c03",
+              "name": "OFFERS_TABLE_ID",
+              "type": "string",
+              "value": "REPLACE_WITH_WAITLIST_OFFERS_TABLE_ID"
+            },
+            {
+              "id": "c04",
+              "name": "SUBMIT_URL",
+              "type": "string",
+              "value": "https://YOUR-N8N-HOST/webhook/1c911bd6-673f-4c05-a15b-8d77985b10c3"
+            },
+            {
+              "id": "c05",
+              "name": "ACCEPT_ACTION",
+              "type": "string",
+              "value": "accept"
+            },
+            {
+              "id": "c06",
+              "name": "DECLINE_ACTION",
+              "type": "string",
+              "value": "decline"
+            },
+            {
+              "id": "c07",
+              "name": "ACCEPT_LABEL",
+              "type": "string",
+              "value": "Yes, I want this place"
+            },
+            {
+              "id": "c08",
+              "name": "DECLINE_LABEL",
+              "type": "string",
+              "value": "No, offer it to someone else"
+            },
+            {
+              "id": "c09",
+              "name": "BRAND_NAME",
+              "type": "string",
+              "value": "Your Organisation"
+            },
+            {
+              "id": "c10",
+              "name": "BRAND_CSS",
+              "type": "string",
+              "value": ":root{--b:#1F2937;--a:#2563EB;--t:#EEF2FF;--ink:#1A1A1A;--muted:#5A6470;--line:#D4D9DE;--danger:#A3241F;--dangerbg:#FBEDEC}*,*::before,*::after{box-sizing:border-box}html{font-size:100%;-webkit-text-size-adjust:100%}body{margin:0;font-family:\"Segoe UI\",Roboto,\"Helvetica Neue\",Arial,sans-serif;font-size:clamp(1rem,0.95rem + 0.25vw,1.125rem);line-height:1.6;color:var(--ink);background:#FFF}.masthead{background:var(--b);border-bottom:3px solid var(--a);color:#FFF;padding:clamp(1rem,3vw,1.75rem) clamp(1rem,5vw,2.5rem)}.masthead p{margin:0;font-weight:600;letter-spacing:.14em;font-size:.8em}main{max-width:44rem;margin:0 auto;padding:clamp(1.25rem,5vw,2.5rem) clamp(1rem,5vw,2.5rem) 4rem}h1{font-size:clamp(1.4rem,1.1rem + 1.4vw,2rem);line-height:1.25;margin:0 0 .35em;color:var(--b)}.meta{margin:0 0 1.75rem;color:var(--muted)}.meta span{white-space:nowrap}.notice{border-left:4px solid var(--a);background:var(--t);padding:.9rem 1rem;margin:0 0 1.75rem}.error{border-left-color:var(--danger);background:var(--dangerbg)}p{margin:0 0 1rem}.hold{color:var(--muted);font-size:.9em;border-top:1px solid var(--line);padding-top:1rem;margin-top:2rem}.actions{display:flex;flex-wrap:wrap;gap:.75rem;margin:1.75rem 0 1rem}button{font:inherit;font-weight:600;border-radius:.25rem;padding:.7rem 1.5rem;min-height:2.75rem;cursor:pointer}button.primary{color:#FFF;background:var(--b);border:1px solid var(--b)}button.primary:hover{background:#111827}button.secondary{color:var(--b);background:#FFF;border:1px solid var(--line)}button.secondary:hover{background:var(--t)}button:focus-visible{outline:3px solid var(--a);outline-offset:2px}@media (prefers-contrast:more){body{color:#000}.meta,.hold{color:#333}}"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "4f8f2656-6980-4bd7-8c34-4e711d7e47d5",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        224,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "l01",
+              "name": "offerToken",
+              "type": "string",
+              "value": "={{ ($('Offer Link').first().json.query || {}).token || '' }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "615a5365-dbda-486e-ba2d-ecbee74f87a7",
+      "name": "Extract Link",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        448,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Config').first().json.OFFERS_TABLE_ID }}"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "token",
+              "keyValue": "={{ $('Extract Link').first().json.offerToken }}"
+            }
+          ]
+        },
+        "returnAll": true
+      },
+      "id": "951e0310-cfb9-4be5-8325-09a874939d1d",
+      "name": "Load Row",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        672,
+        96
+      ],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "authentication": "predefinedCredentialType",
+        "jsonBody": "={{ JSON.stringify({ query: 'query WaitlistEvent($id: String!) { events(filters: [{ field: id, operation: eq, value: $id }]) { edges { node { id title start location { id name } maxPlaces registrationDeadline learners(filters: [{ field: isCancelled, operation: eq, value: \"false\" }]) { pageInfo { totalRecords } } } } } }', variables: { id: ($json.event_id || '') } }) }}",
+        "method": "POST",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "options": {
+          "timeout": 30000
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "url": "={{ $('Config').first().json.GRAPHQL_URL }}"
+      },
+      "id": "a81c16d8-ea85-4357-989c-41271e6a7399",
+      "name": "Fetch Event",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        896,
+        96
+      ],
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "e1",
+              "leftValue": "={{ (($json.errors || []).length > 0) }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              },
+              "rightValue": ""
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "3d04c856-6d61-4730-b700-a3eefaabb395",
+      "name": "IF Fetch Errors?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1120,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').first().json.GRAPHQL_URL }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ query: 'mutation Log($originIdentifier: String!, $nodeId: ID!, $message: String!, $status: ExternalLogTypeStatus!, $payload: String) { externalLog { createExternalIntegrationLog(input: { originIdentifier: $originIdentifier, nodeId: $nodeId, message: $message, status: $status, payload: $payload }) { errors { label message value } } } }', variables: { originIdentifier: $('Config').first().json.ORIGIN_IDENTIFIER, nodeId: ($('Load Row').first().json.event_id || ''), message: 'Could not open the waitlist offer page for this link. The offer itself is unchanged.', status: 'failed', payload: JSON.stringify($json) } }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "e9a5ae74-57c7-48a0-9d02-9e2dd8f3029d",
+      "name": "Log Failure",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1344,
+        0
+      ],
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ '<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><title>Something went wrong</title><style>' + $('Config').first().json.BRAND_CSS + '</style></head><body><header class=\"masthead\"><p>' + $('Config').first().json.BRAND_NAME + '</p></header><main><h1>Something went wrong</h1><div class=\"notice error\"><p>We could not open this offer just now. Nothing has changed, and your place is still being held.</p></div><p>Please try again shortly, or reply to the offer email and someone will help.</p></main></body></html>' }}",
+        "options": {
+          "responseCode": 503,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/html; charset=utf-8"
+              },
+              {
+                "name": "Cache-Control",
+                "value": "no-store"
+              }
+            ]
+          }
+        }
+      },
+      "id": "9f777b86-1e75-4af1-b4a6-a306abef8bfe",
+      "name": "Serve Error Page",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1568,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "/*\tRender Page - builds the offer page. GET only, and this workflow writes nothing,\n\tso a mail scanner following the link cannot answer on somebody\\u2019s behalf. Recording\n\thappens in Waitlist 02 - Response Handler, on POST.\t*/\n\nconst cfg_obj = $('Config').first().json;\nconst link_obj = $('Extract Link').first().json;\nconst api_obj = $input.first().json;\nconst now_str = $now.toISO();\n\nconst rows_ary = $('Load Row').all().map(function (i_obj) { return i_obj.json; }).filter(function (r_obj) { return r_obj && r_obj.token; });\nconst row_obj = rows_ary.find(function (r_obj) { return String(r_obj.token) === String(link_obj.offerToken); }) || null;\n\nconst event_obj = ((((api_obj.data || {}).events || {}).edges || [])[0] || {}).node || null;\n\nconst esc_fn = function (v_any)\n{\n\treturn String(v_any === null || v_any === undefined ? '' : v_any)\n\t\t.split('&').join('&amp;').split('<').join('&lt;').split('>').join('&gt;').split('\"').join('&quot;');\n};\n\nconst pretty_fn = function (iso_str)\n{\n\tif (!iso_str) { return ''; }\n\tconst d_obj = new Date(String(iso_str).replace(' ', 'T'));\n\tif (isNaN(d_obj.getTime())) { return String(iso_str); }\n\tconst months_ary = ['January','February','March','April','May','June','July','August','September','October','November','December'];\n\treturn d_obj.getDate() + ' ' + months_ary[d_obj.getMonth()] + ' ' + d_obj.getFullYear();\n};\n\nconst prettyTime_fn = function (iso_str)\n{\n\tif (!iso_str) { return ''; }\n\tconst d_obj = new Date(String(iso_str).replace(' ', 'T'));\n\tif (isNaN(d_obj.getTime())) { return ''; }\n\tconst h_str = String(d_obj.getHours()).padStart(2, '0');\n\tconst m_str = String(d_obj.getMinutes()).padStart(2, '0');\n\treturn pretty_fn(iso_str) + ' at ' + h_str + ':' + m_str;\n};\n\nconst page_fn = function (title_str, body_str)\n{\n\treturn '<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><title>' + esc_fn(title_str) + '</title><style>' + cfg_obj.BRAND_CSS + '</style></head><body><header class=\"masthead\"><p>' + esc_fn(cfg_obj.BRAND_NAME) + '</p></header><main>' + body_str + '</main></body></html>';\n};\n\n/*\tTwo shapes of page that are not the form, and they are not the same thing.\n\trefuse is for something genuinely wrong, so it ends by pointing at a human.\n\tcloseOff is for when everything is in order and there is simply nothing to do\t*/\nconst refuse_fn = function (heading_str, message_str)\n{\n\treturn [{ json: { html: page_fn(heading_str, '<h1>' + esc_fn(heading_str) + '</h1><div class=\"notice error\"><p>' + esc_fn(message_str) + '</p></div><p>Please reply to the offer email and someone will help.</p>') } }];\n};\n\nconst closeOff_fn = function (heading_str, message_str)\n{\n\treturn [{ json: { html: page_fn(heading_str, '<h1>' + esc_fn(heading_str) + '</h1><div class=\"notice\"><p>' + esc_fn(message_str) + '</p></div><p>You can close this page.</p>') } }];\n};\n\nif (!row_obj)\n{\n\treturn refuse_fn('This link is no longer valid', 'We could not find this offer. It may have been withdrawn, or the link may be incomplete.');\n}\n\nconst title_str = String(row_obj.event_title || (event_obj || {}).title || 'this event');\nconst status_str = String(row_obj.status || '');\n\nif (status_str === 'accepted')\n{\n\treturn closeOff_fn('You have already accepted', 'Your place on ' + title_str + ' is confirmed. Nothing further is needed.');\n}\n\nif (status_str === 'declined')\n{\n\treturn closeOff_fn('You have already declined', 'We recorded that you did not want this place, and it has been offered to somebody else. If that has changed, reply to the offer email and we will pick it up.');\n}\n\nif (status_str === 'expired' || (row_obj.expires_at && DateTime.fromISO(String(row_obj.expires_at)) < DateTime.fromISO(now_str)))\n{\n\treturn closeOff_fn('This offer has expired', 'The place was held for a limited time and has now passed to the next person on the waitlist.');\n}\n\nif (status_str !== 'offered')\n{\n\treturn refuse_fn('This link is no longer valid', 'This offer is not open for a response.');\n}\n\n/*\tCapacity is read at the moment of the click. The handler re-checks it again at submit\n\ttime, because somebody else can accept in between\t*/\nconst max_num = Number((event_obj || {}).maxPlaces || 0);\nconst reg_num = Number(((((event_obj || {}).learners || {}).pageInfo || {}).totalRecords) || 0);\n\nif (event_obj && max_num > 0 && reg_num >= max_num)\n{\n\treturn closeOff_fn('This event is now full', 'Somebody else took the last place before we heard from you, so this offer can no longer be honoured. Thank you for considering it.');\n}\n\nconst when_str = pretty_fn((event_obj || {}).start);\nconst where_str = ((event_obj || {}).location || {}).name || '';\n\nconst meta_str = '<p class=\"meta\">'\n\t+ (when_str ? '<span>' + esc_fn(when_str) + '</span>' : '')\n\t+ (when_str && where_str ? ' &middot; ' : '')\n\t+ (where_str ? '<span>' + esc_fn(where_str) + '</span>' : '')\n\t+ '</p>';\n\nconst hold_str = row_obj.expires_at\n\t? '<p class=\"hold\">This place is held for you until ' + esc_fn(prettyTime_fn(String(row_obj.expires_at))) + '. After that it passes to the next person on the waitlist.</p>'\n\t: '';\n\n/*\tTwo submit buttons rather than two links. A scanner fetching this page cannot press\n\tone, which is the whole reason the recording lives behind a POST\t*/\nconst body_str = '<h1>A place is available on ' + esc_fn(title_str) + '</h1>'\n\t+ meta_str\n\t+ '<div class=\"notice\"><p>A place has opened on this course, and you are next on the waitlist. Let us know either way and we will do the rest.</p></div>'\n\t+ '<form method=\"post\" action=\"' + esc_fn(cfg_obj.SUBMIT_URL) + '\">'\n\t+ '<input type=\"hidden\" name=\"token\" value=\"' + esc_fn(row_obj.token) + '\">'\n\t+ '<div class=\"actions\">'\n\t+ '<button type=\"submit\" class=\"primary\" name=\"action\" value=\"' + esc_fn(cfg_obj.ACCEPT_ACTION) + '\">' + esc_fn(cfg_obj.ACCEPT_LABEL) + '</button>'\n\t+ '<button type=\"submit\" class=\"secondary\" name=\"action\" value=\"' + esc_fn(cfg_obj.DECLINE_ACTION) + '\">' + esc_fn(cfg_obj.DECLINE_LABEL) + '</button>'\n\t+ '</div></form>'\n\t+ hold_str;\n\nreturn [{ json: { html: page_fn('A place is available', body_str) } }];"
+      },
+      "id": "6b0567a2-b6e6-41e2-919e-5db9ae0dd889",
+      "name": "Render Page",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1344,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.html }}",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/html; charset=utf-8"
+              },
+              {
+                "name": "Cache-Control",
+                "value": "no-store"
+              }
+            ]
+          }
+        }
+      },
+      "id": "87bb74de-1623-467e-9e75-98e5aee51b46",
+      "name": "Serve Page",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1568,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "color": 4,
+        "content": "## Waitlist 01 - Response Page\n\nServes the page somebody lands on from the waitlist offer email. **GET only, and it writes nothing.**\n\nCorporate mail scanners fetch every link before the recipient sees it. If this endpoint recorded anything, the first scanner to walk the link would answer on the recipient's behalf. Recording happens in **Waitlist 02 - Response Handler**, on POST.\n\n### Seven outcomes, three shapes of page\n\n**The form**, when the offer is open: the event, when and where, how long the place is held, and two submit buttons.\n\n**A close-off page**, when there is simply nothing left to do: already accepted, already declined, expired, or event now full.\n\n**A refusal page**, when something is genuinely wrong, which ends by pointing at a human: no row matches the token, or the row's status is not one this page can act on.\n\nExpiry is judged two ways, either the row saying `expired` or its `expires_at` having passed, because the row is not corrected until the hourly sweep catches it. Capacity is read at the moment of the click, and Waitlist 02 reads it again at submit time, because somebody else can accept in between.\n\n### Why buttons rather than links\n\nA scanner can fetch a page. It cannot press a submit button. That is why recording lives behind a POST, and why the offer email carries one link to this page rather than two links that act.\n\n### Two known limitations\n\n**`IF Fetch Errors?` catches GraphQL errors, not transport failures.** `Fetch Event` runs `continueRegularOutput`, so a timeout produces an item with no `errors` array and the page still renders, just without the date and location. A form the reader can act on beats an error page.\n\n**`Log Failure` passes an empty `nodeId` when no row was found**, so on that path the log call fails silently. Waitlist 03 handles the same case explicitly.\n\n### Setup\n\n1. Attach the Administrate OAuth2 credential to **Fetch Event** and **Log Failure**.\n2. Confirm SUBMIT_URL matches the production webhook URL of Waitlist 02.\n3. Publish so the webhook is live, and copy this workflow's production webhook URL into RESPONSE_PAGE_URL in Waitlist Automation.\n\n### Testing\n\nOpen a real offer link in a **browser**. `ignoreBots` is on, which returns 403 to anything without a browser User-Agent, so curl or an HTTP client will look broken when it is not.\n\nCheck that the event title, date and location all resolve. A blank title means the row carries an event id the instance no longer has.\n\n### Why there is no success log\n\nThis workflow performs no mutation, so there is no outcome to record. Failures on the read are logged. Page views are not, because a scanner opening a link is not worth writing to the event record.\n",
+        "height": 1352,
+        "width": 600
+      },
+      "id": "bf5f1376-cec1-4d01-b411-fde38e0b63be",
+      "name": "Sticky - Overview",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -736,
+        -416
+      ]
+    },
+    {
+      "parameters": {
+        "color": 6,
+        "content": "## Config Explained\n\n**GRAPHQL_URL** - the Administrate API endpoint. The same for every instance.\n\n**ORIGIN_IDENTIFIER** - the name entries appear under in the Administrate event log. **Should be identical across all five waitlist workflows** so the history reads as one story. Use the status field, not the origin, to tell entries apart.\n\n**OFFERS_TABLE_ID** - the id of your `waitlist_offers` Data Table. **Load Row** reads this value through an expression, so changing it here is the whole change. Do **not** re-select the table in the node: that replaces the expression with a hardcoded id.\n\n**SUBMIT_URL** - where the form posts: the production webhook URL of **Waitlist 02 - Response Handler**. If that path changes, update this, or every submission goes nowhere.\n\n**ACCEPT_ACTION** and **DECLINE_ACTION** - the values the two buttons post. They must match the same two values in Waitlist 02's Config exactly, or a valid answer comes back as unrecognized.\n\n**ACCEPT_LABEL** and **DECLINE_LABEL** - the wording on the buttons.\n\n**BRAND_NAME** - the wordmark at the top of every page. Set it to your organisation's name.\n\n**BRAND_CSS** - all styling for the pages this workflow serves. Change colours and spacing here, not in Render Page. This is a page stylesheet and **cannot** be reused in the offer email, which needs table layout and inline styles because mail clients strip a style block.\n\n### The palette\n\nThe CSS variables at the top drive everything: `--b` masthead and primary button, `--a` keyline under the masthead and focus ring, `--t` notice panel, plus a red pair for the error variant. Keep text on `--b` legible (white text needs a dark background); a bright accent colour should accent rather than fill.\n",
+        "height": 1384,
+        "width": 620
+      },
+      "id": "578b82c3-f917-47ff-8206-1266540fc53d",
+      "name": "Sticky - Config Explained",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        -1328
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Offer Link": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Extract Link",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Link": {
+      "main": [
+        [
+          {
+            "node": "Load Row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load Row": {
+      "main": [
+        [
+          {
+            "node": "Fetch Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Event": {
+      "main": [
+        [
+          {
+            "node": "IF Fetch Errors?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Fetch Errors?": {
+      "main": [
+        [
+          {
+            "node": "Log Failure",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Render Page",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Failure": {
+      "main": [
+        [
+          {
+            "node": "Serve Error Page",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Render Page": {
+      "main": [
+        [
+          {
+            "node": "Serve Page",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true,
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed"
+  },
+  "tags": []
+}

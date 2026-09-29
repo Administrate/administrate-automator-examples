@@ -1,0 +1,429 @@
+{
+  "name": "Waitlist 03 - Error Handler (shared)",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "2a73456a-ed95-4c6b-864a-d52b4c545bae",
+      "name": "Workflow Failed",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c01",
+              "name": "GRAPHQL_URL",
+              "type": "string",
+              "value": "https://api.getadministrate.com/graphql"
+            },
+            {
+              "id": "c02",
+              "name": "ORIGIN_IDENTIFIER",
+              "type": "string",
+              "value": "Automator - Waitlist Offers"
+            },
+            {
+              "id": "c03",
+              "name": "FAILURES_TABLE_ID",
+              "type": "string",
+              "value": "REPLACE_WITH_AUTOMATION_FAILURES_TABLE_ID"
+            },
+            {
+              "id": "c04",
+              "name": "N8N_BASE_URL",
+              "type": "string",
+              "value": "https://YOUR-N8N-HOST"
+            },
+            {
+              "id": "c05",
+              "name": "EVENT_ID_KEYS",
+              "type": "string",
+              "value": "event_id,eventId"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "mode": "manual",
+        "options": {}
+      },
+      "id": "6a5623d8-c807-4dbf-9a5e-c7505df30b98",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        224,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "/*\tBuild Failure Record - flattens the error trigger payload into one readable row.\t*/\n/*\tThe error payload carries workflow and execution metadata only, never the failing\n\tworkflow's own data. The affected event id is recovered downstream by fetching the\n\tfailed execution back through the n8n API.\t*/\n\nconst cfg_obj = $('Config').first().json;\nconst err_obj = $('Workflow Failed').first().json || {};\n\nconst wf_obj = err_obj.workflow || {};\nconst ex_obj = err_obj.execution || {};\nconst detail_obj = ex_obj.error || err_obj.error || {};\n\nconst wfId_str = String(wf_obj.id || '');\nconst exId_str = String(ex_obj.id || '');\n\n/*\tBuilt from Config rather than from the payload, because the payload's own url field\n\tis absent on some failure shapes and a half-built link is worse than a whole one\t*/\nconst url_str = (wfId_str && exId_str)\n\t? String(cfg_obj.N8N_BASE_URL) + '/workflow/' + wfId_str + '/executions/' + exId_str\n\t: '';\n\nconst node_str = String(ex_obj.lastNodeExecuted || detail_obj.node?.name || '');\nconst msg_str = String(detail_obj.message || err_obj.message || 'No message was carried on the error payload.');\n\nreturn [{ json: {\n\toccurred_at: $now.toISO(),\n\tworkflow_name: String(wf_obj.name || ''),\n\tworkflow_id: wfId_str,\n\texecution_id: exId_str,\n\texecution_url: url_str,\n\tfailed_node: node_str,\n\terror_message: msg_str\n} }];"
+      },
+      "id": "8acc3680-9c67-4665-adac-a63fa47675f5",
+      "name": "Build Failure Record",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "dataTableId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Config').first().json.FAILURES_TABLE_ID }}"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "schema": [
+            {
+              "id": "occurred_at",
+              "displayName": "occurred_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "workflow_name",
+              "displayName": "workflow_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "workflow_id",
+              "displayName": "workflow_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "execution_id",
+              "displayName": "execution_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "execution_url",
+              "displayName": "execution_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "failed_node",
+              "displayName": "failed_node",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "error_message",
+              "displayName": "error_message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "event_id",
+              "displayName": "event_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "logged_to_administrate",
+              "displayName": "logged_to_administrate",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            }
+          ],
+          "value": {
+            "occurred_at": "={{ $json.occurred_at }}",
+            "workflow_name": "={{ $json.workflow_name }}",
+            "workflow_id": "={{ $json.workflow_id }}",
+            "execution_id": "={{ $json.execution_id }}",
+            "execution_url": "={{ $json.execution_url }}",
+            "failed_node": "={{ $json.failed_node }}",
+            "error_message": "={{ $json.error_message }}",
+            "event_id": "={{ $json.event_id }}",
+            "logged_to_administrate": "={{ $json.logged_to_administrate }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "dbe124a4-0422-4ab4-aad5-5a709b961af8",
+      "name": "Write Failure Row",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        672,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "color": 4,
+        "content": "## Waitlist 03 - Error Handler (shared)\n\nSet as the **Error Workflow** on Waitlist Automation, Waitlist 01, Waitlist 02 and Waitlist 04 (each workflow: **Settings > Error workflow**). It is never called directly.\n\nIt catches what **throws**: a timeout, an expired credential, a Code node bug, a malformed payload. It does **not** catch a refusal Administrate returns inside an HTTP 200, because that is not an exception and the execution stays green. Those are caught by the per-mutation error gates inside each workflow. You need both.\n\n### What one failure produces\n\n1. A row in `automation_failures`: when, which workflow, which node, the message, and a direct link to the failed execution\n2. Where the affected event can be identified, an entry on that event in Administrate, so it appears where somebody is already looking\n\n### Recovering the event id\n\nThe error trigger payload carries **workflow and execution metadata only**, never the failing workflow's own data. So the execution is fetched back through the n8n API and **Recover Event Id** scans every node's output for the keys listed in `EVENT_ID_KEYS`.\n\nNode names are deliberately not hardcoded: the four workflows carry the event id under different node names, and a scan survives those workflows being rebuilt.\n\n### Why the row is written before the Administrate call\n\nSo a failure in the Administrate call loses the flag rather than the whole record. That is why `logged_to_administrate` says **attempted** rather than yes. The values it can hold:\n\n- `attempted` - an event was found and the log call ran\n- `no - the failed execution carried no event id` - a real failure that simply had no event\n- `no - could not fetch the failed execution` - the n8n API call did not work, check the credential\n\n### Testing it\n\nIt fires on **production runs only, never on manual executions**. To test it, publish a workflow, break something real, and trigger it properly.\n\nEngineer a realistic failure: break something *after* validation has succeeded and while an event id is in flight, otherwise the handler correctly writes a row saying there was no event and you learn little.\n\nCheck the result, not the execution: read the `automation_failures` row, then open the event in Administrate and confirm the entry is on it.\n\n### Keep this setting\n\n`Fetch Failed Execution` runs `continueRegularOutput` so a fetch problem (for example an expired API key) still leaves a failure row. If you rebuild that node, set it again.\n\n### One known cost\n\n`includeData=true` pulls the whole failed execution into memory. On a very large run that is a lot of data for one error path; it is the first thing to look at if this workflow ever becomes slow.\n",
+        "height": 1268,
+        "width": 620
+      },
+      "id": "035e70ee-e0ab-41a4-9a30-a66a21632f24",
+      "name": "Sticky - Overview",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -720,
+        -496
+      ]
+    },
+    {
+      "parameters": {
+        "color": 6,
+        "content": "## Config Explained\n\n**GRAPHQL_URL** - the Administrate API endpoint. The same for every instance.\n\n**ORIGIN_IDENTIFIER** - the name failure entries appear under in the Administrate event log. **Should match the value in the other four waitlist workflows exactly** so the history reads as one story. Log entries cannot be deleted, so choose it once.\n\n`ExternalLog` lets you write `originIdentifier` but does not expose it on read, so nothing can query or filter on it through the API. Matching it is for human readers.\n\n**FAILURES_TABLE_ID** - the id of your `automation_failures` Data Table. **Write Failure Row** reads this value through an expression, so changing it here is the whole change. Do **not** re-select the table in the node: picking it from the list replaces the expression with a hardcoded id.\n\n**N8N_BASE_URL** - your n8n base URL, with no trailing slash. It builds the link to the failed execution that goes in the table, and the API URL that **Fetch Failed Execution** calls (`/api/v1/executions/`).\n\n**EVENT_ID_KEYS** - the field names **Recover Event Id** looks for when scanning the failed execution, comma separated. `event_id,eventId` covers all the waitlist workflows. Add to this list rather than editing the Code node if a new workflow names it something else.\n\n### Credentials\n\nTwo, and they are different services.\n\n**Fetch Failed Execution** uses an **n8n API** credential (type `n8nApi`), which authenticates to your n8n instance's own REST API. Create an API key under n8n Settings > n8n API.\n\n**Log Failure to Administrate** uses an **Administrate OAuth2** credential.\n\nBoth must be available to the project this workflow lives in.\n\n### On the table itself\n\nEvery column is String, so the table can be created by hand in the Data Tables screen.\n",
+        "height": 876,
+        "width": 620
+      },
+      "id": "f49400ae-a9f8-4ca6-8a10-b64f32b795c4",
+      "name": "Sticky - Config Explained",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -16,
+        -944
+      ]
+    },
+    {
+      "id": "1b5fb3e9-e8df-4ed7-83aa-5458658c360e",
+      "name": "Fetch Failed Execution",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        900,
+        250
+      ],
+      "parameters": {
+        "authentication": "predefinedCredentialType",
+        "method": "GET",
+        "nodeCredentialType": "n8nApi",
+        "options": {
+          "timeout": 30000
+        },
+        "url": "={{ $('Config').first().json.N8N_BASE_URL + '/api/v1/executions/' + $json.execution_id + '?includeData=true' }}"
+      },
+      "credentials": {
+        "n8nApi": {
+          "id": "",
+          "name": "n8n API"
+        }
+      },
+      "notes": "HTTP Request rather than the native n8n node, because that node hides includeData behind an option named activeWorkflows. An explicit query parameter is harder to get silently wrong. continueRegularOutput so a fetch problem still leaves a failure row rather than losing it.",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "1a9adeb8-9ded-4fb0-a178-db9f05bf7daa",
+      "name": "Recover Event Id",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        250
+      ],
+      "parameters": {
+        "jsCode": "/*\tRecover Event Id - digs the affected event out of the fetched execution.\t*/\n/*\tNode names are deliberately not hardcoded. This handler is shared across four\n\tworkflows that carry the event id under different node names, so every node's output\n\tis scanned for the keys listed in Config and the first non-empty match wins.\t*/\n\nconst cfg_obj = $('Config').first().json;\nconst base_obj = $('Build Failure Record').first().json;\nconst exec_obj = $input.first().json || {};\n\nconst keys_ary = String(cfg_obj.EVENT_ID_KEYS || '').split(',').map(function (k_str) { return k_str.trim(); }).filter(function (k_str) { return k_str.length > 0; });\n\n/*\tAn absent data key means the fetch itself did not work, which is a different problem\n\tfrom an execution that genuinely carried no event id. The row says which\t*/\nconst fetched_bln = !!exec_obj.data;\nconst runData_obj = ((exec_obj.data || {}).resultData || {}).runData || {};\n\nlet found_str = '';\n\nfor (const node_str of Object.keys(runData_obj))\n{\n\tif (found_str) { break; }\n\tfor (const run_obj of (runData_obj[node_str] || []))\n\t{\n\t\tif (found_str) { break; }\n\t\tfor (const branch_ary of (((run_obj || {}).data || {}).main || []))\n\t\t{\n\t\t\tif (found_str) { break; }\n\t\t\tfor (const item_obj of (branch_ary || []))\n\t\t\t{\n\t\t\t\tconst json_obj = (item_obj || {}).json || {};\n\t\t\t\tfor (const key_str of keys_ary)\n\t\t\t\t{\n\t\t\t\t\tconst v_str = String(json_obj[key_str] === null || json_obj[key_str] === undefined ? '' : json_obj[key_str]).trim();\n\t\t\t\t\tif (v_str) { found_str = v_str; break; }\n\t\t\t\t}\n\t\t\t\tif (found_str) { break; }\n\t\t\t}\n\t\t}\n\t}\n}\n\n/*\tattempted rather than yes, because the row is written before the Administrate call\n\truns. Writing it after would mean a failure there loses the whole record, and a\n\tdurable record of every failure matters more than a perfectly accurate flag\t*/\nconst state_str = !fetched_bln\n\t? 'no - could not fetch the failed execution, check the n8n API credential'\n\t: (found_str ? 'attempted' : 'no - the failed execution carried no event id');\n\nreturn [{ json: Object.assign({}, base_obj, { event_id: found_str, logged_to_administrate: state_str }) }];"
+      },
+      "notes": "Scans every node's output rather than naming nodes, because this handler is shared across four workflows that name their nodes differently. First non-empty match wins."
+    },
+    {
+      "id": "7d306fbb-2d97-42e9-894c-99e2daa746e6",
+      "name": "IF Event Found?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1560,
+        250
+      ],
+      "parameters": {
+        "conditions": {
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "ev1",
+              "leftValue": "={{ $('Recover Event Id').first().json.event_id }}",
+              "operator": {
+                "operation": "notEmpty",
+                "singleValue": true,
+                "type": "string"
+              },
+              "rightValue": ""
+            }
+          ],
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          }
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "d4789505-1b79-476e-aad0-e0c3ddedf064",
+      "name": "Log Failure to Administrate",
+      "type": "CUSTOM.administrate",
+      "typeVersion": 1,
+      "position": [
+        1780,
+        160
+      ],
+      "parameters": {
+        "authentication": "administrateOAuth2Api",
+        "options": {},
+        "query": "mutation AddWaitlistLog($originIdentifier: String!, $nodeId: ID!, $message: String!, $status: ExternalLogTypeStatus!, $payload: String!) {\n  externalLog { createExternalIntegrationLog(input: { originIdentifier: $originIdentifier, nodeId: $nodeId, message: $message, status: $status, payload: $payload }) { errors { label message value } } }\n}",
+        "variables": "={{ { originIdentifier: $('Config').first().json.ORIGIN_IDENTIFIER, nodeId: $('Recover Event Id').first().json.event_id, message: \"A waitlist automation failed against this event. Workflow: \" + $('Recover Event Id').first().json.workflow_name + \". Node: \" + $('Recover Event Id').first().json.failed_node + \". Message: \" + $('Recover Event Id').first().json.error_message + \". The full run is at \" + $('Recover Event Id').first().json.execution_url, status: 'failed', payload: JSON.stringify({ workflowId: $('Recover Event Id').first().json.workflow_id, executionId: $('Recover Event Id').first().json.execution_id, failedNode: $('Recover Event Id').first().json.failed_node }) } }}"
+      },
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      },
+      "notes": "Written against the affected event so it appears where somebody is already looking, rather than only in the n8n execution list. Log entries cannot be deleted, so the message is written to be useful a year from now."
+    },
+    {
+      "id": "948e2be2-1a6e-4816-bd89-9422427e7ef5",
+      "name": "No Event to Log Against",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1780,
+        360
+      ],
+      "parameters": {},
+      "notes": "Not a failure. Some failures genuinely have no event, and the row in automation_failures already says which case this was."
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Workflow Failed": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Build Failure Record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Failure Record": {
+      "main": [
+        [
+          {
+            "node": "Fetch Failed Execution",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Failed Execution": {
+      "main": [
+        [
+          {
+            "node": "Recover Event Id",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Recover Event Id": {
+      "main": [
+        [
+          {
+            "node": "Write Failure Row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write Failure Row": {
+      "main": [
+        [
+          {
+            "node": "IF Event Found?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Event Found?": {
+      "main": [
+        [
+          {
+            "node": "Log Failure to Administrate",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Event to Log Against",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true,
+    "binaryMode": "separate"
+  },
+  "tags": []
+}
