@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Register Delegates</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --card: #ffffff; --text: #1f2933; --muted: #5f6b7a; --border: #d9dee5;
+    --accent: #0f766e; --accent-text: #ffffff; --danger: #b42318; --focus: #2563eb;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Arial, sans-serif; }
+  main { max-width: 920px; margin: 0 auto; padding: 32px 16px 64px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  p.lead { color: var(--muted); margin: 0 0 24px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 20px; margin-bottom: 20px; }
+  label { display: block; font-weight: 600; margin-bottom: 4px; }
+  .hint { color: var(--muted); font-size: 13px; margin-top: 4px; }
+  input, select, textarea { width: 100%; font: inherit; padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; background: #fff; color: var(--text); }
+  input:focus, select:focus, textarea:focus, button:focus { outline: 2px solid var(--focus); outline-offset: 1px; }
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; font-size: 13px; color: var(--muted); font-weight: 600; padding: 0 6px 6px; }
+  td { padding: 4px 6px; vertical-align: top; }
+  td.num { width: 28px; color: var(--muted); padding-top: 12px; }
+  td.act { width: 40px; }
+  button { font: inherit; border-radius: 6px; padding: 8px 14px; border: 1px solid var(--border); background: #fff; color: var(--text); cursor: pointer; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text); font-weight: 600; padding: 10px 20px; }
+  button.remove { padding: 6px 10px; color: var(--danger); }
+  button:disabled { opacity: .6; cursor: progress; }
+  .row-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+  .error { color: var(--danger); font-weight: 600; margin-top: 12px; white-space: pre-wrap; }
+  details summary { cursor: pointer; font-weight: 600; }
+  iframe { width: 100%; min-height: 640px; border: 1px solid var(--border); border-radius: 10px; background: #fff; }
+  @media (max-width: 640px) {
+    thead { display: none; }
+    tr { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 10px 0; border-top: 1px solid var(--border); }
+    td { padding: 0; }
+    td.num { display: none; }
+    td.email, td.result { grid-column: 1 / -1; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <h1>Register delegates and record attendance</h1>
+  <p class="lead">Registers each delegate on a private event, marks them as attended on every non-cancelled session, and optionally records Pass or Fail.</p>
+
+  <form id="delegate-form" novalidate>
+    <div class="card">
+      <label for="eventID">Event API ID</label>
+      <input id="eventID" name="eventID" required maxlength="200" autocomplete="off" placeholder="Encoded event ID, e.g. RXZlbnQ6...">
+      <div class="hint">The encoded Administrate API ID of a published <strong>private</strong> event.</div>
+    </div>
+
+    <div class="card">
+      <table>
+        <thead><tr><th></th><th>First name</th><th>Last name</th><th>Email</th><th>Result</th><th></th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+      <div class="row-actions">
+        <button type="button" id="add-row">Add delegate</button>
+      </div>
+
+      <details style="margin-top:16px">
+        <summary>Paste from a spreadsheet</summary>
+        <p class="hint">One delegate per line: first name, last name, email and (optionally) result <code>pass</code>, <code>fail</code> or <code>none</code>. Tab- or comma-separated. Pasted rows replace the table.</p>
+        <textarea id="paste" rows="5"></textarea>
+        <div class="row-actions"><button type="button" id="apply-paste">Use pasted rows</button></div>
+      </details>
+    </div>
+
+    <button type="submit" class="primary" id="submit">Submit</button>
+    <div id="form-error" class="error" role="alert"></div>
+  </form>
+
+  <section id="result" hidden style="margin-top:24px">
+    <iframe id="result-frame" title="Submission result" sandbox></iframe>
+  </section>
+</main>
+
+<script>
+  // =====================================================================
+  // CONFIG - EDIT THESE THREE VALUES BEFORE USE
+  // WEBHOOK_URL: the Production URL of the "Delegate Webhook1" node.
+  // AUTH_HEADER_NAME / AUTH_HEADER_VALUE: must match the n8n
+  //   "Webhook Header Auth" credential (Header Auth) on that node.
+  // Anyone who has this file can call the webhook, so share it only
+  // with staff (e.g. host it on an internal site) and rotate the value
+  // if the file leaks.
+  // =====================================================================
+  const WEBHOOK_URL = 'https://YOUR-N8N-HOST/webhook/REPLACE_WITH_WEBHOOK_PATH';
+  const AUTH_HEADER_NAME = 'X-Webhook-Key';
+  const AUTH_HEADER_VALUE = 'REPLACE_WITH_WEBHOOK_SECRET';
+  // =====================================================================
+
+  const MAX_DELEGATES = 50; // matches the limit enforced by the workflow
+  const rowsEl = document.getElementById('rows');
+  const errorEl = document.getElementById('form-error');
+
+  function addRow(values = {}) {
+    if (rowsEl.children.length >= MAX_DELEGATES) {
+      errorEl.textContent = `Submit up to ${MAX_DELEGATES} delegates at a time.`;
+      return;
+    }
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="num"></td>
+      <td><input aria-label="First name" name="firstName" maxlength="150" required></td>
+      <td><input aria-label="Last name" name="lastName" maxlength="150" required></td>
+      <td class="email"><input aria-label="Email" name="email" type="email" maxlength="254" required></td>
+      <td class="result"><select aria-label="Result" name="result">
+        <option value="none">No result</option>
+        <option value="pass">Pass</option>
+        <option value="fail">Fail</option>
+      </select></td>
+      <td class="act"><button type="button" class="remove" aria-label="Remove delegate">&times;</button></td>`;
+    tr.querySelector('[name=firstName]').value = values.firstName || '';
+    tr.querySelector('[name=lastName]').value = values.lastName || '';
+    tr.querySelector('[name=email]').value = values.email || '';
+    tr.querySelector('[name=result]').value = ['pass', 'fail', 'none'].includes(values.result) ? values.result : 'none';
+    tr.querySelector('.remove').addEventListener('click', () => { tr.remove(); renumber(); });
+    rowsEl.appendChild(tr);
+    renumber();
+  }
+
+  function renumber() {
+    [...rowsEl.children].forEach((tr, i) => { tr.querySelector('.num').textContent = i + 1; });
+  }
+
+  document.getElementById('add-row').addEventListener('click', () => addRow());
+
+  document.getElementById('apply-paste').addEventListener('click', () => {
+    const lines = document.getElementById('paste').value.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+    if (!lines.length) return;
+    rowsEl.innerHTML = '';
+    errorEl.textContent = '';
+    for (const line of lines) {
+      const [firstName, lastName, email, result] = line.split(line.includes('\t') ? '\t' : ',').map(v => (v || '').trim());
+      addRow({ firstName, lastName, email, result: (result || 'none').toLowerCase() });
+    }
+  });
+
+  document.getElementById('delegate-form').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    errorEl.textContent = '';
+    const eventID = document.getElementById('eventID').value.trim();
+    const delegates = [...rowsEl.children].map(tr => ({
+      firstName: tr.querySelector('[name=firstName]').value.trim(),
+      lastName: tr.querySelector('[name=lastName]').value.trim(),
+      email: tr.querySelector('[name=email]').value.trim(),
+      result: tr.querySelector('[name=result]').value
+    }));
+    if (!eventID) { errorEl.textContent = 'Enter the event API ID.'; return; }
+    if (!delegates.length) { errorEl.textContent = 'Add at least one delegate.'; return; }
+
+    const button = document.getElementById('submit');
+    button.disabled = true;
+    button.textContent = 'Submitting…';
+    try {
+      const response = await fetch(WEBHOOK_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', [AUTH_HEADER_NAME]: AUTH_HEADER_VALUE },
+        body: JSON.stringify({ eventID, delegates })
+      });
+      const text = await response.text();
+      if (response.status === 401 || response.status === 403) {
+        errorEl.textContent = 'The webhook rejected the request. Check AUTH_HEADER_NAME and AUTH_HEADER_VALUE in this file.';
+        return;
+      }
+      if ((response.headers.get('content-type') || '').includes('text/html')) {
+        // The workflow answers with a full HTML results page.
+        document.getElementById('result-frame').srcdoc = text;
+        document.getElementById('result').hidden = false;
+        document.getElementById('result').scrollIntoView({ behavior: 'smooth' });
+      } else {
+        errorEl.textContent = `Unexpected response (HTTP ${response.status}): ${text.slice(0, 300)}`;
+      }
+    } catch (err) {
+      errorEl.textContent = 'Could not reach the webhook. Check WEBHOOK_URL, that the workflow is active, and that the webhook allows this page\'s origin (CORS).';
+    } finally {
+      button.disabled = false;
+      button.textContent = 'Submit';
+    }
+  });
+
+  addRow();
+</script>
+</body>
+</html>

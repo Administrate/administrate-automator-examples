@@ -1,0 +1,928 @@
+{
+  "name": "Bulk Register Delegates and Record Attendance",
+  "nodes": [
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const context = $input.item.json;\nconst definitions = [], fields = [], variables = {};\ncontext.delegates = context.delegates.map(d => {\n  if (d.result === 'none') return { ...d, resultStatus: 'unchanged', resultError: '' };\n  if (!d.attended || !d.learnerID || d.error) return { ...d, resultStatus: 'blocked', resultError: 'Not attempted: attendance was not confirmed.' };\n  const key = 'r' + d.row;\n  definitions.push('$' + key + ': ID!', '$pass' + d.row + ': Boolean!');\n  variables[key] = d.learnerID;\n  variables['pass' + d.row] = d.result === 'pass';\n  fields.push(key + ': recordResult(learnerId: $' + key + ', hasPassed: $pass' + d.row + ') { learner { id hasPassed } errors { label message value } }');\n  return { ...d, resultStatus: 'pending', resultError: '' };\n});\nconst request = fields.length\n  ? { query: 'mutation RecordLearnerResults(' + definitions.join(', ') + ') { learner { ' + fields.join('\\n') + ' } }', variables }\n  : { query: 'query NoResultChanges { __typename }', variables: {} };\nreturn { json: { ...context, request } };"
+      },
+      "name": "Prepare Learner Results",
+      "id": "5292152e-f364-40f6-8fc4-76a0a765e18f",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4400,
+        2048
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.config.apiUrl }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.request }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "id": "a1ff8fee-2ae8-43ad-a3bc-e1ad4404e071",
+      "name": "Record Learner Results",
+      "notesInFlow": false,
+      "position": [
+        4640,
+        2048
+      ],
+      "retryOnFail": false,
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      },
+      "onError": "continueRegularOutput",
+      "notes": "Select the same Administrate Core OAuth2 credential. Explicit Pass/Fail selections can overwrite existing results. No result sends no result mutation."
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "function readResponse(raw) {\n  if (raw.error) return { failure: 'The Administrate request failed. Check this execution in n8n before retrying.' };\n  const status = Number(raw.statusCode || 200);\n  let body = raw.body !== undefined ? raw.body : raw;\n  if (typeof body === 'string') { try { body = JSON.parse(body); } catch { return { failure: 'Administrate returned an unreadable response.' }; } }\n  if (status < 200 || status >= 300) return { failure: `Administrate returned HTTP ${status}. Check this execution in n8n before retrying.` };\n  if (!body || typeof body !== 'object') return { failure: 'Administrate returned an empty response.' };\n  return { body };\n}\nfunction messages(errors) {\n  return (errors || []).map(e => [e.label, e.message].filter(Boolean).join(': ')).join('; ').slice(0, 900);\n}\nfunction graphFailure(body) { return messages(body.errors) || (!body.data ? 'Administrate returned no data.' : ''); }\n\n\nconst { request, ...context } = $('Prepare Learner Results').first().json;\nconst pending = context.delegates.some(d => d.resultStatus === 'pending');\n// A no-op query failure cannot turn \"leave unchanged\" into a result update.\nif (!pending) return { json: context };\nconst reply = readResponse($input.item.json);\nconst body = reply.body;\ncontext.delegates = context.delegates.map(d => {\n  if (d.resultStatus !== 'pending') return d;\n  const alias = 'r' + d.row;\n  const payload = body?.data?.learner?.[alias];\n  // Errors scoped to another alias must not hide a successfully recorded result.\n  const relevantErrors = (body?.errors || []).filter(e => !e.path || !e.path.includes('learner') || e.path.length < 2 || e.path[1] === alias);\n  const confirmed = payload?.learner?.id === d.learnerID &&\n    payload.learner.hasPassed === (d.result === 'pass') &&\n    Array.isArray(payload.errors) && payload.errors.length === 0;\n  const error = reply.failure || messages(relevantErrors) || messages(payload?.errors) ||\n    (!confirmed ? 'The selected result was not confirmed. Review the learner before retrying.' : '');\n  return { ...d, resultStatus: error ? 'error' : 'recorded', resultError: error };\n});\nreturn { json: context };"
+      },
+      "name": "Capture Learner Results",
+      "id": "e01f1536-23b2-4c9e-9d4a-640501324bec",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4880,
+        2048
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "9966a174-e81c-4692-b796-86eb4f587379",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "id": "705d94c3-d911-4d82-9491-be9d1db2c96c",
+      "name": "Delegate Webhook1",
+      "position": [
+        80,
+        2304
+      ],
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "webhookId": "42b18b13-741f-4762-85f6-53f0aa16d834",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "",
+          "name": "Webhook Header Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// One submission = one item. Never store request data in workflow static data.\nconst config = {\n  apiUrl: 'https://api.getadministrate.com/graphql',\n  displayTimeZone: 'Europe/London',\n  maxDelegates: 50,\n  maxSessions: 100,\n  maxAttendanceRecords: 1000\n};\nlet body = $input.item.json.body;\nconst fail = message => ({ json: { ok: false, httpStatus: 400, message, config, delegates: [] } });\nif (typeof body === 'string') { try { body = JSON.parse(body); } catch { return fail('The request body must be valid JSON or form data.'); } }\nif (!body || typeof body !== 'object' || Array.isArray(body)) return fail('No submission was received.');\nconst clean = v => typeof v === 'string' ? v.trim() : '';\nconst eventID = clean(body.eventID);\nif (!eventID) return fail('Enter the event ID once for this submission.');\nif (eventID.length > 200) return fail('The event ID is too long. Use the encoded Administrate API ID.');\nlet delegates = body.delegates;\nif (typeof delegates === 'string') { try { delegates = JSON.parse(delegates); } catch { return fail('The delegates field must contain a JSON array.'); } }\nif (delegates === undefined) delegates = [{ firstName: body.firstName, lastName: body.lastName, email: body.email, result: body.result }];\nif (!Array.isArray(delegates) || !delegates.length) return fail('Add at least one delegate.');\nif (delegates.length > config.maxDelegates) return fail(`Submit up to ${config.maxDelegates} delegates at a time.`);\nconst seen = new Set();\nconst rows = [];\nfor (let i = 0; i < delegates.length; i++) {\n  const d = delegates[i] || {};\n  if (!['none', 'pass', 'fail'].includes(d.result)) return fail(`Row ${i + 1}: select No result, Pass or Fail.`);\n  const result = d.result;\n  const firstName = clean(d.firstName), lastName = clean(d.lastName), email = clean(d.email).toLowerCase();\n  if (!firstName || !lastName || !/^[^\\s<>@,;]+@[^\\s<>@,;]+\\.[^\\s<>@,;]+$/.test(email)) return fail(`Row ${i + 1}: enter a first name, last name and valid email address.`);\n  if (firstName.length > 150 || lastName.length > 150 || email.length > 254) return fail(`Row ${i + 1}: a name or email address is too long.`);\n  if (seen.has(email)) return fail(`Row ${i + 1}: ${email} appears more than once. Remove the duplicate row.`);\n  seen.add(email);\n  rows.push({ row: i, result, firstName, lastName, email, contactID: null, learnerID: null, registered: false, attended: false, error: '' });\n}\nconst definitions = ['$eventID: ID!', '$eventFilter: String!'];\nconst variables = { eventID, eventFilter: eventID };\nconst selections = [\n  `event: node(id: $eventID) { ... on Event { id title start timeZonedStart timeZoneName lifecycleState type bookingAccount { id name } sessions(first: ${config.maxSessions}, filters: [{field: lifecycleState, operation: ne, value: \"cancelled\"}]) { pageInfo { hasNextPage } edges { node { id lifecycleState } } } } }`\n];\nfor (const d of rows) {\n  definitions.push(`$email${d.row}: String!`);\n  variables[`email${d.row}`] = d.email;\n  // first: 2 deliberately detects ambiguous duplicate contacts/enrolments.\n  selections.push(`c${d.row}: contacts(first: 2, filters: [{field: emailAddress, operation: eq, value: $email${d.row}}]) { pageInfo { hasNextPage } edges { node { id emailAddress emailAddresses { address } learners(first: 2, filters: [{field: eventId, operation: eq, value: $eventFilter}, {field: lifecycleState, operation: eq, value: \"active\"}]) { pageInfo { hasNextPage } edges { node { id lifecycleState contact { id } } } } } } }`);\n}\nreturn { json: { ok: true, eventID, config, delegates: rows, request: { query: `query CheckContactsAndEvent(${definitions.join(', ')}) { ${selections.join('\\n')} }`, variables } } };"
+      },
+      "id": "f526b453-9509-4dee-83af-c62e085b98b4",
+      "name": "Validate Submission1",
+      "position": [
+        320,
+        2304
+      ],
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "55948ad0-4ebf-4483-ab35-cc130059508c",
+              "leftValue": "={{ $json.ok }}",
+              "operator": {
+                "operation": "true",
+                "singleValue": true,
+                "type": "boolean"
+              },
+              "rightValue": ""
+            }
+          ],
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          }
+        },
+        "options": {}
+      },
+      "id": "1ebd9939-30d8-4e08-a90a-a40bd6549ee9",
+      "name": "Input Valid?1",
+      "position": [
+        560,
+        2304
+      ],
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.config.apiUrl }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.request }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "id": "b84ecb29-ac48-4d58-b5b6-fb6c5aadecdf",
+      "name": "Check Contacts and Event1",
+      "notesInFlow": false,
+      "position": [
+        800,
+        2208
+      ],
+      "retryOnFail": false,
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      },
+      "onError": "continueRegularOutput",
+      "notes": "Select your Administrate Core OAuth2 credential. Request variables are constructed from the current submission. Automatic mutation retries are intentionally disabled."
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "function readResponse(raw) {\n  if (raw.error) return { failure: 'The Administrate request failed. Check this execution in n8n before retrying.' };\n  const status = Number(raw.statusCode || 200);\n  let body = raw.body !== undefined ? raw.body : raw;\n  if (typeof body === 'string') { try { body = JSON.parse(body); } catch { return { failure: 'Administrate returned an unreadable response.' }; } }\n  if (status < 200 || status >= 300) return { failure: `Administrate returned HTTP ${status}. Check this execution in n8n before retrying.` };\n  if (!body || typeof body !== 'object') return { failure: 'Administrate returned an empty response.' };\n  return { body };\n}\nfunction messages(errors) {\n  return (errors || []).map(e => [e.label, e.message].filter(Boolean).join(': ')).join('; ').slice(0, 900);\n}\nfunction graphFailure(body) { return messages(body.errors) || (!body.data ? 'Administrate returned no data.' : ''); }\n\nconst source = $('Validate Submission1').first().json;\nconst { request, ...context } = source;\nconst fail = message => ({ json: { ...context, ok: false, httpStatus: 422, message } });\nconst reply = readResponse($input.item.json);\nif (reply.failure) return fail(reply.failure);\nconst body = reply.body;\nif (graphFailure(body)) return fail(graphFailure(body));\nconst event = body.data.event;\nif (!event?.id || event.id !== context.eventID) return fail('The event was not found. Use its encoded API ID.');\ncontext.event = event;\nif (event.type !== 'private') return fail('This form is for private courses only. Please select a private event.');\nconst privateAccountID = typeof event.bookingAccount?.id === 'string' ? event.bookingAccount.id.trim() : '';\nif (!privateAccountID) return fail('This private event has no booking account assigned. Please ask the office to set its private account in Administrate.');\n// The event is the authoritative source. Never use an account ID supplied by the browser.\ncontext.companyAccountID = privateAccountID;\nif (event.lifecycleState !== 'published') return fail('This event must be published before delegates can be registered.');\nif (event.sessions?.pageInfo?.hasNextPage !== false) return fail('The full session list could not be confirmed. No records were changed.');\nconst sessions = (event.sessions?.edges || []).map(e => e.node).filter(s => s?.id && s.lifecycleState !== 'cancelled');\nif (!sessions.length) return fail('This event has no non-cancelled sessions. Session attendance cannot be recorded.');\nif (sessions.length * context.delegates.length > context.config.maxAttendanceRecords) return fail('This submission exceeds 1,000 attendance records. Submit fewer delegates. No records were changed.');\ncontext.sessionIDs = [...new Set(sessions.map(s => s.id))];\n// Match any native email address, then use learners belonging to that contact.\nconst normalizeEmail = value => String(value || '').trim().toLowerCase();\ncontext.delegates = context.delegates.map(d => {\n  const connection = body.data[`c${d.row}`];\n  const contacts = connection?.edges;\n  const rowError = message => ({ ...d, error: `Row ${d.row + 1} (${d.email}): ${message}` });\n  if (!Array.isArray(contacts)) return rowError('Administrate did not return the contact lookup. No changes made.');\n  if (contacts.length > 1 || connection.pageInfo?.hasNextPage === true) return rowError('This email matches multiple contact records. Ask the office to resolve the duplicate contacts before resubmitting.');\n  if (connection.pageInfo?.hasNextPage !== false) return rowError('The complete contact lookup could not be verified. No changes made.');\n  if (!contacts.length) return { ...d, contactSource: 'new' };\n  const contact = contacts[0]?.node;\n  if (!contact?.id || !Array.isArray(contact.emailAddresses)) return rowError('The contact ID or full email list was missing from the response. No changes made.');\n  const addresses = [contact.emailAddress, ...contact.emailAddresses.map(e => e?.address)].map(normalizeEmail).filter(Boolean);\n  if (!addresses.includes(normalizeEmail(d.email))) return rowError('The returned contact does not contain this email in its email addresses. Ask the office to check the contact record.');\n  const learners = contact.learners?.edges;\n  if (!Array.isArray(learners)) return rowError('The existing enrolment lookup was incomplete. No changes made.');\n  if (learners.length > 1 || contact.learners.pageInfo?.hasNextPage === true) return rowError('This contact has multiple active enrolments on this event. Ask the office to review them.');\n  if (contact.learners.pageInfo?.hasNextPage !== false) return rowError('The complete enrolment lookup could not be verified. No changes made.');\n  const learner = learners[0]?.node;\n  if (learners.length && (!learner?.id || learner.contact?.id !== contact.id || learner.lifecycleState !== 'active')) return rowError('The returned enrolment could not be confirmed as active and belonging to this contact. No changes made.');\n  return { ...d, contactID: contact.id, learnerID: learner?.id || null, registered: !!learner?.id, previouslyRegistered: !!learner?.id, contactSource: 'existing' };\n});\nconst rowsByContact = new Map();\nfor (const d of context.delegates) {\n  if (d.contactID) rowsByContact.set(d.contactID, [...(rowsByContact.get(d.contactID) || []), d]);\n}\nfor (const matches of rowsByContact.values()) {\n  if (matches.length > 1) {\n    const rowNumbers = matches.map(d => d.row + 1).join(', ');\n    for (const d of matches) d.error = `Rows ${rowNumbers} use email addresses belonging to the same contact. Keep one row for this person and confirm their result before resubmitting. No changes made.`;\n  }\n}\nif (context.delegates.some(d => d.error)) return { json: { ...context, ok: false, httpStatus: 422, message: 'Please resolve the highlighted records and resubmit. No records were changed.' } };\nreturn { json: { ...context, ok: true } };"
+      },
+      "id": "defaf94a-e58f-4b31-9614-a649a6c8b429",
+      "name": "Check Results1",
+      "position": [
+        1040,
+        2208
+      ],
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "5f954d9e-3008-4998-9c16-b9bab89d1f6b",
+              "leftValue": "={{ $json.ok }}",
+              "operator": {
+                "operation": "true",
+                "singleValue": true,
+                "type": "boolean"
+              },
+              "rightValue": ""
+            }
+          ],
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          }
+        },
+        "options": {}
+      },
+      "id": "3f539480-d303-4dd3-87c8-5077870bb1d5",
+      "name": "Checks Passed?1",
+      "position": [
+        1280,
+        2208
+      ],
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2
+    },
+    {
+      "parameters": {
+        "jsCode": "// Exactly two envelope items, even if one contact group is empty.\n// Both If outputs therefore execute and both Merge inputs always arrive.\nconst context = $input.first().json;\nreturn ['existing', 'new'].map(route => ({\n  json: { ...context, route, delegates: context.delegates.filter(d => route === 'existing' ? !!d.contactID : !d.contactID) },\n  pairedItem: { item: 0 }\n}));"
+      },
+      "id": "ada5bc73-30fc-428c-81cd-cc4c6f05d3d8",
+      "name": "Build Contact Routes1",
+      "position": [
+        1520,
+        2096
+      ],
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "2426ed1b-069c-4d37-8a00-1133a97dfa9f",
+              "leftValue": "={{ $json.route === 'existing' }}",
+              "operator": {
+                "operation": "true",
+                "singleValue": true,
+                "type": "boolean"
+              },
+              "rightValue": ""
+            }
+          ],
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          }
+        },
+        "options": {}
+      },
+      "id": "c5cc4d5c-08e3-4211-aa81-8a0b6205ef8e",
+      "name": "Existing Contact Group?1",
+      "position": [
+        1760,
+        2096
+      ],
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "return { json: $input.item.json };"
+      },
+      "id": "4a2b8266-9fa7-4e86-bd02-d0ef6c025606",
+      "name": "Use Existing Contact IDs1",
+      "position": [
+        2000,
+        1936
+      ],
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const context = $input.item.json;\nconst definitions = [], selections = [], variables = {};\nfor (const d of context.delegates) {\n  const alias = `c${d.row}`;\n  definitions.push(`$${alias}: ContactCreateInput!`);\n  variables[alias] = { accountId: context.companyAccountID, personalName: { firstName: d.firstName, lastName: d.lastName }, emailAddresses: [{ usage: 'primary', address: d.email }] };\n  selections.push(`${alias}: create(input: $${alias}) { contact { id emailAddress } errors { label message value } }`);\n}\n// A read-only no-op preserves the empty branch; no dummy contact is created.\nconst request = selections.length\n  ? { query: `mutation CreateContacts(${definitions.join(', ')}) { contact { ${selections.join('\\n')} } }`, variables }\n  : { query: 'query NoNewContacts { __typename }', variables: {} };\nreturn { json: { ...context, request } };"
+      },
+      "id": "bc86bccc-a177-45d1-bf85-a9c7873ebf37",
+      "name": "Prepare Contact Creation1",
+      "position": [
+        2000,
+        2240
+      ],
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.config.apiUrl }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.request }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "id": "d3a19c20-3984-4719-8f39-23ddf6354508",
+      "name": "Create Contacts1",
+      "notesInFlow": false,
+      "position": [
+        2240,
+        2240
+      ],
+      "retryOnFail": false,
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      },
+      "onError": "continueRegularOutput",
+      "notes": "Select your Administrate Core OAuth2 credential. Request variables are constructed from the current submission. Automatic mutation retries are intentionally disabled."
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "function readResponse(raw) {\n  if (raw.error) return { failure: 'The Administrate request failed. Check this execution in n8n before retrying.' };\n  const status = Number(raw.statusCode || 200);\n  let body = raw.body !== undefined ? raw.body : raw;\n  if (typeof body === 'string') { try { body = JSON.parse(body); } catch { return { failure: 'Administrate returned an unreadable response.' }; } }\n  if (status < 200 || status >= 300) return { failure: `Administrate returned HTTP ${status}. Check this execution in n8n before retrying.` };\n  if (!body || typeof body !== 'object') return { failure: 'Administrate returned an empty response.' };\n  return { body };\n}\nfunction messages(errors) {\n  return (errors || []).map(e => [e.label, e.message].filter(Boolean).join(': ')).join('; ').slice(0, 900);\n}\nfunction graphFailure(body) { return messages(body.errors) || (!body.data ? 'Administrate returned no data.' : ''); }\n\nconst { request, ...context } = $('Prepare Contact Creation1').first().json;\nif (!context.delegates.length) return { json: context };\nconst reply = readResponse($input.item.json);\nconst failure = reply.failure || graphFailure(reply.body);\ncontext.delegates = context.delegates.map(d => {\n  const result = reply.body?.data?.contact?.[`c${d.row}`];\n  const contact = result?.contact;\n  const error = failure || messages(result?.errors) || (!contact?.id ? 'The create mutation returned no contact ID.' : '');\n  if (error) return { ...d, contactID: contact?.id || null, error: `Contact creation: ${error}` };\n  if (String(contact.emailAddress || '').trim().toLowerCase() !== d.email) return { ...d, contactID: contact.id, error: 'Contact created, but its primary email was not confirmed. Review the contact before retrying.' };\n  return { ...d, contactID: contact.id, contactCreated: true };\n});\nreturn { json: context };"
+      },
+      "id": "963c5067-2416-4975-9d50-40ad1bfa33fd",
+      "name": "Capture New Contact IDs1",
+      "position": [
+        2480,
+        2240
+      ],
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2
+    },
+    {
+      "parameters": {},
+      "id": "33c4b312-268c-4783-af7b-68ae248d1b4b",
+      "name": "Merge Contact Paths1",
+      "position": [
+        2720,
+        2048
+      ],
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3
+    },
+    {
+      "parameters": {
+        "jsCode": "const packets = $input.all();\nconst context = { ...packets[0].json };\ndelete context.route;\ndelete context.request;\ncontext.delegates = packets.flatMap(p => p.json.delegates).sort((a, b) => a.row - b.row);\nconst pending = context.delegates.filter(d => !d.error && d.contactID && !d.learnerID);\nconst variables = { eventID: context.eventID }, definitions = ['$eventID: ID!'];\nconst selections = [];\nfor (const d of pending) {\n  const alias = `r${d.row}`;\n  definitions.push(`$${alias}: ID!`);\n  variables[alias] = d.contactID;\n  selections.push(`${alias}: registerContacts(eventId: $eventID, input: {contacts: [$${alias}]}) { learners { id lifecycleState contact { id } } errors { label message value } }`);\n}\ncontext.request = selections.length\n  ? { query: `mutation RegisterContacts(${definitions.join(', ')}) { event { ${selections.join('\\n')} } }`, variables }\n  : { query: 'query NoNewEnrolments { __typename }', variables: {} };\nreturn [{ json: context, pairedItem: packets.map((_, item) => ({ item })) }];"
+      },
+      "id": "e6833b3f-4f70-40d4-8bbd-b0e2c78a3c36",
+      "name": "Prepare Enrolment1",
+      "position": [
+        2960,
+        2048
+      ],
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.config.apiUrl }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.request }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "id": "96ce5654-e7f2-4f07-a408-8443cc14ee8a",
+      "name": "Register Contacts1",
+      "notesInFlow": false,
+      "position": [
+        3200,
+        2048
+      ],
+      "retryOnFail": false,
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      },
+      "onError": "continueRegularOutput",
+      "notes": "Select your Administrate Core OAuth2 credential. Request variables are constructed from the current submission. Automatic mutation retries are intentionally disabled."
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "function readResponse(raw) {\n  if (raw.error) return { failure: 'The Administrate request failed. Check this execution in n8n before retrying.' };\n  const status = Number(raw.statusCode || 200);\n  let body = raw.body !== undefined ? raw.body : raw;\n  if (typeof body === 'string') { try { body = JSON.parse(body); } catch { return { failure: 'Administrate returned an unreadable response.' }; } }\n  if (status < 200 || status >= 300) return { failure: `Administrate returned HTTP ${status}. Check this execution in n8n before retrying.` };\n  if (!body || typeof body !== 'object') return { failure: 'Administrate returned an empty response.' };\n  return { body };\n}\nfunction messages(errors) {\n  return (errors || []).map(e => [e.label, e.message].filter(Boolean).join(': ')).join('; ').slice(0, 900);\n}\nfunction graphFailure(body) { return messages(body.errors) || (!body.data ? 'Administrate returned no data.' : ''); }\n\nconst { request, ...context } = $('Prepare Enrolment1').first().json;\nconst reply = readResponse($input.item.json);\nconst failure = reply.failure || graphFailure(reply.body);\ncontext.delegates = context.delegates.map(d => {\n  if (d.error || d.learnerID) return d;\n  const result = reply.body?.data?.event?.[`r${d.row}`];\n  const matches = (result?.learners || []).filter(l => l?.id && l.contact?.id === d.contactID && l.lifecycleState === 'active');\n  const learnerID = matches.length === 1 ? matches[0].id : null;\n  const error = failure || messages(result?.errors) || (!learnerID ? 'An active learner ID for this contact was not confirmed.' : '');\n  return { ...d, learnerID, registered: !!learnerID, error: error ? `Enrolment: ${error}` : '' };\n});\nreturn { json: context };"
+      },
+      "id": "38f8b56e-aab2-4a76-8ddf-52db04142c37",
+      "name": "Capture Enrolment IDs1",
+      "position": [
+        3440,
+        2048
+      ],
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const context = $input.item.json;\nconst definitions = [], selections = [], variables = {};\nfor (const d of context.delegates.filter(d => !d.error && d.registered && d.learnerID)) {\n  const alias = `a${d.row}`;\n  definitions.push(`$${alias}: [LearnerAttendanceInput]!`);\n  variables[alias] = context.sessionIDs.map(sessionId => ({ learnerId: d.learnerID, sessionId, attended: true }));\n  selections.push(`${alias}: recordAttendances(input: $${alias}) { learner { id } errors { label message value } }`);\n}\nconst request = selections.length\n  ? { query: `mutation RecordAttendance(${definitions.join(', ')}) { learner { ${selections.join('\\n')} } }`, variables }\n  : { query: 'query NoAttendanceChanges { __typename }', variables: {} };\nreturn { json: { ...context, request } };"
+      },
+      "id": "782d947c-635c-4c9f-b760-cbcc2a78b758",
+      "name": "Prepare Attendance1",
+      "position": [
+        3680,
+        2048
+      ],
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.config.apiUrl }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.request }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "id": "1ea62a18-c196-4114-b5c6-1cee2d7871e2",
+      "name": "Record Attendance1",
+      "notesInFlow": false,
+      "position": [
+        3920,
+        2048
+      ],
+      "retryOnFail": false,
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      },
+      "onError": "continueRegularOutput",
+      "notes": "Select your Administrate Core OAuth2 credential. Request variables are constructed from the current submission. Automatic mutation retries are intentionally disabled."
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "function readResponse(raw) {\n  if (raw.error) return { failure: 'The Administrate request failed. Check this execution in n8n before retrying.' };\n  const status = Number(raw.statusCode || 200);\n  let body = raw.body !== undefined ? raw.body : raw;\n  if (typeof body === 'string') { try { body = JSON.parse(body); } catch { return { failure: 'Administrate returned an unreadable response.' }; } }\n  if (status < 200 || status >= 300) return { failure: `Administrate returned HTTP ${status}. Check this execution in n8n before retrying.` };\n  if (!body || typeof body !== 'object') return { failure: 'Administrate returned an empty response.' };\n  return { body };\n}\nfunction messages(errors) {\n  return (errors || []).map(e => [e.label, e.message].filter(Boolean).join(': ')).join('; ').slice(0, 900);\n}\nfunction graphFailure(body) { return messages(body.errors) || (!body.data ? 'Administrate returned no data.' : ''); }\n\nconst { request, ...context } = $('Prepare Attendance1').first().json;\nconst reply = readResponse($input.item.json);\nconst failure = reply.failure || graphFailure(reply.body);\ncontext.delegates = context.delegates.map(d => {\n  if (d.error || !d.learnerID || !d.registered) return d;\n  const results = reply.body?.data?.learner?.[`a${d.row}`];\n  const errors = Array.isArray(results) ? results.flatMap(r => r?.errors || []) : [];\n  const confirmed = Array.isArray(results) && results.length === context.sessionIDs.length && results.every(r => r?.learner?.id === d.learnerID && Array.isArray(r.errors) && !r.errors.length);\n  const error = failure || messages(errors) || (!confirmed ? 'Attendance for every session was not confirmed. Review the learner before retrying.' : '');\n  return { ...d, attended: !error, error: error ? `Attendance: ${error}` : '' };\n});\nreturn { json: context };"
+      },
+      "id": "82b45b9b-a5a0-4484-b993-4fee775aba1f",
+      "name": "Capture Attendance Results1",
+      "position": [
+        4160,
+        2048
+      ],
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const TAILWIND_STYLES = \"*,:after,:before{--tw-border-spacing-x:0;--tw-border-spacing-y:0;--tw-translate-x:0;--tw-translate-y:0;--tw-rotate:0;--tw-skew-x:0;--tw-skew-y:0;--tw-scale-x:1;--tw-scale-y:1;--tw-pan-x: ;--tw-pan-y: ;--tw-pinch-zoom: ;--tw-scroll-snap-strictness:proximity;--tw-gradient-from-position: ;--tw-gradient-via-position: ;--tw-gradient-to-position: ;--tw-ordinal: ;--tw-slashed-zero: ;--tw-numeric-figure: ;--tw-numeric-spacing: ;--tw-numeric-fraction: ;--tw-ring-inset: ;--tw-ring-offset-width:0px;--tw-ring-offset-color:#fff;--tw-ring-color:rgba(59,130,246,.5);--tw-ring-offset-shadow:0 0 #0000;--tw-ring-shadow:0 0 #0000;--tw-shadow:0 0 #0000;--tw-shadow-colored:0 0 #0000;--tw-blur: ;--tw-brightness: ;--tw-contrast: ;--tw-grayscale: ;--tw-hue-rotate: ;--tw-invert: ;--tw-saturate: ;--tw-sepia: ;--tw-drop-shadow: ;--tw-backdrop-blur: ;--tw-backdrop-brightness: ;--tw-backdrop-contrast: ;--tw-backdrop-grayscale: ;--tw-backdrop-hue-rotate: ;--tw-backdrop-invert: ;--tw-backdrop-opacity: ;--tw-backdrop-saturate: ;--tw-backdrop-sepia: ;--tw-contain-size: ;--tw-contain-layout: ;--tw-contain-paint: ;--tw-contain-style: }::backdrop{--tw-border-spacing-x:0;--tw-border-spacing-y:0;--tw-translate-x:0;--tw-translate-y:0;--tw-rotate:0;--tw-skew-x:0;--tw-skew-y:0;--tw-scale-x:1;--tw-scale-y:1;--tw-pan-x: ;--tw-pan-y: ;--tw-pinch-zoom: ;--tw-scroll-snap-strictness:proximity;--tw-gradient-from-position: ;--tw-gradient-via-position: ;--tw-gradient-to-position: ;--tw-ordinal: ;--tw-slashed-zero: ;--tw-numeric-figure: ;--tw-numeric-spacing: ;--tw-numeric-fraction: ;--tw-ring-inset: ;--tw-ring-offset-width:0px;--tw-ring-offset-color:#fff;--tw-ring-color:rgba(59,130,246,.5);--tw-ring-offset-shadow:0 0 #0000;--tw-ring-shadow:0 0 #0000;--tw-shadow:0 0 #0000;--tw-shadow-colored:0 0 #0000;--tw-blur: ;--tw-brightness: ;--tw-contrast: ;--tw-grayscale: ;--tw-hue-rotate: ;--tw-invert: ;--tw-saturate: ;--tw-sepia: ;--tw-drop-shadow: ;--tw-backdrop-blur: ;--tw-backdrop-brightness: ;--tw-backdrop-contrast: ;--tw-backdrop-grayscale: ;--tw-backdrop-hue-rotate: ;--tw-backdrop-invert: ;--tw-backdrop-opacity: ;--tw-backdrop-saturate: ;--tw-backdrop-sepia: ;--tw-contain-size: ;--tw-contain-layout: ;--tw-contain-paint: ;--tw-contain-style: }/*! tailwindcss v3.4.17 | MIT License | https://tailwindcss.com*/*,:after,:before{box-sizing:border-box;border:0 solid #e5e7eb}:after,:before{--tw-content:\\\"\\\"}:host,html{line-height:1.5;-webkit-text-size-adjust:100%;-moz-tab-size:4;-o-tab-size:4;tab-size:4;font-family:ui-sans-serif,system-ui,sans-serif,Apple Color Emoji,Segoe UI Emoji,Segoe UI Symbol,Noto Color Emoji;font-feature-settings:normal;font-variation-settings:normal;-webkit-tap-highlight-color:transparent}body{margin:0;line-height:inherit}hr{height:0;color:inherit;border-top-width:1px}abbr:where([title]){-webkit-text-decoration:underline dotted;text-decoration:underline dotted}h1,h2,h3,h4,h5,h6{font-size:inherit;font-weight:inherit}a{color:inherit;text-decoration:inherit}b,strong{font-weight:bolder}code,kbd,pre,samp{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,Liberation Mono,Courier New,monospace;font-feature-settings:normal;font-variation-settings:normal;font-size:1em}small{font-size:80%}sub,sup{font-size:75%;line-height:0;position:relative;vertical-align:baseline}sub{bottom:-.25em}sup{top:-.5em}table{text-indent:0;border-color:inherit;border-collapse:collapse}button,input,optgroup,select,textarea{font-family:inherit;font-feature-settings:inherit;font-variation-settings:inherit;font-size:100%;font-weight:inherit;line-height:inherit;letter-spacing:inherit;color:inherit;margin:0;padding:0}button,select{text-transform:none}button,input:where([type=button]),input:where([type=reset]),input:where([type=submit]){-webkit-appearance:button;background-color:transparent;background-image:none}:-moz-focusring{outline:auto}:-moz-ui-invalid{box-shadow:none}progress{vertical-align:baseline}::-webkit-inner-spin-button,::-webkit-outer-spin-button{height:auto}[type=search]{-webkit-appearance:textfield;outline-offset:-2px}::-webkit-search-decoration{-webkit-appearance:none}::-webkit-file-upload-button{-webkit-appearance:button;font:inherit}summary{display:list-item}blockquote,dd,dl,figure,h1,h2,h3,h4,h5,h6,hr,p,pre{margin:0}fieldset{margin:0}fieldset,legend{padding:0}menu,ol,ul{list-style:none;margin:0;padding:0}dialog{padding:0}textarea{resize:vertical}input::-moz-placeholder,textarea::-moz-placeholder{opacity:1;color:#9ca3af}input::placeholder,textarea::placeholder{opacity:1;color:#9ca3af}[role=button],button{cursor:pointer}:disabled{cursor:default}audio,canvas,embed,iframe,img,object,svg,video{display:block;vertical-align:middle}img,video{max-width:100%;height:auto}[hidden]:where(:not([hidden=until-found])){display:none}.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border-width:0}.mx-auto{margin-left:auto;margin-right:auto}.mb-4{margin-bottom:1rem}.mb-6{margin-bottom:1.5rem}.mb-8{margin-bottom:2rem}.ml-2{margin-left:.5rem}.mr-2{margin-right:.5rem}.mt-1{margin-top:.25rem}.mt-2{margin-top:.5rem}.mt-3{margin-top:.75rem}.mt-4{margin-top:1rem}.mt-5{margin-top:1.25rem}.mt-7{margin-top:1.75rem}.block{display:block}.flex{display:flex}.inline-flex{display:inline-flex}.table{display:table}.grid{display:grid}.hidden{display:none}.h-14{height:3.5rem}.h-4{height:1rem}.h-9{height:2.25rem}.min-h-screen{min-height:100vh}.w-12{width:3rem}.w-14{width:3.5rem}.w-20{width:5rem}.w-4{width:1rem}.w-9{width:2.25rem}.w-full{width:100%}.min-w-0{min-width:0}.min-w-\\\\[640px\\\\]{min-width:640px}.max-w-2xl{max-width:42rem}.max-w-5xl{max-width:48rem}.max-w-5xl{max-width:64rem}.cursor-pointer{cursor:pointer}.resize-y{resize:vertical}.flex-wrap{flex-wrap:wrap}.items-start{align-items:flex-start}.items-center{align-items:center}.justify-center{justify-content:center}.justify-between{justify-content:space-between}.gap-3{gap:.75rem}.gap-4{gap:1rem}.gap-5{gap:1.25rem}.space-y-6>:not([hidden])~:not([hidden]){--tw-space-y-reverse:0;margin-top:calc(1.5rem*(1 - var(--tw-space-y-reverse)));margin-bottom:calc(1.5rem*var(--tw-space-y-reverse))}.overflow-hidden{overflow:hidden}.overflow-x-auto{overflow-x:auto}.break-all{word-break:break-all}.rounded-2xl{border-radius:1rem}.rounded-full{border-radius:9999px}.rounded-lg{border-radius:.5rem}.rounded-xl{border-radius:.75rem}.border{border-width:1px}.border-t{border-top-width:1px}.border-dashed{border-style:dashed}.border-slate-100{--tw-border-opacity:1;border-color:rgba(241,245,249,var(--tw-border-opacity,1))}.border-slate-200{--tw-border-opacity:1;border-color:rgba(226,232,240,var(--tw-border-opacity,1))}.border-slate-300{--tw-border-opacity:1;border-color:rgba(203,213,225,var(--tw-border-opacity,1))}.bg-amber-100{--tw-bg-opacity:1;background-color:rgba(254,243,199,var(--tw-bg-opacity,1))}.bg-amber-50{--tw-bg-opacity:1;background-color:rgba(255,251,235,var(--tw-bg-opacity,1))}.bg-emerald-100{--tw-bg-opacity:1;background-color:rgba(209,250,229,var(--tw-bg-opacity,1))}.bg-emerald-50{--tw-bg-opacity:1;background-color:rgba(236,253,245,var(--tw-bg-opacity,1))}.bg-slate-100{--tw-bg-opacity:1;background-color:rgba(241,245,249,var(--tw-bg-opacity,1))}.bg-slate-50{--tw-bg-opacity:1;background-color:rgba(248,250,252,var(--tw-bg-opacity,1))}.bg-slate-900{--tw-bg-opacity:1;background-color:rgba(15,23,42,var(--tw-bg-opacity,1))}.bg-teal-700{--tw-bg-opacity:1;background-color:rgba(15,118,110,var(--tw-bg-opacity,1))}.bg-white{--tw-bg-opacity:1;background-color:rgba(255,255,255,var(--tw-bg-opacity,1))}.p-4{padding:1rem}.p-5{padding:1.25rem}.p-6{padding:1.5rem}.px-2{padding-left:.5rem;padding-right:.5rem}.px-3{padding-left:.75rem;padding-right:.75rem}.px-4{padding-left:1rem;padding-right:1rem}.px-6{padding-left:1.5rem;padding-right:1.5rem}.py-1{padding-top:.25rem;padding-bottom:.25rem}.py-10{padding-top:2.5rem;padding-bottom:2.5rem}.py-12{padding-top:3rem;padding-bottom:3rem}.py-2{padding-top:.5rem;padding-bottom:.5rem}.py-2\\\\.5{padding-top:.625rem;padding-bottom:.625rem}.py-3{padding-top:.75rem;padding-bottom:.75rem}.py-4{padding-top:1rem;padding-bottom:1rem}.py-5{padding-top:1.25rem;padding-bottom:1.25rem}.text-left{text-align:left}.text-right{text-align:right}.font-sans{font-family:ui-sans-serif,system-ui,sans-serif,Apple Color Emoji,Segoe UI Emoji,Segoe UI Symbol,Noto Color Emoji}.text-3xl{font-size:1.875rem;line-height:2.25rem}.text-lg{font-size:1.125rem;line-height:1.75rem}.text-sm{font-size:.875rem;line-height:1.25rem}.text-xs{font-size:.75rem;line-height:1rem}.font-bold{font-weight:700}.font-medium{font-weight:500}.font-normal{font-weight:400}.font-semibold{font-weight:600}.uppercase{text-transform:uppercase}.leading-relaxed{line-height:1.625}.tracking-tight{letter-spacing:-.025em}.tracking-wider{letter-spacing:.05em}.tracking-widest{letter-spacing:.1em}.text-amber-700{--tw-text-opacity:1;color:rgba(180,83,9,var(--tw-text-opacity,1))}.text-amber-800{--tw-text-opacity:1;color:rgba(146,64,14,var(--tw-text-opacity,1))}.text-emerald-700{--tw-text-opacity:1;color:rgba(4,120,87,var(--tw-text-opacity,1))}.text-emerald-800{--tw-text-opacity:1;color:rgba(6,95,70,var(--tw-text-opacity,1))}.text-red-700{--tw-text-opacity:1;color:rgba(185,28,28,var(--tw-text-opacity,1))}.text-slate-400{--tw-text-opacity:1;color:rgba(148,163,184,var(--tw-text-opacity,1))}.text-slate-500{--tw-text-opacity:1;color:rgba(100,116,139,var(--tw-text-opacity,1))}.text-slate-600{--tw-text-opacity:1;color:rgba(71,85,105,var(--tw-text-opacity,1))}.text-slate-700{--tw-text-opacity:1;color:rgba(51,65,85,var(--tw-text-opacity,1))}.text-slate-800{--tw-text-opacity:1;color:rgba(30,41,59,var(--tw-text-opacity,1))}.text-slate-900{--tw-text-opacity:1;color:rgba(15,23,42,var(--tw-text-opacity,1))}.text-teal-700{--tw-text-opacity:1;color:rgba(15,118,110,var(--tw-text-opacity,1))}.text-white{--tw-text-opacity:1;color:rgba(255,255,255,var(--tw-text-opacity,1))}.accent-teal-700{accent-color:#0f766e}.shadow-sm{--tw-shadow:0 1px 2px 0 rgba(0,0,0,.05);--tw-shadow-colored:0 1px 2px 0 var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow,0 0 #0000),var(--tw-ring-shadow,0 0 #0000),var(--tw-shadow)}.outline-none{outline:2px solid transparent;outline-offset:2px}.filter{filter:var(--tw-blur) var(--tw-brightness) var(--tw-contrast) var(--tw-grayscale) var(--tw-hue-rotate) var(--tw-invert) var(--tw-saturate) var(--tw-sepia) var(--tw-drop-shadow)}.hover\\\\:bg-slate-700:hover{--tw-bg-opacity:1;background-color:rgba(51,65,85,var(--tw-bg-opacity,1))}.hover\\\\:bg-teal-800:hover{--tw-bg-opacity:1;background-color:rgba(17,94,89,var(--tw-bg-opacity,1))}.hover\\\\:text-red-700:hover{--tw-text-opacity:1;color:rgba(185,28,28,var(--tw-text-opacity,1))}.hover\\\\:text-teal-900:hover{--tw-text-opacity:1;color:rgba(19,78,74,var(--tw-text-opacity,1))}.focus\\\\:border-teal-600:focus{--tw-border-opacity:1;border-color:rgba(13,148,136,var(--tw-border-opacity,1))}.focus\\\\:ring-2:focus{--tw-ring-offset-shadow:var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color);--tw-ring-shadow:var(--tw-ring-inset) 0 0 0 calc(2px + var(--tw-ring-offset-width)) var(--tw-ring-color)}.focus\\\\:ring-2:focus,.focus\\\\:ring-4:focus{box-shadow:var(--tw-ring-offset-shadow),var(--tw-ring-shadow),var(--tw-shadow,0 0 #0000)}.focus\\\\:ring-4:focus{--tw-ring-offset-shadow:var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color);--tw-ring-shadow:var(--tw-ring-inset) 0 0 0 calc(4px + var(--tw-ring-offset-width)) var(--tw-ring-color)}.focus\\\\:ring-slate-400:focus{--tw-ring-opacity:1;--tw-ring-color:rgba(148,163,184,var(--tw-ring-opacity,1))}.focus\\\\:ring-teal-100:focus{--tw-ring-opacity:1;--tw-ring-color:rgba(204,251,241,var(--tw-ring-opacity,1))}.disabled\\\\:cursor-wait:disabled{cursor:wait}.disabled\\\\:opacity-60:disabled{opacity:.6}@media (min-width:640px){.sm\\\\:grid-cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}.sm\\\\:p-10{padding:2.5rem}.sm\\\\:p-8{padding:2rem}.sm\\\\:py-14{padding-top:3.5rem;padding-bottom:3.5rem}.sm\\\\:py-16{padding-top:4rem;padding-bottom:4rem}.sm\\\\:text-4xl{font-size:2.25rem;line-height:2.5rem}}\";\n\nconst context = $input.item.json;\nconst escape = value => String(value ?? '').replace(/[&<>\"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '\"': '&quot;', \"'\": '&#39;' }[c]));\nconst rows = context.delegates || [];\nconst completed = rows.filter(d => d.attended && !d.error && (d.resultStatus === 'unchanged' || d.resultStatus === 'recorded')).length;\nconst anyProgress = rows.some(d => d.registered || d.attended);\nconst success = context.ok !== false && rows.length > 0 && completed === rows.length;\nconst preflight = context.ok === false;\nconst title = success ? 'Registration complete' : completed ? 'Some delegates need attention' : 'Submission needs attention';\nconst event = context.event || {};\nconst zone = event.timeZoneName || context.config?.displayTimeZone || 'Europe/London';\nlet start = 'Start date and time unavailable';\nif (event.timeZonedStart) {\n  try { start = new Intl.DateTimeFormat('en-GB', { dateStyle: 'full', timeStyle: 'short', timeZone: zone }).format(new Date(event.timeZonedStart)) + ` (${zone})`; } catch { start = String(event.timeZonedStart); }\n} else if (event.start) { start = String(event.start).replace('T', ' ') + ` (${zone})`; }\nconst summary = success\n  ? rows.length === 1\n    ? `${rows[0].firstName} ${rows[0].lastName} has been successfully registered and marked as attended. The result selection has been processed.`\n    : `All ${rows.length} delegates have been successfully registered and marked as attended.`\n  : context.message || `${completed} of ${rows.length} delegates completed. Review the details below before retrying.`;\nconst detailRows = rows.map(d => {\n  const resultLabel = d.resultStatus === 'recorded' ? (d.result === 'pass' ? 'Pass — recorded' : 'Fail — recorded')\n    : d.result === 'none' ? 'No result — left unchanged'\n    : preflight ? 'Not processed'\n    : d.resultStatus === 'error' ? (d.result === 'pass' ? 'Pass — unconfirmed' : 'Fail — unconfirmed')\n    : 'Not attempted';\n  const resultBadge = d.resultStatus === 'recorded' || d.result === 'none' ? 'bg-emerald-50 text-emerald-800' : 'bg-amber-50 text-amber-800';\n  const label = d.attended ? 'Registered · Attended' : d.error ? (d.registered ? 'Registered · Attendance unconfirmed' : 'Needs attention') : preflight ? (d.registered ? 'Already registered · Unchanged' : 'Not processed') : 'Not completed';\n  const badge = d.attended ? 'bg-emerald-50 text-emerald-800' : 'bg-amber-50 text-amber-800';\n  const note = d.error || (d.previouslyRegistered && d.attended ? 'Existing enrolment reused.' : '');\n  return `<tr class=\"border-t border-slate-100\"><td class=\"px-6 py-4\"><div class=\"font-semibold text-slate-900\">${escape(d.firstName)} ${escape(d.lastName)}</div><div class=\"mt-1 text-sm text-slate-500 break-all\">${escape(d.email)}</div></td><td class=\"px-6 py-4\"><span class=\"inline-flex rounded-full px-3 py-1 text-xs font-semibold ${badge}\">${escape(label)}</span>${note ? `<p class=\"mt-2 text-sm text-slate-600\">${escape(note)}</p>` : ''}</td><td class=\"px-6 py-4\"><span class=\"inline-flex rounded-full px-3 py-1 text-xs font-semibold ${resultBadge}\">${escape(resultLabel)}</span>${d.resultError ? `<p class=\"mt-2 text-sm text-slate-600\">${escape(d.resultError)}</p>` : ''}</td></tr>`;\n}).join('');\nconst icon = success ? '<path d=\"m8 12l3 3l5-6\"/>' : '<path d=\"M12 8v5m0 3h.01\"/>';\nconst iconClass = success ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700';\nconst html = `<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><meta name=\"color-scheme\" content=\"light\"><title>${escape(title)}</title><style>${TAILWIND_STYLES}</style></head><body class=\"min-h-screen bg-slate-50 font-sans text-slate-800\"><main class=\"mx-auto max-w-3xl px-4 py-12 sm:py-16\"><div class=\"mb-6 text-xs font-bold uppercase tracking-widest text-slate-500\">Delegate registration</div><section class=\"overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm\"><div class=\"p-6 sm:p-10\"><div class=\"mb-6 flex h-14 w-14 items-center justify-center rounded-full ${iconClass}\"><svg width=\"28\" height=\"28\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"9\"/>${icon}</svg></div><h1 class=\"text-3xl font-bold tracking-tight text-slate-900\">${escape(title)}</h1><p class=\"mt-3 leading-relaxed text-slate-600\">${escape(summary)}</p>${event.id ? `<div class=\"mt-7 rounded-xl bg-slate-50 p-5\"><p class=\"text-xs font-bold uppercase tracking-widest text-slate-500\">Event</p><h2 class=\"mt-2 text-lg font-semibold text-slate-900\">${escape(event.title)}</h2><p class=\"mt-2 text-sm text-slate-600\">${escape(start)}</p><p class=\"mt-2 break-all text-xs text-slate-500\">Event ID: ${escape(event.id)}</p></div>` : ''}</div>${rows.length ? `<div class=\"overflow-x-auto\"><table class=\"w-full text-left\"><thead class=\"bg-slate-50 text-xs font-semibold uppercase tracking-wider text-slate-500\"><tr><th class=\"px-6 py-3\">Delegate</th><th class=\"px-6 py-3\">Attendance</th><th class=\"px-6 py-3\">Course result</th></tr></thead><tbody>${detailRows}</tbody></table></div>` : ''}<div class=\"border-t border-slate-100 px-6 py-5 text-sm text-slate-500\">${success ? `Attendance recorded for all ${context.sessionIDs?.length || 0} non-cancelled session(s). You can close this page.` : preflight ? 'No records were changed by this submission.' : 'Completed changes are retained. Review any unconfirmed results in Administrate before retrying.'}</div></section></main></body></html>`;\nreturn { json: { html, statusCode: success ? 200 : context.httpStatus || (anyProgress ? 207 : 422) } };\n"
+      },
+      "id": "3c4e3293-ed44-4825-b03d-7c0752aa2cc9",
+      "name": "Build HTML Response1",
+      "position": [
+        5120,
+        2336
+      ],
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.html }}",
+        "options": {
+          "responseCode": "={{ $json.statusCode }}",
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/html; charset=utf-8"
+              },
+              {
+                "name": "Cache-Control",
+                "value": "no-store"
+              },
+              {
+                "name": "X-Content-Type-Options",
+                "value": "nosniff"
+              }
+            ]
+          }
+        }
+      },
+      "id": "f870b8ab-24c9-4d43-9bdf-d4877d31e173",
+      "name": "Respond with HTML1",
+      "position": [
+        5360,
+        2336
+      ],
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4
+    },
+    {
+      "parameters": {
+        "content": "## Setup\n1. Select the same **Administrate OAuth2** credential in all five HTTP Request nodes.\n2. Create a **Header Auth** credential named `Webhook Header Auth` (e.g. name `X-Webhook-Key`, value a long random string) and select it on **Delegate Webhook1**.\n3. Activate the workflow and copy its **Production URL**.\n4. Open `form.html` (shipped with this example) and set `WEBHOOK_URL`, `AUTH_HEADER_NAME` and `AUTH_HEADER_VALUE` in the marked CONFIG block.\n\nStaff enter the encoded Event API ID once, then add or paste delegates. The account comes from the event's `bookingAccount`, so **private events only**.\n\nChoose a result for every row. No result leaves it unchanged; Pass/Fail can overwrite existing outcomes. The result page comes from **Respond with HTML**.",
+        "height": 460,
+        "width": 660,
+        "color": 5
+      },
+      "id": "0d016b4a-87c6-4e16-b877-c8014b706af0",
+      "name": "Setup1",
+      "position": [
+        80,
+        1824
+      ],
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "content": "## Empty branches are explicit\nBuild Contact Routes emits **two envelope items**: existing contacts and new contacts. Either may contain an empty list. The If routes one envelope down each branch, so Merge always receives both inputs.\n\nIf there are no new contacts, Create Contacts runs the read-only query `{ __typename }`. No dummy record is created.\n\nNo expression reads an unexecuted branch. Singleton `.first()` references are intentional; the workflow does not loop.",
+        "height": 310,
+        "width": 780,
+        "color": 4
+      },
+      "id": "4b7de58a-4a5d-4d5c-a124-ca06eb3a309b",
+      "name": "Why the merge always receives both inputs1",
+      "position": [
+        1584,
+        1584
+      ],
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "content": "## Actual Administrate attendance\nUses **learner.recordAttendances** with the returned Learner ID, Session IDs and `attended: true`. It does not change pass/fail results.\n\nMarks **every non-cancelled session** on the selected event. Maximum 50 delegates, 100 sessions and 1,000 attendance records per submission. Incomplete session pages fail before writes.\n\nExisting active enrolments are reused. Every mutation checks GraphQL and payload errors. Partial changes are retained and shown in the HTML response. Overlapping submissions are not an atomic transaction.\n\nAfter confirmed attendance, Record Learner Results submits explicit Pass/Fail selections. No result never invokes a result mutation. Attendance and results are reported separately.",
+        "height": 350,
+        "width": 780,
+        "color": 3
+      },
+      "id": "80d6223b-8f24-4f60-abdc-bf7122b04c15",
+      "name": "Attendance and limits1",
+      "position": [
+        3424,
+        1616
+      ],
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Prepare Learner Results": {
+      "main": [
+        [
+          {
+            "node": "Record Learner Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Record Learner Results": {
+      "main": [
+        [
+          {
+            "node": "Capture Learner Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Capture Learner Results": {
+      "main": [
+        [
+          {
+            "node": "Build HTML Response1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Delegate Webhook1": {
+      "main": [
+        [
+          {
+            "node": "Validate Submission1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Submission1": {
+      "main": [
+        [
+          {
+            "node": "Input Valid?1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Input Valid?1": {
+      "main": [
+        [
+          {
+            "node": "Check Contacts and Event1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build HTML Response1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Contacts and Event1": {
+      "main": [
+        [
+          {
+            "node": "Check Results1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Results1": {
+      "main": [
+        [
+          {
+            "node": "Checks Passed?1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Checks Passed?1": {
+      "main": [
+        [
+          {
+            "node": "Build Contact Routes1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build HTML Response1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Contact Routes1": {
+      "main": [
+        [
+          {
+            "node": "Existing Contact Group?1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Existing Contact Group?1": {
+      "main": [
+        [
+          {
+            "node": "Use Existing Contact IDs1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare Contact Creation1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Use Existing Contact IDs1": {
+      "main": [
+        [
+          {
+            "node": "Merge Contact Paths1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Contact Creation1": {
+      "main": [
+        [
+          {
+            "node": "Create Contacts1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Contacts1": {
+      "main": [
+        [
+          {
+            "node": "Capture New Contact IDs1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Capture New Contact IDs1": {
+      "main": [
+        [
+          {
+            "node": "Merge Contact Paths1",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Contact Paths1": {
+      "main": [
+        [
+          {
+            "node": "Prepare Enrolment1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Enrolment1": {
+      "main": [
+        [
+          {
+            "node": "Register Contacts1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Register Contacts1": {
+      "main": [
+        [
+          {
+            "node": "Capture Enrolment IDs1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Capture Enrolment IDs1": {
+      "main": [
+        [
+          {
+            "node": "Prepare Attendance1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Attendance1": {
+      "main": [
+        [
+          {
+            "node": "Record Attendance1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Record Attendance1": {
+      "main": [
+        [
+          {
+            "node": "Capture Attendance Results1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Capture Attendance Results1": {
+      "main": [
+        [
+          {
+            "node": "Prepare Learner Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build HTML Response1": {
+      "main": [
+        [
+          {
+            "node": "Respond with HTML1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "tags": []
+}

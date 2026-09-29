@@ -38,6 +38,7 @@ For detailed setup instructions, visit the [Automator documentation](https://sup
 | [Review and Cancel Under-Subscribed Events](./cancel-under-subscribed-events) | Flag low-fill events for human approval, re-check them, then cancel and notify instructors and learners | 1.0.0 |
 | [Import Learners from a Spreadsheet](./import-learners-from-spreadsheet) | Upload an Excel or CSV file to bulk-register learners onto an Event, creating Contacts and Accounts as needed | 1.0.0 |
 | [Waitlist: Timed Offers with Accept/Decline](./waitlist-offer-accept) | Offer freed places to waitlisted learners in turn, hold the place for a set time and record their accept/decline response | 1.0.0 |
+| [Bulk Register Delegates and Record Attendance](./bulk-register-delegates-record-attendance) | A web form to register delegates onto an Event and record their attendance and results in one go | 1.0.0 |
 
 ## How to Import a Workflow
 
