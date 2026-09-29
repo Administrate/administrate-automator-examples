@@ -1,0 +1,328 @@
+{
+  "name": "Daily Event Resourcing Gaps Digest",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 7
+            }
+          ]
+        }
+      },
+      "id": "16878b7e-4ca4-446a-a58a-fbf1d1b80d7e",
+      "name": "Daily Schedule",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a1",
+              "name": "ADMIN_API_URL",
+              "value": "https://YOUR-INSTANCE.administrateapp.com/graphql",
+              "type": "string"
+            },
+            {
+              "id": "a2",
+              "name": "WINDOW_DAYS",
+              "value": 30,
+              "type": "number"
+            },
+            {
+              "id": "a3",
+              "name": "MAX_EVENTS",
+              "value": 1000,
+              "type": "number"
+            },
+            {
+              "id": "a10",
+              "name": "PAGE_SIZE",
+              "value": 100,
+              "type": "number"
+            },
+            {
+              "id": "a4",
+              "name": "RECIPIENTS",
+              "value": "admin@example.com",
+              "type": "string"
+            },
+            {
+              "id": "a5",
+              "name": "EVENT_URL_TEMPLATE",
+              "value": "https://YOUR-INSTANCE.administrateapp.com/beta#/events/events/{id}",
+              "type": "string"
+            },
+            {
+              "id": "a6",
+              "name": "ONLY_SHOW_GAPS",
+              "value": "false",
+              "type": "string"
+            },
+            {
+              "id": "a7",
+              "name": "EMAIL_SUBJECT_PREFIX",
+              "value": "Event Resourcing Digest",
+              "type": "string"
+            },
+            {
+              "id": "a8",
+              "name": "FROM_EMAIL",
+              "value": "admin@example.com",
+              "type": "string"
+            },
+            {
+              "id": "a9",
+              "name": "EXCLUDE_STATES",
+              "value": "draft,cancelled",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "id": "a298882d-97b2-471c-96a1-03d9fa99d4ff",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        240,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').first().json.ADMIN_API_URL }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ ({ query: \"query EventsInWindow($start:String!,$end:String!,$first:Int,$after:String){ events(first:$first, after:$after, filters:[{field:timeZonedStart,operation:ge,value:$start},{field:timeZonedStart,operation:le,value:$end}]){ pageInfo{ hasNextPage endCursor } edges{ node{ id title code start end lifecycleState location{ id name } requiredResources{ id quantity allSessions resourceType{ id name } sessions{ id } } } } } }\", variables: { start: $now.toISO(), end: $now.plus({ days: Number($('Config').first().json.WINDOW_DAYS) }).toISO(), first: Number($('Config').first().json.PAGE_SIZE), after: null } }) }}",
+        "options": {
+          "pagination": {
+            "paginationMode": "updateAParameterInEachRequest",
+            "parameters": {
+              "parameters": [
+                {
+                  "type": "body",
+                  "name": "variables",
+                  "value": "={{ { start: $now.toISO(), end: $now.plus({ days: Number($('Config').first().json.WINDOW_DAYS) }).toISO(), first: Number($('Config').first().json.PAGE_SIZE), after: ($response?.body?.data?.events?.pageInfo?.endCursor ?? null) } }}"
+                }
+              ]
+            },
+            "paginationCompleteWhen": "other",
+            "completeExpression": "={{ !$response.body?.data?.events?.pageInfo?.hasNextPage }}",
+            "limitPagesFetched": true,
+            "maxRequests": "={{ Math.max(1, Math.ceil(Number($('Config').first().json.MAX_EVENTS) / Number($('Config').first().json.PAGE_SIZE))) }}",
+            "requestInterval": 0
+          }
+        }
+      },
+      "id": "7fd2c775-6b80-4413-900e-f93cd9f661d4",
+      "name": "Query Events - Resources",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        480,
+        304
+      ],
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').first().json.ADMIN_API_URL }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ ({ query: \"query EventIssuesFromDate($start:String!,$first:Int,$after:String){ eventIssues(first:$first, after:$after, filters:[{field:rangeStart,operation:ge,value:$start}]){ pageInfo{ hasNextPage endCursor } edges{ node{ id title code start end lifecycleState learningMode locationName hasInstructors hasAllRequiredResources fillRate targetFillRate sessions{ id staffRoleFulfillment{ id name numRequired numBooked numMissing } missingResourceTypes{ id name numMissing } } } } } }\", variables: { start: $now.toISODate(), first: Number($('Config').first().json.PAGE_SIZE), after: null } }) }}",
+        "options": {
+          "pagination": {
+            "paginationMode": "updateAParameterInEachRequest",
+            "parameters": {
+              "parameters": [
+                {
+                  "type": "body",
+                  "name": "variables",
+                  "value": "={{ { start: $now.toISODate(), first: Number($('Config').first().json.PAGE_SIZE), after: ($response?.body?.data?.eventIssues?.pageInfo?.endCursor ?? null) } }}"
+                }
+              ]
+            },
+            "paginationCompleteWhen": "other",
+            "completeExpression": "={{ !$response.body?.data?.eventIssues?.pageInfo?.hasNextPage }}",
+            "limitPagesFetched": true,
+            "maxRequests": "={{ Math.max(1, Math.ceil(Number($('Config').first().json.MAX_EVENTS) / Number($('Config').first().json.PAGE_SIZE))) }}",
+            "requestInterval": 0
+          }
+        }
+      },
+      "id": "ccd12bf5-51bf-495d-8f4f-03e7e2acab07",
+      "name": "Query Event Issues - Staff",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        720,
+        304
+      ],
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      },
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const cfg = $('Config').first().json;\nconst onlyGaps = String(cfg.ONLY_SHOW_GAPS).toLowerCase() === 'true';\nconst urlTemplate = cfg.EVENT_URL_TEMPLATE || '';\nconst subjectPrefix = cfg.EMAIL_SUBJECT_PREFIX || 'Event Resourcing Digest';\nconst excludeStates = String(cfg.EXCLUDE_STATES || '').toLowerCase().split(',').map(function (s) { return s.trim(); }).filter(function (s) { return s; });\n\n// Both queries are paginated, so each node returns one item per page.\nconst eventsPages = $('Query Events - Resources').all().map(function (i) { return i.json; });\nconst issuesPages = $('Query Event Issues - Staff').all().map(function (i) { return i.json; });\n\nconst errs = [];\nfor (const pg of eventsPages.concat(issuesPages)) {\n  if (pg && pg.errors) { errs.push.apply(errs, pg.errors); }\n}\nif (errs.length) { throw new Error('Administrate GraphQL returned errors: ' + JSON.stringify(errs)); }\n\nconst eventEdges = [];\nfor (const pg of eventsPages) { eventEdges.push.apply(eventEdges, (((pg || {}).data || {}).events || {}).edges || []); }\nconst issueEdges = [];\nfor (const pg of issuesPages) { issueEdges.push.apply(issueEdges, (((pg || {}).data || {}).eventIssues || {}).edges || []); }\n\nconst issuesById = {};\nfor (const e of issueEdges) { issuesById[e.node.id] = e.node; }\n\nfunction decodeNumeric(id) {\n  try { const s = Buffer.from(id, 'base64').toString('utf8'); return (s.split(':')[1]) || id; }\n  catch (err) { return id; }\n}\nfunction fmt(iso) {\n  if (!iso) return '—';\n  try { const d = DateTime.fromISO(iso); return d.isValid ? d.toFormat('dd LLL yyyy, HH:mm') : String(iso); }\n  catch (err) { return String(iso); }\n}\nfunction esc(s) {\n  return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');\n}\n\nconst rows = [];\nfor (const edge of eventEdges) {\n  const ev = edge.node;\n  const evState = String(ev.lifecycleState || '').toLowerCase();\n  if (excludeStates.indexOf(evState) !== -1) { continue; }\n  const issue = issuesById[ev.id] || null;\n  const issueDataUnavailable = issue === null;\n  const issueSessions = (issue && issue.sessions) ? issue.sessions : [];\n\n  const staffByRole = {};\n  for (const s of issueSessions) {\n    const roles = s.staffRoleFulfillment || [];\n    for (const r of roles) {\n      const key = r.name || 'Unspecified';\n      if (!staffByRole[key]) staffByRole[key] = { type: key, required: 0, booked: 0, missing: 0 };\n      staffByRole[key].required += Number(r.numRequired || 0);\n      staffByRole[key].booked += Number(r.numBooked || 0);\n      staffByRole[key].missing += Number(r.numMissing || 0);\n    }\n  }\n  const personnel = Object.keys(staffByRole).map(function (k) { return staffByRole[k]; });\n\n  const requiredByType = {};\n  for (const req of (ev.requiredResources || [])) {\n    const tName = (req.resourceType && req.resourceType.name) ? req.resourceType.name : 'Unspecified';\n    const nSessions = (req.sessions && req.sessions.length) ? req.sessions.length : 1;\n    requiredByType[tName] = (requiredByType[tName] || 0) + Number(req.quantity || 0) * nSessions;\n  }\n\n  const missingByType = {};\n  for (const s of issueSessions) {\n    const mrt = s.missingResourceTypes || [];\n    for (const m of mrt) {\n      const tName = m.name || 'Unspecified';\n      missingByType[tName] = (missingByType[tName] || 0) + Number(m.numMissing || 0);\n    }\n  }\n\n  const typeNames = {};\n  Object.keys(requiredByType).forEach(function (k) { typeNames[k] = true; });\n  Object.keys(missingByType).forEach(function (k) { typeNames[k] = true; });\n  const resources = Object.keys(typeNames).map(function (name) {\n    const required = requiredByType[name] || 0;\n    if (issueDataUnavailable) {\n      return { type: name, required: required, booked: '—', missing: '—' };\n    }\n    const missing = missingByType[name] || 0;\n    const booked = Math.max(0, required - missing);\n    return { type: name, required: required, booked: booked, missing: missing };\n  });\n\n  const totalMissingStaff = personnel.reduce(function (a, p) { return a + p.missing; }, 0);\n  const totalMissingRes = resources.reduce(function (a, r) { return a + (typeof r.missing === 'number' ? r.missing : 0); }, 0);\n  const hasMissing = (totalMissingStaff + totalMissingRes) > 0\n    || (issue && issue.hasInstructors === false)\n    || (issue && issue.hasAllRequiredResources === false);\n  const overStaff = personnel.some(function (p) { return p.booked > p.required; });\n  const overRes = resources.some(function (r) { return typeof r.booked === 'number' && r.booked > r.required; });\n  const hasOver = overStaff || overRes;\n  const flagged = hasMissing || hasOver;\n\n  if (onlyGaps && !flagged) continue;\n\n  const numericId = decodeNumeric(ev.id);\n  const link = urlTemplate ? urlTemplate.replace('{id}', numericId) : '';\n\n  rows.push({\n    title: ev.title || (issue && issue.title) || '(untitled)',\n    code: ev.code || (issue && issue.code) || '',\n    start: ev.start || (issue && issue.start) || '',\n    end: ev.end || (issue && issue.end) || '',\n    location: (ev.location && ev.location.name) || (issue && issue.locationName) || '',\n    fillRate: issue ? issue.fillRate : null,\n    targetFillRate: issue ? issue.targetFillRate : null,\n    link: link,\n    personnel: personnel,\n    resources: resources,\n    hasMissing: !!hasMissing,\n    hasOver: !!hasOver,\n    flagged: !!flagged\n  });\n}\n\nrows.sort(function (a, b) {\n  const rank = function (x) { return x.hasMissing ? 2 : (x.hasOver ? 1 : 0); };\n  const d = rank(b) - rank(a);\n  if (d !== 0) return d;\n  return String(a.start).localeCompare(String(b.start));\n});\n\nif (rows.length === 0) { return []; }\n\nconst purple = '#6A3CE3';\nconst red = '#C0392B';\nconst amber = '#B26A00';\nconst green = '#1E8E5A';\nconst border = '#E3E3E8';\nconst muted = '#6B6B76';\n\nfunction cell(v, color) {\n  const style = 'padding:4px 8px;border:1px solid ' + border + ';font-size:13px;' + (color ? ('color:' + color + ';font-weight:700;') : '');\n  return '<td style=\"' + style + '\">' + esc(v) + '</td>';\n}\nfunction th(v) {\n  return '<th style=\"padding:4px 8px;border:1px solid ' + border + ';font-size:12px;text-align:left;background:#F4F1FB;color:' + purple + ';\">' + esc(v) + '</th>';\n}\n\nlet blocks = '';\nfor (const r of rows) {\n  let pRows = '';\n  if (r.personnel.length === 0) {\n    pRows = '<tr><td colspan=\"4\" style=\"padding:6px 8px;border:1px solid ' + border + ';font-size:12px;color:' + muted + ';\">No personnel requirements.</td></tr>';\n  } else {\n    for (const p of r.personnel) {\n      const bColor = (p.booked > p.required) ? amber : null;\n      const mColor = (p.missing > 0) ? red : null;\n      pRows += '<tr>' + cell(p.type) + cell(p.required) + cell(p.booked, bColor) + cell(p.missing, mColor) + '</tr>';\n    }\n  }\n  const pTable = '<table style=\"border-collapse:collapse;margin:6px 0 12px;width:100%;\">' +\n    '<tr>' + th('Personnel type') + th('Required') + th('Booked') + th('Missing') + '</tr>' + pRows + '</table>';\n\n  let rRows = '';\n  if (r.resources.length === 0) {\n    rRows = '<tr><td colspan=\"4\" style=\"padding:6px 8px;border:1px solid ' + border + ';font-size:12px;color:' + muted + ';\">No resource requirements.</td></tr>';\n  } else {\n    for (const res of r.resources) {\n      const bColor = (typeof res.booked === 'number' && res.booked > res.required) ? amber : null;\n      const mColor = (typeof res.missing === 'number' && res.missing > 0) ? red : null;\n      rRows += '<tr>' + cell(res.type) + cell(res.required) + cell(res.booked, bColor) + cell(res.missing, mColor) + '</tr>';\n    }\n  }\n  const rTable = '<table style=\"border-collapse:collapse;margin:6px 0 4px;width:100%;\">' +\n    '<tr>' + th('Resource type') + th('Required') + th('Booked') + th('Missing') + '</tr>' + rRows + '</table>';\n\n  const titleHtml = r.link\n    ? '<a href=\"' + esc(r.link) + '\" style=\"color:' + purple + ';text-decoration:none;\">' + esc(r.title) + '</a>'\n    : esc(r.title);\n\n  let badge;\n  let barColor;\n  if (r.hasMissing) {\n    badge = '<span style=\"background:' + red + ';color:#fff;font-size:11px;padding:2px 8px;border-radius:10px;margin-left:8px;\">ACTION NEEDED</span>';\n    barColor = red;\n  } else if (r.hasOver) {\n    badge = '<span style=\"background:' + amber + ';color:#fff;font-size:11px;padding:2px 8px;border-radius:10px;margin-left:8px;\">OVER-BOOKED</span>';\n    barColor = amber;\n  } else {\n    badge = '<span style=\"background:' + green + ';color:#fff;font-size:11px;padding:2px 8px;border-radius:10px;margin-left:8px;\">OK</span>';\n    barColor = purple;\n  }\n\n  const fill = (r.fillRate != null) ? (' &nbsp;·&nbsp; Fill: ' + r.fillRate + '%' + (r.targetFillRate != null ? ' / target ' + r.targetFillRate + '%' : '')) : '';\n\n  blocks += '<div style=\"border:1px solid ' + border + ';border-left:4px solid ' + barColor + ';border-radius:6px;padding:12px 14px;margin:0 0 16px;\">' +\n    '<div style=\"font-size:15px;font-weight:700;color:#1B1B1F;\">' + titleHtml + (r.code ? ' <span style=\"color:' + muted + ';font-weight:400;font-size:12px;\">(' + esc(r.code) + ')</span>' : '') + badge + '</div>' +\n    '<div style=\"font-size:12px;color:' + muted + ';margin:4px 0 2px;\">' + fmt(r.start) + ' → ' + fmt(r.end) + ' &nbsp;·&nbsp; ' + esc(r.location || 'No location') + fill + '</div>' +\n    pTable + rTable + '</div>';\n}\n\nconst flaggedCount = rows.filter(function (r) { return r.flagged; }).length;\nconst dateLabel = DateTime.now().toFormat('dd LLL yyyy');\nconst html = '<div style=\"font-family:Inter,Arial,sans-serif;max-width:760px;margin:0 auto;color:#1B1B1F;\">' +\n  '<h2 style=\"color:' + purple + ';margin:0 0 4px;\">Event Resourcing Digest</h2>' +\n  '<div style=\"font-size:13px;color:' + muted + ';margin:0 0 16px;\">' + dateLabel + ' &nbsp;·&nbsp; ' + rows.length + ' active event(s) in the next ' + esc(cfg.WINDOW_DAYS) + ' days &nbsp;·&nbsp; ' + flaggedCount + ' need attention</div>' +\n  blocks +\n  '<div style=\"font-size:11px;color:' + muted + ';margin-top:12px;\">Figures are per session (a requirement across N sessions counts as N slots). Missing (red) comes from Administrate resourcing checks; Booked = Required − Missing. Booked shown in amber when it exceeds Required (over-booked).</div>' +\n  '</div>';\n\nreturn [{ json: {\n  subject: subjectPrefix + ' — ' + dateLabel + ' (' + rows.length + ' events, ' + flaggedCount + ' need attention)',\n  recipients: cfg.RECIPIENTS,\n  eventCount: rows.length,\n  flaggedCount: flaggedCount,\n  html: html\n} }];"
+      },
+      "id": "889fea04-8d55-415a-8fff-cf5bf2377718",
+      "name": "Build Digest",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        960,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Config explained\n\nEverything you might need to change is in the **Config** node. Nothing else needs editing.\n\n**ADMIN_API_URL** Your Administrate GraphQL endpoint. Replace `REPLACE_WITH_YOUR_INSTANCE` with your instance name.\n\n**WINDOW_DAYS** How many days ahead to look. `30` means events starting in the next 30 days.\n\n**MAX_EVENTS** Safety cap on how many records each query reads across all pages (`1000`). If an event's staff figures show as unavailable, raise this number.\n\n**PAGE_SIZE** Records per API page (`100`, the Administrate maximum). Both queries follow the cursor until there are no more pages or MAX_EVENTS is reached.\n\n**RECIPIENTS** Who gets the digest. Separate several addresses with commas, for example `ops@example.com, admin@example.com`.\n\n**FROM_EMAIL** The address the digest is sent from. Your SMTP server must allow it.\n\n**EVENT_URL_TEMPLATE** The link each event title points to. Replace `REPLACE_WITH_YOUR_INSTANCE` and keep `{id}`, which is replaced with the event number.\n\n**ONLY_SHOW_GAPS** `false` shows every event in the window. `true` only includes events that are short on staff or resources, or over-booked.\n\n**EXCLUDE_STATES** Comma-separated event lifecycle states to leave out (default `draft,cancelled`).\n\n**EMAIL_SUBJECT_PREFIX** Text at the start of the email subject line.\n\n_The send time (07:00 daily) is set on the **Daily Schedule** node, not here._",
+        "height": 760,
+        "width": 420,
+        "color": 4
+      },
+      "id": "1bed7bfa-aa76-4432-a619-88304730adcc",
+      "name": "Config Explained",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -60,
+        -920
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## How this works\n\n**1. Query Events - Resources** reads the events starting in the window, page by page, with their resource requirements.\n\n**2. Query Event Issues - Staff** reads staff role fulfilment (required, booked, missing), missing resource types, location and fill rate, page by page. It filters only on start date from today, so it can also return events after the window.\n\n**3. Build Digest** joins the two by event ID, adds up the session figures for each event, and builds the HTML email. Booked = Required − Missing. If an event has no matching eventIssues record (for example because MAX_EVENTS was reached), its figures show as unavailable. They are never shown as wrong numbers.\n\n**4. Send Digest Email** sends it over SMTP. If there are no events to report, no email is sent.\n\nCredentials are not included. Attach your Administrate OAuth2 and SMTP credentials after import.",
+        "height": 420,
+        "width": 540,
+        "color": 3
+      },
+      "id": "80a45bd5-fddb-496d-bf74-818aafd08dce",
+      "name": "How This Works",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        420,
+        -500
+      ]
+    },
+    {
+      "parameters": {
+        "fromEmail": "={{ $('Config').first().json.FROM_EMAIL }}",
+        "toEmail": "={{ $json.recipients }}",
+        "subject": "={{ $json.subject }}",
+        "html": "={{ $json.html }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "id": "e55a9df2-bbe1-4a45-a2db-5a45ca4cab8c",
+      "name": "Send Digest Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1200,
+        304
+      ],
+      "webhookId": "e25e76fb-ec67-43c0-b9fd-67e2de5c2131",
+      "credentials": {
+        "smtp": {
+          "id": "",
+          "name": "SMTP"
+        }
+      },
+      "disabled": false
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Daily Schedule": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Query Events - Resources",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query Events - Resources": {
+      "main": [
+        [
+          {
+            "node": "Query Event Issues - Staff",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query Event Issues - Staff": {
+      "main": [
+        [
+          {
+            "node": "Build Digest",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Digest": {
+      "main": [
+        [
+          {
+            "node": "Send Digest Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true,
+    "binaryMode": "separate"
+  },
+  "tags": []
+}
