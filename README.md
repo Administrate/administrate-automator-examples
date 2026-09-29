@@ -37,6 +37,7 @@ For detailed setup instructions, visit the [Automator documentation](https://sup
 | [QR Code Check-in and Attendance](./qr-code-check-in-attendance) | QR code self check-in for classroom events, with walk-in registration, a daily reconciliation report and a live dashboard | 1.0.0 |
 | [Review and Cancel Under-Subscribed Events](./cancel-under-subscribed-events) | Flag low-fill events for human approval, re-check them, then cancel and notify instructors and learners | 1.0.0 |
 | [Import Learners from a Spreadsheet](./import-learners-from-spreadsheet) | Upload an Excel or CSV file to bulk-register learners onto an Event, creating Contacts and Accounts as needed | 1.0.0 |
+| [Waitlist: Timed Offers with Accept/Decline](./waitlist-offer-accept) | Offer freed places to waitlisted learners in turn, hold the place for a set time and record their accept/decline response | 1.0.0 |
 
 ## How to Import a Workflow
 

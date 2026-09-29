@@ -1,0 +1,1624 @@
+{
+  "name": "Waitlist Automation",
+  "nodes": [
+    {
+      "parameters": {
+        "events": "V2ViaG9va1R5cGU6ZXZlbnRfdXBkYXRlZA==",
+        "name": "Waitlist - Event Updated",
+        "query": "query webhook($objectid: ID!){ node(id: $objectid){ id ... on Event{ code customFieldValues { definitionKey value } } } }"
+      },
+      "id": "099915f6-308b-44e9-a605-53f3e4c1b2e7",
+      "name": "Event Updated Trigger",
+      "type": "CUSTOM.administrateTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        400
+      ],
+      "webhookId": "0ed141b9-f194-4e32-af4f-ee8c51cb5ad1",
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "src",
+              "name": "source",
+              "value": "eventUpdated",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "c694379b-b467-453c-a5ee-fac39a6a7149",
+      "name": "Tag Source: Event Updated",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        224,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c00",
+              "name": "ADM_GRAPHQL_URL",
+              "type": "string",
+              "value": "https://api.getadministrate.com/graphql"
+            },
+            {
+              "id": "c01",
+              "name": "WAITLIST_STEP_NAME",
+              "type": "string",
+              "value": "Waitlist"
+            },
+            {
+              "id": "c02",
+              "name": "SENDING_ADDRESS_ID",
+              "type": "string",
+              "value": "REPLACE_WITH_SENDING_ADDRESS_ID"
+            },
+            {
+              "id": "c03",
+              "name": "RESPONSE_PAGE_URL",
+              "type": "string",
+              "value": "https://YOUR-N8N-HOST/webhook/532b76fb-d0f2-4521-a598-71eb1700f222"
+            },
+            {
+              "id": "c04",
+              "name": "OFFER_RESPONSE_TIMEOUT_HOURS",
+              "type": "string",
+              "value": "48"
+            },
+            {
+              "id": "c07",
+              "name": "EMAIL_SUBJECT_TEMPLATE",
+              "type": "string",
+              "value": "A place is available on {title}"
+            },
+            {
+              "id": "c09",
+              "name": "LOG_ORIGIN",
+              "type": "string",
+              "value": "Automator - Waitlist Offers"
+            },
+            {
+              "id": "c10",
+              "name": "OFFERS_TABLE_ID",
+              "type": "string",
+              "value": "REPLACE_WITH_WAITLIST_OFFERS_TABLE_ID"
+            },
+            {
+              "id": "c11",
+              "name": "BRAND_NAME",
+              "type": "string",
+              "value": "Your Organisation"
+            },
+            {
+              "id": "c12",
+              "name": "EMAIL_PALETTE",
+              "type": "string",
+              "value": "FONT=Segoe UI,Roboto,Helvetica Neue,Arial,sans-serif|SHELLBG=#F2F5F7|DEEP=#1F2937|ACCENT=#2563EB|TINT=#EEF2FF|INK=#1A1A1A|MUTED=#5A6470|LINE=#D4D9DE"
+            },
+            {
+              "id": "c13",
+              "name": "EMAIL_SHELL",
+              "type": "string",
+              "value": "<div style=\"background:%%SHELLBG%%;padding:24px 12px;font-family:%%FONT%%;\"><table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" width=\"100%\"><tr><td align=\"center\"><table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" width=\"600\" style=\"width:600px;max-width:600px;background:#FFFFFF;border:1px solid %%LINE%%;\"><tr><td style=\"background:%%DEEP%%;padding:16px 28px;border-bottom:3px solid %%ACCENT%%;\"><span style=\"color:#FFFFFF;font-size:12px;font-weight:600;letter-spacing:1.6px;font-family:%%FONT%%;\">%%BRAND%%</span></td></tr><tr><td style=\"padding:26px 28px 24px;font-size:15px;line-height:1.55;color:%%INK%%;font-family:%%FONT%%;\">%%BODY%%</td></tr></table></td></tr></table></div>"
+            },
+            {
+              "id": "c14",
+              "name": "EMAIL_BUTTON",
+              "type": "string",
+              "value": "<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"margin:4px 0 14px;\"><tr><td style=\"background:%%DEEP%%;\"><a href=\"%%URL%%\" style=\"display:inline-block;padding:12px 26px;font-size:15px;font-weight:600;color:#FFFFFF;text-decoration:none;font-family:%%FONT%%;\">%%LABEL%%</a></td></tr></table>"
+            },
+            {
+              "id": "c15",
+              "name": "EMAIL_BUTTON_LABEL",
+              "type": "string",
+              "value": "Respond to this offer"
+            },
+            {
+              "id": "c16",
+              "name": "INTERESTS_PAGE_SIZE",
+              "type": "string",
+              "value": "100"
+            },
+            {
+              "id": "c17",
+              "name": "EVENT_QUERY",
+              "type": "string",
+              "value": "query WaitlistEvent($id: String!, $first: Int!, $after: String) { events(filters: [{ field: id, operation: eq, value: $id }]) { edges { node { id title start maxPlaces registrationDeadline learners(filters: [{ field: isCancelled, operation: eq, value: \"false\" }]) { pageInfo { totalRecords } } interests(first: $first, after: $after) { pageInfo { totalRecords hasNextPage endCursor } edges { node { id opportunity { id step { name } contact { id } } } } } } } } }"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "mode": "manual",
+        "options": {}
+      },
+      "id": "02af9488-fc31-4006-b222-b6e14f8e7d24",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        448,
+        496
+      ]
+    },
+    {
+      "parameters": {
+        "options": {},
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.source }}",
+                    "operator": {
+                      "operation": "equals",
+                      "type": "string"
+                    },
+                    "rightValue": "eventUpdated"
+                  }
+                ],
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                }
+              }
+            },
+            {
+              "conditions": {
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.source }}",
+                    "operator": {
+                      "operation": "equals",
+                      "type": "string"
+                    },
+                    "rightValue": "schedule"
+                  }
+                ],
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                }
+              }
+            },
+            {
+              "conditions": {
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.source }}",
+                    "operator": {
+                      "operation": "equals",
+                      "type": "string"
+                    },
+                    "rightValue": "learnerCancelled"
+                  }
+                ],
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                }
+              }
+            }
+          ]
+        }
+      },
+      "id": "e09ebc91-bf04-47a7-b248-d1cefb8cf35a",
+      "name": "Route by Source",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        672,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "eid",
+              "name": "eventId",
+              "value": "={{ $('Event Updated Trigger').item.json.payload?.node?.id ?? $('Event Updated Trigger').item.json.body?.payload?.node?.id ?? $('Event Updated Trigger').item.json.payload?.id ?? $('Event Updated Trigger').item.json.body?.id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "2f8cf07a-fb97-4d26-b5f4-3602d297ec4a",
+      "name": "Extract Event Id",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1568,
+        -432
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Config').first().json.OFFERS_TABLE_ID }}"
+        },
+        "filters": {
+          "conditions": []
+        },
+        "returnAll": true
+      },
+      "id": "951b1ecd-30be-4be4-a9eb-55db48d5c5c5",
+      "name": "Load Expire Rows",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        1232,
+        -64
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "/*\tExpire Sweep - flag offers past expiry so the next node marks them expired.\t*/\nconst now_str = $now.toISO();\nconst rows_ary = $('Load Expire Rows').all().map(i_obj => i_obj.json);\nconst out_ary = [];\nfor (const r_obj of rows_ary)\n{\n\tif (r_obj.status === 'offered' && r_obj.expires_at && DateTime.fromISO(r_obj.expires_at) < DateTime.fromISO(now_str))\n\t{\n\t\tout_ary.push({ json: { row_id: r_obj.id, event_id: r_obj.event_id } });\n\t}\n}\nreturn out_ary;"
+      },
+      "id": "dff79c39-28a8-4948-af75-431f777ff191",
+      "name": "Expire Sweep",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1456,
+        -64
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Config').first().json.OFFERS_TABLE_ID }}"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyValue": "={{ $json.row_id }}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "updated_at",
+              "displayName": "updated_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            }
+          ],
+          "value": {
+            "status": "expired",
+            "updated_at": "={{ $now.toISO() }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "3792acb5-4f84-4774-acd0-63daa80dfe95",
+      "name": "Update Expired",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        1680,
+        -64
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "/*\tDedupe Event Ids - unique event ids from the expired rows, to re-run the offer engine.\t*/\nconst seen_obj = {};\nconst out_ary = [];\nfor (const i_obj of $('Expire Sweep').all())\n{\n\tconst eid_str = i_obj.json.event_id;\n\tif (eid_str && !seen_obj[eid_str])\n\t{\n\t\tseen_obj[eid_str] = true;\n\t\tout_ary.push({ json: { eventId: eid_str } });\n\t}\n}\nreturn out_ary;"
+      },
+      "id": "46d0e4de-183e-428f-be6a-b80c7a5e0582",
+      "name": "Dedupe Event Ids",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1904,
+        -64
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Config').first().json.OFFERS_TABLE_ID }}"
+        },
+        "filters": {
+          "conditions": []
+        },
+        "returnAll": true
+      },
+      "id": "353cf644-3fd6-43b2-8a98-02dee022707a",
+      "name": "Load Offer Rows",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        2240,
+        208
+      ],
+      "executeOnce": true,
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "/*\tPlan Offers - decides waitlist writes + which students to offer, from loaded rows.\t*/\n/*\tReads all rows from Load Offer Rows and events from Fetch Event; writes nothing here.\t*/\n/*\tThe email frame, button and palette live in Config, so the look changes in one place.\t*/\nconst cfg_obj = $('Config').first().json;\nconst now_str = $now.toISO();\nconst timeout_num = Number(cfg_obj.OFFER_RESPONSE_TIMEOUT_HOURS || 0);\nconst step_str = cfg_obj.WAITLIST_STEP_NAME;\nconst rows_ary = $('Load Offer Rows').all().map(i_obj => i_obj.json);\nconst events_ary = $('Fetch Event').all().map(i_obj => i_obj.json);\nconst out_ary = [];\n\nconst esc_fn = function (v_any)\n{\n\treturn String(v_any === null || v_any === undefined ? '' : v_any)\n\t\t.split('&').join('&amp;').split('<').join('&lt;').split('>').join('&gt;').split('\"').join('&quot;');\n};\n\nconst pretty_fn = function (iso_str)\n{\n\tif (!iso_str) { return ''; }\n\tconst d_obj = new Date(String(iso_str).replace(' ', 'T'));\n\tif (isNaN(d_obj.getTime())) { return String(iso_str); }\n\tconst months_ary = ['January','February','March','April','May','June','July','August','September','October','November','December'];\n\treturn d_obj.getDate() + ' ' + months_ary[d_obj.getMonth()] + ' ' + d_obj.getFullYear();\n};\n\nconst prettyTime_fn = function (iso_str)\n{\n\tif (!iso_str) { return ''; }\n\tconst d_obj = new Date(String(iso_str).replace(' ', 'T'));\n\tif (isNaN(d_obj.getTime())) { return ''; }\n\tconst h_str = String(d_obj.getHours()).padStart(2, '0');\n\tconst m_str = String(d_obj.getMinutes()).padStart(2, '0');\n\treturn pretty_fn(iso_str) + ' at ' + h_str + ':' + m_str;\n};\n\n/*\tPipe separated, not comma, because the font list itself contains commas\t*/\nconst pal_obj = {};\nfor (const part_str of String(cfg_obj.EMAIL_PALETTE || '').split('|'))\n{\n\tconst at_num = part_str.indexOf('=');\n\tif (at_num > 0) { pal_obj[part_str.slice(0, at_num).trim()] = part_str.slice(at_num + 1).trim(); }\n}\n\n/*\tPalette tokens first, then the content, so a colour name appearing inside the body\n\tcannot be substituted twice\t*/\nconst fill_fn = function (tpl_str, extra_obj)\n{\n\tlet s_str = String(tpl_str || '');\n\tfor (const k_str of Object.keys(pal_obj)) { s_str = s_str.split('%%' + k_str + '%%').join(pal_obj[k_str]); }\n\tfor (const k_str of Object.keys(extra_obj || {})) { s_str = s_str.split('%%' + k_str + '%%').join(extra_obj[k_str]); }\n\treturn s_str;\n};\n\nconst shell_fn = function (inner_str)\n{\n\treturn fill_fn(cfg_obj.EMAIL_SHELL, { BRAND: esc_fn(cfg_obj.BRAND_NAME), BODY: inner_str });\n};\n\n/*\tA concluded request is anything that is not still waiting to be offered. Rows are kept\n\tper opportunity rather than per contact, so a decline or an expiry ends that request\n\twithout condemning the person: re-adding them creates a new opportunity, which has no\n\trow, and therefore becomes a fresh candidate.\t*/\nconst concluded_ary = ['offered', 'accepted', 'declined', 'expired', 'register_failed'];\n\nfor (const ev_obj of events_ary)\n{\n\tconst event_obj = ev_obj?.events?.edges?.[0]?.node;\n\tif (!event_obj) continue;\n\tconst eid_str = event_obj.id;\n\tconst title_str = event_obj.title;\n\tconst start_str = event_obj.start ?? '';\n\tconst deadline_str = event_obj.registrationDeadline;\n\tconst max_num = Number(event_obj.maxPlaces ?? 0);\n\t/*\tFiltered to isCancelled false in Fetch Event. Counting cancelled learners here\n\t\twould refuse every place freed by a cancellation, which is the main way one opens\t*/\n\tconst reg_num = Number(event_obj.learners?.pageInfo?.totalRecords ?? 0);\n\tif (deadline_str && DateTime.fromISO(deadline_str) < DateTime.fromISO(now_str)) continue;\n\tconst erows_ary = rows_ary.filter(r_obj => r_obj.event_id === eid_str);\n\n\t/*\tKeyed on opportunity, so one row is the history of one request\t*/\n\tconst byOpp_obj = {};\n\tfor (const r_obj of erows_ary)\n\t{\n\t\tif (r_obj.opportunity_id) { byOpp_obj[r_obj.opportunity_id] = r_obj; }\n\t}\n\n\t/*\tPer-contact guards. Keeping history per opportunity means one person could hold\n\t\tseveral rows on one event, so these stop them being offered or booked twice.\t*/\n\tconst contactOffered_obj = {};\n\tconst contactAccepted_obj = {};\n\tfor (const r_obj of erows_ary)\n\t{\n\t\tif (r_obj.status === 'offered') { contactOffered_obj[r_obj.contact_id] = true; }\n\t\tif (r_obj.status === 'accepted') { contactAccepted_obj[r_obj.contact_id] = true; }\n\t}\n\n\t/*\tCounted from the rows rather than from candidates, so an outstanding offer still\n\t\tcounts even if its interest has since moved off the waitlist step\t*/\n\tconst outstanding_num = erows_ary.filter(r_obj => r_obj.status === 'offered').length;\n\n\tconst wl_ary = (event_obj.interests?.edges ?? []).map(e_obj => e_obj.node).filter(n_obj => n_obj?.opportunity?.step?.name === step_str && n_obj?.opportunity?.contact?.id);\n\tconst view_ary = [];\n\tfor (const n_obj of wl_ary)\n\t{\n\t\tconst c_str = n_obj.opportunity.contact.id;\n\t\tconst o_str = n_obj.opportunity.id;\n\t\tconst ex_obj = byOpp_obj[o_str];\n\t\tconst status_str = ex_obj?.status ?? 'new';\n\n\t\t/*\tThis request is already concluded\t*/\n\t\tif (concluded_ary.indexOf(status_str) !== -1) continue;\n\n\t\t/*\tThey already hold a place on this event, or already have an offer open on it\n\t\t\tunder another opportunity\t*/\n\t\tif (contactAccepted_obj[c_str]) continue;\n\t\tif (contactOffered_obj[c_str]) continue;\n\n\t\tview_ary.push({ contact_id: c_str, opportunity_id: o_str, interest_id: n_obj.id, since_str: ex_obj?.waitlisted_since ?? now_str, is_new_bln: !ex_obj });\n\t}\n\tview_ary.sort((a_obj, b_obj) => String(a_obj.since_str).localeCompare(String(b_obj.since_str)));\n\tconst avail_num = max_num - reg_num - outstanding_num;\n\tlet offered_ct = 0;\n\tfor (const v_obj of view_ary)\n\t{\n\t\tconst do_offer_bln = (avail_num > 0) && (offered_ct < avail_num);\n\t\tif (!do_offer_bln && !v_obj.is_new_bln) continue;\n\t\tif (do_offer_bln)\n\t\t{\n\t\t\toffered_ct += 1;\n\t\t\tconst token_str = Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 12) + '-' + offered_ct;\n\t\t\tconst exp_str = timeout_num > 0 ? DateTime.fromISO(now_str).plus({ hours: timeout_num }).toISO() : '';\n\t\t\tconst resu_str = timeout_num > 0 ? exp_str : DateTime.fromISO(now_str).plus({ years: 10 }).toISO();\n\n\t\t\t/*\tOne link, to a page that writes nothing. Accept and decline are submit buttons\n\t\t\t\tthere, so a mail scanner fetching this URL cannot answer on their behalf\t*/\n\t\t\tconst url_str = String(cfg_obj.RESPONSE_PAGE_URL) + '?token=' + token_str;\n\t\t\tconst button_str = fill_fn(cfg_obj.EMAIL_BUTTON, { URL: url_str, LABEL: esc_fn(cfg_obj.EMAIL_BUTTON_LABEL) });\n\n\t\t\tconst when_str = pretty_fn(start_str);\n\t\t\tconst hold_str = exp_str\n\t\t\t\t? '<p style=\"margin:0 0 4px;padding-top:14px;border-top:1px solid ' + pal_obj.LINE + ';color:' + pal_obj.MUTED + ';font-size:13px;\">This place is held for you until <strong style=\"color:' + pal_obj.INK + ';font-weight:600;\">' + esc_fn(prettyTime_fn(exp_str)) + '</strong>. After that it passes to the next person on the waitlist.</p>'\n\t\t\t\t: '';\n\n\t\t\tconst subj_str = String(cfg_obj.EMAIL_SUBJECT_TEMPLATE).split('{title}').join(title_str);\n\n\t\t\tconst body_str = shell_fn(\n\t\t\t\t'<p style=\"margin:0 0 6px;color:' + pal_obj.MUTED + ';font-size:13px;\">A place is available</p>'\n\t\t\t\t+ '<p style=\"margin:0 0 4px;font-size:20px;font-weight:600;color:' + pal_obj.DEEP + ';\">' + esc_fn(title_str) + '</p>'\n\t\t\t\t+ (when_str ? '<p style=\"margin:0 0 18px;color:' + pal_obj.MUTED + ';font-size:14px;\">' + esc_fn(when_str) + '</p>' : '<p style=\"margin:0 0 18px;\"></p>')\n\t\t\t\t+ '<div style=\"background:' + pal_obj.TINT + ';border-left:3px solid ' + pal_obj.ACCENT + ';padding:12px 14px;margin:0 0 20px;\">'\n\t\t\t\t+ '<p style=\"margin:0;\">A place has opened on this course, and you are next on the waitlist.</p></div>'\n\t\t\t\t+ button_str\n\t\t\t\t+ '<p style=\"margin:0 0 18px;font-size:14px;color:' + pal_obj.MUTED + ';\">You can accept or turn down the place on that page. Nothing is decided until you choose.</p>'\n\t\t\t\t+ hold_str);\n\n\t\t\tout_ary.push({ json: { event_id: eid_str, event_title: title_str, contact_id: v_obj.contact_id, opportunity_id: v_obj.opportunity_id, status: 'offered', token: token_str, waitlisted_since: v_obj.since_str, offered_at: now_str, expires_at: exp_str, updated_at: now_str, is_offer: true, interest_id: v_obj.interest_id, reservation_until: resu_str, subject: subj_str, body: body_str } });\n\t\t} else {\n\t\t\tout_ary.push({ json: { event_id: eid_str, event_title: title_str, contact_id: v_obj.contact_id, opportunity_id: v_obj.opportunity_id, status: 'waiting', token: '', waitlisted_since: v_obj.since_str, offered_at: '', expires_at: '', updated_at: now_str, is_offer: false, interest_id: v_obj.interest_id, reservation_until: '', subject: '', body: '' } });\n\t\t}\n\t}\n}\nreturn out_ary;\n"
+      },
+      "id": "454fba65-074b-44e7-94ee-720364412ffb",
+      "name": "Plan Offers",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2464,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "columns": {
+          "mappingMode": "defineBelow",
+          "matchingColumns": [
+            "event_id",
+            "opportunity_id"
+          ],
+          "schema": [
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "event_id",
+              "id": "event_id",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "event_title",
+              "id": "event_title",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "contact_id",
+              "id": "contact_id",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "opportunity_id",
+              "id": "opportunity_id",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "status",
+              "id": "status",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "token",
+              "id": "token",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "waitlisted_since",
+              "id": "waitlisted_since",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "offered_at",
+              "id": "offered_at",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "expires_at",
+              "id": "expires_at",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "updated_at",
+              "id": "updated_at",
+              "required": false,
+              "type": "string"
+            }
+          ],
+          "value": {
+            "contact_id": "={{ $json.contact_id }}",
+            "event_id": "={{ $json.event_id }}",
+            "event_title": "={{ $json.event_title }}",
+            "expires_at": "",
+            "offered_at": "",
+            "opportunity_id": "={{ $json.opportunity_id }}",
+            "status": "waiting",
+            "token": "",
+            "updated_at": "={{ $json.updated_at }}",
+            "waitlisted_since": "={{ $json.waitlisted_since }}"
+          }
+        },
+        "dataTableId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Config').first().json.OFFERS_TABLE_ID }}"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "event_id",
+              "keyValue": "={{ $json.event_id }}"
+            },
+            {
+              "keyName": "opportunity_id",
+              "keyValue": "={{ $json.opportunity_id }}"
+            }
+          ]
+        },
+        "matchType": "allConditions",
+        "operation": "upsert",
+        "options": {}
+      },
+      "id": "6ccbc479-2884-4b91-93be-9f3749207bef",
+      "name": "Upsert Rows",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        2688,
+        208
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "/*\tExtract Offer Items - rejoin the rows this run actually claimed with their offer detail\t*/\n/*\tOnly claimed rows arrive here, so a run that lost the claim sends nothing rather than\n\temailing a place another run already gave away. The row itself carries no subject, body,\n\tinterest id or reservation time, so those come back from Plan Offers, matched on the\n\topportunity, which is the key one row represents.\t*/\nconst claimed_ary = $input.all();\nconst byOpp_obj = {};\n\nfor (const item_obj of $('Plan Offers').all())\n{\n\tconst opp_str = String(item_obj.json.opportunity_id ?? '');\n\n\tif (opp_str !== '' && item_obj.json.is_offer)\n\t{\n\t\tbyOpp_obj[opp_str] = item_obj.json;\n\t}\n}\n\nconst out_ary = [];\n\nfor (const row_obj of claimed_ary)\n{\n\t/*\tA losing claim can surface as an empty object rather than no item at all, so an\n\t\tunidentifiable row is dropped rather than trusted\t*/\n\tconst opp_str = String(row_obj.json?.opportunity_id ?? '');\n\n\tif (opp_str === '')\n\t{\n\t\tcontinue;\n\t}\n\n\tconst plan_obj = byOpp_obj[opp_str];\n\n\tif (plan_obj === undefined)\n\t{\n\t\tcontinue;\n\t}\n\n\tout_ary.push({ json: Object.assign({}, plan_obj, { row_id: row_obj.json.id }) });\n}\n\nreturn out_ary;"
+      },
+      "id": "dc15fc47-769e-4916-9dae-5e7281cfe2f9",
+      "name": "Extract Offer Items",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2912,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "query": "mutation ReserveWaitlistPlace($interestIds: [ID]!) {\n  opportunities { reservePlacesForInterests(input: { interestIds: $interestIds }) { errors { label message value } } }\n}",
+        "variables": "={{ { interestIds: [$('Extract Offer Items').item.json.interest_id] } }}",
+        "options": {}
+      },
+      "id": "63e206b0-40e7-47ca-8bb3-d7b9f78dd09c",
+      "name": "Reserve Place",
+      "type": "CUSTOM.administrate",
+      "typeVersion": 1,
+      "position": [
+        3136,
+        208
+      ],
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "query": "mutation ExtendWaitlistHold($opportunityId: ID!, $until: TimeZonedDateTime) {\n  opportunities { extendReservations(input: { opportunityId: $opportunityId, reservationsValidUntil: $until }) { errors { label message value } } }\n}",
+        "variables": "={{ { opportunityId: $('Extract Offer Items').item.json.opportunity_id, until: $('Extract Offer Items').item.json.reservation_until } }}",
+        "options": {}
+      },
+      "id": "230723b5-d4c8-4267-947c-7ed5d464edcf",
+      "name": "Set Reservation Hold",
+      "type": "CUSTOM.administrate",
+      "typeVersion": 1,
+      "position": [
+        3360,
+        208
+      ],
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "query": "mutation SendWaitlistOffer($contactIds: [String]!, $subject: String, $body: String, $eventId: String, $sendingAddressId: ID) {\n  bulkAdhocEmails { sendBulkContactAdhocEmail(input: { contactIds: $contactIds, subject: $subject, body: $body, eventId: $eventId, sendingAddressId: $sendingAddressId }) { errors { label message value } } }\n}",
+        "variables": "={{ { contactIds: [$('Extract Offer Items').item.json.contact_id], subject: $('Extract Offer Items').item.json.subject, body: $('Extract Offer Items').item.json.body, eventId: $('Extract Offer Items').item.json.event_id, sendingAddressId: $('Config').item.json.SENDING_ADDRESS_ID } }}",
+        "options": {}
+      },
+      "id": "6b3c19ae-be18-4caa-8c18-5fd01a2dc3cd",
+      "name": "Send Offer Email",
+      "type": "CUSTOM.administrate",
+      "typeVersion": 1,
+      "position": [
+        4032,
+        112
+      ],
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "combinator": "and",
+          "conditions": [
+            {
+              "leftValue": "={{ ($json.errors ?? []).length + ($json.bulkAdhocEmails?.sendBulkContactAdhocEmail?.errors ?? []).length }}",
+              "operator": {
+                "operation": "equals",
+                "type": "number"
+              },
+              "rightValue": 0
+            }
+          ],
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          }
+        },
+        "options": {}
+      },
+      "id": "2a7c6736-d85e-4a45-b848-2541adc475e6",
+      "name": "Email Sent OK?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        4256,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "query": "mutation AddWaitlistLog($originIdentifier: String!, $nodeId: ID!, $message: String!, $status: ExternalLogTypeStatus!, $payload: String!) {\n  externalLog { createExternalIntegrationLog(input: { originIdentifier: $originIdentifier, nodeId: $nodeId, message: $message, status: $status, payload: $payload }) { errors { label message value } } }\n}",
+        "variables": "={{ { originIdentifier: $('Config').item.json.LOG_ORIGIN, nodeId: $('Extract Offer Items').item.json.event_id, message: \"Waitlist place offered and reserved for contact \" + $('Extract Offer Items').item.json.contact_id + \" on event \" + $('Extract Offer Items').item.json.event_id + \". The offer email links to the response page and expires at \" + $('Extract Offer Items').item.json.expires_at + \".\", status: 'success', payload: JSON.stringify({ eventId: $('Extract Offer Items').item.json.event_id, contactId: $('Extract Offer Items').item.json.contact_id, opportunityId: $('Extract Offer Items').item.json.opportunity_id, token: $('Extract Offer Items').item.json.token, expiresAt: $('Extract Offer Items').item.json.expires_at }) } }}",
+        "options": {}
+      },
+      "id": "48fe5ddd-81db-4687-a9e5-7f8831b6aef4",
+      "name": "Log Offer Sent",
+      "type": "CUSTOM.administrate",
+      "typeVersion": 1,
+      "position": [
+        4480,
+        16
+      ],
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "fp",
+              "name": "failure_payload",
+              "type": "string",
+              "value": "={{ JSON.stringify($json.bulkAdhocEmails?.sendBulkContactAdhocEmail?.errors ?? $json.errors ?? $json) }}"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "084ae6cb-3de2-40d1-aac9-95db644df7d9",
+      "name": "Offer Email Failure Payload",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        4480,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "query": "mutation AddWaitlistLog($originIdentifier: String!, $nodeId: ID!, $message: String!, $status: ExternalLogTypeStatus!, $payload: String!) {\n  externalLog { createExternalIntegrationLog(input: { originIdentifier: $originIdentifier, nodeId: $nodeId, message: $message, status: $status, payload: $payload }) { errors { label message value } } }\n}",
+        "variables": "={{ { originIdentifier: $('Config').item.json.LOG_ORIGIN, nodeId: $('Extract Offer Items').item.json.event_id, message: \"Waitlist offer email FAILED for contact \" + $('Extract Offer Items').item.json.contact_id + \". The place is reserved and the row says offered, but they were never told. Fix: resolve the send problem, then clear the row so the next sweep re-offers it.\", status: 'failed', payload: $json.failure_payload } }}",
+        "options": {}
+      },
+      "id": "cfac9053-34b3-449e-b2bf-7bf87e4633c8",
+      "name": "Log Offer Send Failed",
+      "type": "CUSTOM.administrate",
+      "typeVersion": 1,
+      "position": [
+        4704,
+        208
+      ],
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 * * * *"
+            }
+          ]
+        }
+      },
+      "id": "ad27a5cf-fd4a-487b-9f9e-fc38dd96166e",
+      "name": "Hourly Timeout Sweep",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        784
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "src",
+              "name": "source",
+              "value": "schedule",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "a50a2866-5311-49af-b85a-2b95f438e912",
+      "name": "Tag Source: Schedule",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        224,
+        784
+      ]
+    },
+    {
+      "parameters": {
+        "color": 4,
+        "content": "## Config Explained\n\nOne line per value, in the order they appear in the Config node.\n\n**ADM_GRAPHQL_URL** - the Administrate API endpoint used by `Fetch Event Pages`. The same for every instance. The Administrate-node calls carry their own endpoint through the credential.\n\n**WAITLIST_STEP_NAME** - the opportunity step that marks somebody as waitlisted. Matched verbatim, so it must equal the step name in Administrate exactly. A mismatch does not error: it finds nobody and logs nothing.\n\n**SENDING_ADDRESS_ID** - the id of the verified Administrate sending address the offer comes from. If it is not verified, nothing sends. Replies go to this address, so a shared mailbox works best.\n\n**RESPONSE_PAGE_URL** - the production webhook URL of **Waitlist 01 - Response Page**. The offer email builds its button from this.\n\n**OFFER_RESPONSE_TIMEOUT_HOURS** - how long a place is held. Drives the reservation, the expiry the hourly sweep enforces, and the hold line printed in the email. Set to `0` to hold effectively forever: the email drops the hold line and the reservation is written ten years out.\n\n**EMAIL_SUBJECT_TEMPLATE** - `{title}` is replaced with the event title.\n\n**LOG_ORIGIN** - the name entries appear under in the Administrate event log. **Should be identical across all five waitlist workflows** so the history reads as one story. Use the status field, not the origin, to tell entries apart. Log entries cannot be deleted, so choose it once.\n\n**OFFERS_TABLE_ID** - the id of your `waitlist_offers` Data Table. Every Data Table node here reads it by expression. Do **not** re-select the table in a node: that replaces the expression with a hardcoded id.\n\n**BRAND_NAME** - the wordmark in the email masthead. Set it to your organisation's name.\n\n**INTERESTS_PAGE_SIZE** - how many interests `Fetch Event Pages` asks for per request. Leave it at 100, the ceiling Administrate enforces. It is in Config so the paging loop can be tested: drop it to 2 on an event with a few interests and it fetches several pages.\n\n**EVENT_QUERY** - the GraphQL query behind `Fetch Event Pages`. It takes `$id`, `$first` and `$after`. Two things in it are load-bearing: the `learners` filter on `isCancelled: false`, without which no freed place is ever offered, and the `interests` `pageInfo` block, without which the paging loop cannot terminate or verify itself.\n\n## Email styling\n\n**EMAIL_PALETTE** - every colour and the font stack as `NAME=value` pairs. **Pipe separated, not comma**, because the font list contains commas. `DEEP` is the masthead and button, `ACCENT` the keyline, `TINT` the notice panel.\n\n**EMAIL_SHELL** - the frame. `%%BRAND%%` and `%%BODY%%` are filled per send; palette names such as `%%DEEP%%` come from EMAIL_PALETTE.\n\n**EMAIL_BUTTON** - the filled button. `%%URL%%` and `%%LABEL%%`.\n\n**EMAIL_BUTTON_LABEL** - the words on it.\n\n### Two rules for editing these\n\n**Never put quotes round a font name.** A double quote inside a double-quoted style attribute closes it early, and every declaration after the font is silently discarded, which turns the button back into a plain link. Single quotes are no safer, because Administrate normalizes them to double. The failure shows only in a real mail client.\n\n**Inline styles and table layout only.** Mail clients strip a style block and ignore modern layout, so the page stylesheet in Waitlist 01 cannot be reused here.\n\n### Finding the ids\n\n`query { sendingEmailAddresses { edges { node { id name address verified } } } }`\n`query { opportunitySteps { edges { node { id name } } } }`\n\nACCEPT_ACTION, DECLINE_ACTION and WON_STEP_ID are **not** in this Config. They belong to Waitlist 01 and Waitlist 02, which own the response path.\n",
+        "height": 1816,
+        "width": 636
+      },
+      "id": "89f306ac-f62d-4cf3-9317-61e12c8f3a6a",
+      "name": "Sticky - Config Explained",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        352,
+        -1424
+      ]
+    },
+    {
+      "parameters": {
+        "color": 5,
+        "content": "## Waitlist Automation - how it works\n\nThis workflow **offers** places. It does not record answers.\n\nThree entry points, all converging on `Config` and then `Route by Source`:\n\n**1) Event Updated Trigger** wakes on a save of an event. `Fetch Event Pages` and `Fetch Event` read the event and every interest, `Plan Offers` decides who should be offered a place, `Upsert Rows` writes every candidate as `waiting`, `Claim Offer Rows` claims the ones being offered, then each claimed person has their place reserved and the offer emailed.\n\n**2) Hourly Timeout Sweep** expires offers past their hold time, then re-runs the offer engine for those events so the place rolls on to the next person.\n\n**3) Learner Cancelled Entry** is called by **Waitlist 04 - Learner Cancelled** with an event id, because cancelling a learner does **not** fire `event_updated`.\n\nThe schedule and learner branches both **skip `Extract Event Id`**, which reads `$('Event Updated Trigger')` by name and would fail on any run that did not start there. A fourth entry must bring its own event id the same way.\n\n### Responding happens elsewhere\n\nThe offer email carries one button to **Waitlist 01 - Response Page**, a GET that writes nothing. Answers are recorded by **Waitlist 02 - Response Handler** on POST.\n\nThat split matters: corporate mail scanners fetch every link in a message before the recipient sees it. Accept/decline links that acted on GET would be answered by the scanner. **Do not add a response path to this workflow.** New kinds of answer belong in Waitlist 02, behind a POST.\n\n### The family\n\n- **Waitlist Automation** (this) offers places\n- **Waitlist 01 - Response Page** serves the page, GET, writes nothing\n- **Waitlist 02 - Response Handler** records the answer, POST\n- **Waitlist 03 - Error Handler (shared)** is the Error Workflow on all four others\n- **Waitlist 04 - Learner Cancelled** wakes this one on a cancellation\n\n### Persistence\n\nThe `waitlist_offers` Data Table is the source of truth. Statuses are `waiting`, `offered`, `accepted`, `declined`, `expired` and `register_failed`. This workflow writes `waiting`, `offered` and `expired`. Waitlist 02 writes the rest.\n",
+        "height": 640,
+        "width": 492
+      },
+      "id": "4e6d8306-8876-4bab-96eb-9749b284c47c",
+      "name": "Sticky - Overview",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -592,
+        368
+      ]
+    },
+    {
+      "parameters": {
+        "color": 6,
+        "content": "## Persistence (Data Table)\n\nData Table `waitlist_offers` (id in Config `OFFERS_TABLE_ID`) is the source of truth, not Administrate.\n\nWrites from **this** workflow:\n\n- **Upsert Rows** - every candidate, matched on `event_id` + `opportunity_id`, always written as `waiting` with no token\n- **Claim Offer Rows** - flips `waiting` to `offered` and carries the token, matched on `event_id` + `opportunity_id` + `status = waiting`\n- **Update Expired** - the hourly sweep, matched on `id`\n- **Mark Reserve Failed** - back to `waiting`, matched on `event_id` + `opportunity_id`\n\nReads come from the **Load ... Rows** nodes, both whole-table on purpose. See the VERIFY sticky before filtering either.\n\n### Keyed on the opportunity, not the contact\n\nOne row is the history of one **request**. Keying on the contact would let a `declined` row shadow that person on that event permanently. Keyed on the opportunity, a re-add creates a new opportunity, which has no row, and becomes a fresh candidate.\n\nTwo per-contact guards in `Plan Offers` stop that turning into double offers: a contact with an `accepted` row on the event is skipped, and so is one with an outstanding `offered` row under any other opportunity.\n\n### The claim is what makes the offer path safe\n\n`Claim Offer Rows` puts the status check **inside** the write. Of two overlapping runs exactly one claims the row; the loser gets nothing and sends nothing.\n\nThis matters because one press of Save in the Administrate UI can issue two writes a couple of seconds apart, so a single save can wake this engine twice with genuinely overlapping runs.\n\nDo **not** set `alwaysOutputData` on `Claim Offer Rows`. A losing claim must produce no item, because that silence is what stops the second email.\n\n### Duplicate rows are possible\n\nData Tables enforce **no uniqueness** on match columns. Two runs upserting the same key at the same instant can both insert. The claim absorbs this on the offer path (a single winner takes both rows), but counting can be off: availability may be understated until the duplicate is cleaned up.\n\n### Shared with Waitlist 02\n\n**Waitlist 02 also writes to this table**, claiming a row on `id` plus `status = offered`. If you change the status vocabulary here, change it there too.\n\nDo NOT rename columns without updating the Code nodes in both workflows.\n",
+        "height": 900,
+        "width": 300
+      },
+      "id": "6f1420f6-93b6-495d-a018-4363019a835f",
+      "name": "Sticky - Persistence",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -48,
+        -96
+      ]
+    },
+    {
+      "parameters": {
+        "color": 3,
+        "content": "## VERIFY before go-live\n\n### Activate the webhook registration\n\nAdministrate registers a webhook **inactive**. An inactive webhook delivers nothing and reports nothing, so the build looks complete and does nothing. Activate it after publishing any Administrate Trigger:\n\n`mutation { webhooks { update(input: { webhookId: \"...\", lifecycleState: active }) { errors { label message value } } } }`\n\nCheck the whole picture in one call:\n\n`query { webhooks(filters: [{ field: lifecycleState, operation: eq, value: \"active\" }]) { edges { node { id name url lifecycleState filterExpression query } } } }`\n\nConsider setting `notificationEmails` on the registration to a mailbox you watch, so failed deliveries reach someone.\n\n### Keep alwaysOutputData on Load Offer Rows\n\nAn empty `waitlist_offers` table is the **normal** state on a new install. Without `alwaysOutputData` the node emits zero items, the branch ends before `Plan Offers` runs, and the execution is recorded as a success. The synthetic `{}` item it emits on an empty read is filtered out by `r_obj.event_id === eid_str`.\n\n**`Claim Offer Rows` is the opposite case and must NOT have it.**\n\n### Scoping to opted-in events\n\nWaitlist 04 only acts on events with the `Waitlist On?` checkbox custom field ticked, via the trigger's `filterExpression`. The Event Updated Trigger here has no filterExpression, so it wakes on every event save; events without waitlisted interests simply produce no offers. To scope it, add the same `filterExpression` as Waitlist 04 (adjusted for `node` being the Event).\n\n`filterExpression` is a **JMESPath expression evaluated against the JSON returned by the GraphQL query stored on the webhook** (the trigger node's `query`), which is why custom field values are reachable.\n\nProve scoping with a negative control: save an event with the box unticked and confirm no execution appears.\n\n### How places are counted\n\n`Fetch Event` filters learners on **`isCancelled: false`**. That filter is load-bearing: `learners { pageInfo { totalRecords } }` **includes cancelled learners**, so without it a cancelled seat is never offered. Waitlist 01 and 02 count the same way. **If you change one, change the others.**\n\nAdministrate's own equivalents are `bookedPlaces` (excludes cancelled) and `reserved` (holds not yet booked), with `remainingPlaces = maxPlaces - bookedPlaces - reserved`. Either method works; do not mix them. `remainingPlaces` is not clamped and can go negative, so gate on `> 0`.\n\n### Interests are paged to exhaustion\n\n`Fetch Event Pages` walks the cursor, bounded at `maxRequests: 50`. `Fetch Event` **throws** if it collected fewer than `totalRecords`, so a short loop cannot pass as a quiet run.\n\n### Reservations\n\nThere is **no release mutation.** Release is `extendReservations` with `reservationsValidUntil` set to now.\n\n`extendReservations` cannot resurrect a voided reservation, and `reservePlacesForInterests` cannot re-reserve an opportunity whose hold was released. Both can return `errors: []` when they do nothing. Fresh interests reserve normally.\n\nA registration does not consume a hold, which is why Waitlist 02 releases explicitly on accept as well as decline.\n\n### Why Set Reservation Hold has no gate of its own\n\nIt runs `continueRegularOutput` and nothing tests its response. That is deliberate: Administrate returns refusals inside an HTTP 200 with an empty errors array, so gating the response would prove nothing.\n\n`IF Reserved OK?` verifies the **result** instead. It requires a clean `Reserve Place` response, `isReservationValid`, a non-null `reservationsValidUntil` in the future, landing **within five minutes of the time the offer email promises**. On the false branch the row reverts to `waiting` and no email is sent.\n\n`Verify Reservation` must run **after** `Set Reservation Hold`: before it, `reservationsValidUntil` is null whether the reserve worked or not.\n\n### Deliberate, do not \"fix\"\n\n**The Data Table reads are whole-table on purpose.** `Load Offer Rows` has `executeOnce: true`, the schedule branch can carry several event ids, and `Plan Offers` needs every row to know who is already concluded. Filtering it to one event would re-offer people who already declined or accepted.\n\n**`Mark Reserve Failed` assumes reserve failures are transient** and puts the row back to `waiting` so the next sweep retries. **If you ever clear the offers table**, first move any opportunities still at the waitlist step whose holds were released off that step, or they will be re-offered and fail to reserve on every save.\n\n### Before the first real send\n\n- The webhook registration is **active**, not merely registered.\n- `Load Offer Rows` has **`alwaysOutputData` on**.\n- SENDING_ADDRESS_ID is **verified**.\n- WAITLIST_STEP_NAME matches an opportunity step verbatim, including any trailing space.\n- RESPONSE_PAGE_URL points at the published Waitlist 01 webhook, and Waitlist 01's SUBMIT_URL points at Waitlist 02.\n- Open one offer email **in a real mail client** and confirm the button renders as a filled button rather than a plain link.\n- Read the **event record** after a send, not the execution. Check `bookedPlaces` and `reserved`, not just the learner list.\n",
+        "height": 1900,
+        "width": 492
+      },
+      "id": "28a97aaf-c317-4e20-a36f-ffb243b6c57e",
+      "name": "Sticky - Verify Before Go-Live",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -592,
+        -752
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "res1",
+              "leftValue": "={{ (($('Reserve Place').item.json.errors ?? []).length + ($('Reserve Place').item.json.opportunities?.reservePlacesForInterests?.errors ?? []).length) === 0 && ($json.opportunities?.edges?.[0]?.node?.isReservationValid === true) && (($json.opportunities?.edges?.[0]?.node?.reservationsValidUntil ?? null) !== null) && (DateTime.fromISO($json.opportunities?.edges?.[0]?.node?.reservationsValidUntil) > $now) && (Math.abs(DateTime.fromISO($json.opportunities?.edges?.[0]?.node?.reservationsValidUntil).toMillis() - DateTime.fromISO($('Extract Offer Items').item.json.reservation_until).toMillis()) <= 300000) }}",
+              "operator": {
+                "operation": "true",
+                "singleValue": true,
+                "type": "boolean"
+              },
+              "rightValue": ""
+            }
+          ],
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          }
+        },
+        "options": {}
+      },
+      "id": "7ef75fbd-17b5-4719-9b9d-388ba592bfaf",
+      "name": "IF Reserved OK?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        3808,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "columns": {
+          "mappingMode": "defineBelow",
+          "matchingColumns": [
+            "event_id",
+            "opportunity_id"
+          ],
+          "schema": [
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "event_id",
+              "id": "event_id",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "opportunity_id",
+              "id": "opportunity_id",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": false,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "status",
+              "id": "status",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": false,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "token",
+              "id": "token",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": false,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "offered_at",
+              "id": "offered_at",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": false,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "expires_at",
+              "id": "expires_at",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": false,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "updated_at",
+              "id": "updated_at",
+              "required": false,
+              "type": "string"
+            }
+          ],
+          "value": {
+            "event_id": "={{ $('Extract Offer Items').item.json.event_id }}",
+            "expires_at": "",
+            "offered_at": "",
+            "opportunity_id": "={{ $('Extract Offer Items').item.json.opportunity_id }}",
+            "status": "waiting",
+            "token": "",
+            "updated_at": "={{ $now.toISO() }}"
+          }
+        },
+        "dataTableId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Config').first().json.OFFERS_TABLE_ID }}"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "event_id",
+              "keyValue": "={{ $('Extract Offer Items').item.json.event_id }}"
+            },
+            {
+              "keyName": "opportunity_id",
+              "keyValue": "={{ $('Extract Offer Items').item.json.opportunity_id }}"
+            }
+          ]
+        },
+        "matchType": "allConditions",
+        "operation": "update",
+        "options": {}
+      },
+      "id": "c370feba-05e8-4494-ab03-7df6a93e2023",
+      "name": "Mark Reserve Failed",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        4032,
+        304
+      ],
+      "notes": "Puts the row back to waiting and clears the token, so the next sweep re-offers the place rather than parking it as offered for the full hold period on a reservation that never happened."
+    },
+    {
+      "parameters": {
+        "query": "mutation AddWaitlistLog($originIdentifier: String!, $nodeId: ID!, $message: String!, $status: ExternalLogTypeStatus!, $payload: String!) {\n  externalLog { createExternalIntegrationLog(input: { originIdentifier: $originIdentifier, nodeId: $nodeId, message: $message, status: $status, payload: $payload }) { errors { label message value } } }\n}",
+        "variables": "={{ { originIdentifier: $('Config').item.json.LOG_ORIGIN, nodeId: $('Extract Offer Items').item.json.event_id, message: \"Could not reserve a waitlist place for contact \" + $('Extract Offer Items').item.json.contact_id + \" on event \" + $('Extract Offer Items').item.json.event_id + \". No offer email was sent, because the place was never actually held. The row has been put back to waiting, so the next sweep will try again. If this keeps repeating, the interest or the opportunity is the thing to look at.\", status: 'failed', payload: JSON.stringify($('Reserve Place').item.json) } }}",
+        "options": {}
+      },
+      "id": "d2dbaf82-2250-4b8a-b5fe-cf6d977ef5e4",
+      "name": "Log Reserve Failed",
+      "type": "CUSTOM.administrate",
+      "typeVersion": 1,
+      "position": [
+        4256,
+        304
+      ],
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      },
+      "notes": "No Stop and Error here. Reserve Place runs once per offered person, so aborting the run would take the other offers in the same batch down with this one. The failing item diverts and the rest carry on."
+    },
+    {
+      "id": "2890d08f-6bb5-4b88-9a69-45c4e778d846",
+      "name": "Verify Reservation",
+      "type": "CUSTOM.administrate",
+      "typeVersion": 1,
+      "position": [
+        3584,
+        208
+      ],
+      "parameters": {
+        "options": {},
+        "query": "query VerifyWaitlistHold($opportunityId: String!) {\n  opportunities(filters: [{ field: id, operation: eq, value: $opportunityId }]) {\n    edges { node { id isReservationValid reservationsValidUntil } }\n  }\n}",
+        "variables": "={{ { opportunityId: $('Extract Offer Items').item.json.opportunity_id } }}"
+      },
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      },
+      "notes": "reservePlacesForInterests returns an empty errors array when it silently does nothing, so the hold has to be read back rather than inferred from the response.",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "5379f333-6a53-47ea-af40-ca24e4cc2239",
+      "name": "Learner Cancelled Entry",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        1100
+      ],
+      "parameters": {
+        "inputSource": "workflowInputs",
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "eventId",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "bc9746cc-ed7b-438e-be00-41aa7794f451",
+      "name": "Tag Source: Learner Cancelled",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        224,
+        1100
+      ],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "src",
+              "name": "source",
+              "type": "string",
+              "value": "learnerCancelled"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      }
+    },
+    {
+      "id": "d83f184d-2ef9-4325-bb84-4cdff2043db5",
+      "name": "Sticky - Learner Cancelled Entry",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -592,
+        940
+      ],
+      "parameters": {
+        "color": 5,
+        "content": "## Third entry: Learner Cancelled\n\n**Waitlist 04 - Learner Cancelled** calls this workflow here, passing only `eventId`.\n\n**Why it exists.** Cancelling a learner does **not** fire `event_updated`: capacity is derived from learner records, so `learner.cancel` writes to the learner and never touches the event row. The hourly sweep does not cover it either, since it only revisits events that had an offer expire. Without this branch the most common way a waitlist place opens up would be invisible to the engine.\n\n**Why a separate workflow rather than a second trigger here.** One Administrate Trigger node per workflow keeps webhook registrations simple and predictable.\n\n**How the branch is wired.** The caller resolves learner to event and applies the `Waitlist On?` opt-in gate, so the event id arrives ready. This branch goes straight from `Route by Source` to `Fetch Event Pages` and **skips `Extract Event Id`**, exactly as the schedule branch does.\n",
+        "height": 460,
+        "width": 492
+      }
+    },
+    {
+      "id": "326e6884-0245-4885-99a4-558227164c4c",
+      "name": "Fetch Event Pages",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2016,
+        208
+      ],
+      "parameters": {
+        "authentication": "predefinedCredentialType",
+        "contentType": "json",
+        "jsonBody": "={{ JSON.stringify({ query: $('Config').first().json.EVENT_QUERY, variables: { id: $json.eventId, first: Number($('Config').first().json.INTERESTS_PAGE_SIZE), after: null } }) }}",
+        "method": "POST",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "options": {
+          "pagination": {
+            "pagination": {
+              "completeExpression": "={{ typeof $response === 'undefined' ? true : !($response?.body?.data?.events?.edges?.[0]?.node?.interests?.pageInfo?.hasNextPage) }}",
+              "limitPagesFetched": true,
+              "maxRequests": 50,
+              "paginationCompleteWhen": "other",
+              "paginationMode": "updateAParameterInEachRequest",
+              "parameters": {
+                "parameters": [
+                  {
+                    "name": "variables",
+                    "type": "body",
+                    "value": "={{ { id: $json.eventId, first: Number($('Config').first().json.INTERESTS_PAGE_SIZE), after: (typeof $response === 'undefined' ? null : ($response?.body?.data?.events?.edges?.[0]?.node?.interests?.pageInfo?.endCursor ?? null)) } }}"
+                  }
+                ]
+              },
+              "requestInterval": 0
+            }
+          },
+          "timeout": 60000
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "url": "={{ $('Config').first().json.ADM_GRAPHQL_URL ?? 'https://api.getadministrate.com/graphql' }}"
+      },
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      },
+      "notes": "Walks the interests connection to exhaustion. Connections cap at 100 and enforce it silently: asking for 500 returns 100 with no error, so hasNextPage is the only signal. The cursor MUST live in the pagination parameter, because $response is not in scope in the JSON Body field. typeof is required rather than optional chaining, because on the first request $response is undeclared. maxRequests bounds a runaway loop at 50 pages."
+    },
+    {
+      "id": "117b312c-c955-4581-9623-2cc8bd5d39c7",
+      "name": "Fetch Event",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2128,
+        352
+      ],
+      "parameters": {
+        "jsCode": "/*\tAssemble the event from every interests page fetched by Fetch Event Pages\t*/\nconst pages_ary = $input.all();\nconst byEvent_obj = {};\n\nfor (const page_obj of pages_ary)\n{\n\tconst edges_ary = page_obj.json?.data?.events?.edges ?? [];\n\n\tfor (const edge_obj of edges_ary)\n\t{\n\t\tconst event_obj = edge_obj.node ?? {};\n\t\tconst eventId_str = String(event_obj.id ?? '');\n\n\t\tif (eventId_str === '')\n\t\t{\n\t\t\tcontinue;\n\t\t}\n\n\t\tif (byEvent_obj[eventId_str] === undefined)\n\t\t{\n\t\t\tbyEvent_obj[eventId_str] = { event_obj: event_obj, interests_ary: [], expected_int: 0 };\n\t\t}\n\n\t\tconst bucket_obj = byEvent_obj[eventId_str];\n\t\tconst pageInfo_obj = event_obj.interests?.pageInfo ?? {};\n\n\t\tbucket_obj.expected_int = Number(pageInfo_obj.totalRecords ?? 0);\n\t\tbucket_obj.interests_ary = bucket_obj.interests_ary.concat(event_obj.interests?.edges ?? []);\n\t}\n}\n\n/*\tCount the work. A short collection means the loop stopped early, and offering from a\n\ttruncated candidate list would skip whoever was cut off without writing anything\t*/\nconst out_ary = [];\n\nfor (const eventId_str of Object.keys(byEvent_obj))\n{\n\tconst bucket_obj = byEvent_obj[eventId_str];\n\tconst collected_int = bucket_obj.interests_ary.length;\n\n\tif (collected_int < bucket_obj.expected_int)\n\t{\n\t\tthrow new Error('Interest paging incomplete for ' + eventId_str + ': collected ' + collected_int + ' of ' + bucket_obj.expected_int);\n\t}\n\n\tconst merged_obj = Object.assign({}, bucket_obj.event_obj);\n\n\tmerged_obj.interests = { pageInfo: { totalRecords: bucket_obj.expected_int, hasNextPage: false }, edges: bucket_obj.interests_ary };\n\tout_ary.push({ json: { events: { edges: [{ node: merged_obj }] } } });\n}\n\nreturn out_ary;"
+      },
+      "notes": "Assembles one event per item from the pages returned by Fetch Event Pages, in the single-event shape Plan Offers expects. Grouping is by event id from the response body rather than by item pairing, so it stays correct when the sweep passes several events at once. The throw is deliberate: offering from a truncated candidate list would skip whoever was cut off and would look exactly like a normal quiet run."
+    },
+    {
+      "id": "3dce6c1c-59a2-498d-9833-f0283e01bf13",
+      "name": "Select Offer Candidates",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2688,
+        400
+      ],
+      "parameters": {
+        "jsCode": "/*\tSelect Offer Candidates - the people Plan Offers decided to offer, ahead of the claim\t*/\n/*\tReads Plan Offers directly rather than via pairing, so ordering after the upsert is safe\t*/\nconst out_ary = [];\n\nfor (const item_obj of $('Plan Offers').all())\n{\n\tif (item_obj.json.is_offer)\n\t{\n\t\tout_ary.push({ json: item_obj.json });\n\t}\n}\n\nreturn out_ary;"
+      },
+      "notes": "Reads Plan Offers directly rather than its own input, so ordering after the upsert is safe."
+    },
+    {
+      "id": "44d63192-799a-4c9d-b9a4-0834328bb5d0",
+      "name": "Claim Offer Rows",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        2800,
+        400
+      ],
+      "parameters": {
+        "columns": {
+          "mappingMode": "defineBelow",
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "canBeUsedToMatch": false,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "status",
+              "id": "status",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": false,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "token",
+              "id": "token",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": false,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "offered_at",
+              "id": "offered_at",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": false,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "expires_at",
+              "id": "expires_at",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": false,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "updated_at",
+              "id": "updated_at",
+              "required": false,
+              "type": "string"
+            }
+          ],
+          "value": {
+            "expires_at": "={{ $json.expires_at }}",
+            "offered_at": "={{ $json.offered_at }}",
+            "status": "offered",
+            "token": "={{ $json.token }}",
+            "updated_at": "={{ $json.updated_at }}"
+          }
+        },
+        "dataTableId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Config').first().json.OFFERS_TABLE_ID }}"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "condition": "eq",
+              "keyName": "event_id",
+              "keyValue": "={{ $json.event_id }}"
+            },
+            {
+              "condition": "eq",
+              "keyName": "opportunity_id",
+              "keyValue": "={{ $json.opportunity_id }}"
+            },
+            {
+              "condition": "eq",
+              "keyName": "status",
+              "keyValue": "waiting"
+            }
+          ]
+        },
+        "matchType": "allConditions",
+        "operation": "update",
+        "options": {},
+        "resource": "row"
+      },
+      "notes": "The atomic claim. Updates the row to offered ONLY while it is still waiting, so of two overlapping runs exactly one gets the row and the other gets nothing and sends no email. A claim spanning two duplicate rows still yields a single winner that takes both. Do NOT set alwaysOutputData here. A losing claim must produce no item, because that silence is what stops the second offer."
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Event Updated Trigger": {
+      "main": [
+        [
+          {
+            "node": "Tag Source: Event Updated",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tag Source: Event Updated": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Route by Source",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route by Source": {
+      "main": [
+        [
+          {
+            "node": "Extract Event Id",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Load Expire Rows",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fetch Event Pages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load Expire Rows": {
+      "main": [
+        [
+          {
+            "node": "Expire Sweep",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Expire Sweep": {
+      "main": [
+        [
+          {
+            "node": "Update Expired",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Expired": {
+      "main": [
+        [
+          {
+            "node": "Dedupe Event Ids",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load Offer Rows": {
+      "main": [
+        [
+          {
+            "node": "Plan Offers",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Plan Offers": {
+      "main": [
+        [
+          {
+            "node": "Upsert Rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Offer Items": {
+      "main": [
+        [
+          {
+            "node": "Reserve Place",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Offer Email": {
+      "main": [
+        [
+          {
+            "node": "Email Sent OK?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email Sent OK?": {
+      "main": [
+        [
+          {
+            "node": "Log Offer Sent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Offer Email Failure Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Offer Email Failure Payload": {
+      "main": [
+        [
+          {
+            "node": "Log Offer Send Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hourly Timeout Sweep": {
+      "main": [
+        [
+          {
+            "node": "Tag Source: Schedule",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tag Source: Schedule": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Reserved OK?": {
+      "main": [
+        [
+          {
+            "node": "Send Offer Email",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mark Reserve Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Reserve Failed": {
+      "main": [
+        [
+          {
+            "node": "Log Reserve Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verify Reservation": {
+      "main": [
+        [
+          {
+            "node": "IF Reserved OK?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reserve Place": {
+      "main": [
+        [
+          {
+            "node": "Set Reservation Hold",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Reservation Hold": {
+      "main": [
+        [
+          {
+            "node": "Verify Reservation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Learner Cancelled Entry": {
+      "main": [
+        [
+          {
+            "node": "Tag Source: Learner Cancelled",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tag Source: Learner Cancelled": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Event Id": {
+      "main": [
+        [
+          {
+            "node": "Fetch Event Pages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Dedupe Event Ids": {
+      "main": [
+        [
+          {
+            "node": "Fetch Event Pages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Event Pages": {
+      "main": [
+        [
+          {
+            "node": "Fetch Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Event": {
+      "main": [
+        [
+          {
+            "node": "Load Offer Rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upsert Rows": {
+      "main": [
+        [
+          {
+            "node": "Select Offer Candidates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Select Offer Candidates": {
+      "main": [
+        [
+          {
+            "node": "Claim Offer Rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claim Offer Rows": {
+      "main": [
+        [
+          {
+            "node": "Extract Offer Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true,
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed"
+  },
+  "tags": []
+}
