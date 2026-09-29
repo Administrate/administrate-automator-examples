@@ -44,6 +44,7 @@ For detailed setup instructions, visit the [Automator documentation](https://sup
 | [Normalise Contact Mobile Numbers](./normalise-contact-mobile-numbers) | Clean up Contact mobile number formatting whenever a Contact is created or updated (UK rules by default) | 1.0.0 |
 | [Instructor and Resource Utilization Dashboards](./utilization-dashboards) | Password-protected dashboards showing instructor and resource utilisation from Administrate data | 1.0.0 |
 | [Administrate MCP Server](./administrate-mcp-server) | Expose Administrate search and update tools to AI agents such as Claude over the Model Context Protocol | 1.0.0 |
+| [Log Automation Failures to Administrate](./error-logging-to-administrate) | Shared error workflow, logging sub-workflow and daily digest for recording automation failures in Administrate | 1.0.0 |
 
 ## How to Import a Workflow
 
