@@ -1,0 +1,318 @@
+{
+  "name": "Resource Utilization - Days and Hours Booked",
+  "nodes": [
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "apiUrl",
+              "name": "apiUrl",
+              "value": "https://api.getadministrate.com/graphql",
+              "type": "string"
+            },
+            {
+              "id": "lookbackMonths",
+              "name": "lookbackMonths",
+              "value": 13,
+              "type": "number"
+            },
+            {
+              "id": "pageSize",
+              "name": "pageSize",
+              "value": 200,
+              "type": "number"
+            },
+            {
+              "id": "maxPages",
+              "name": "maxPages",
+              "value": 200,
+              "type": "number"
+            },
+            {
+              "id": "excludeBookingTypes",
+              "name": "excludeBookingTypes",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "includeResourceTypes",
+              "name": "includeResourceTypes",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "requestIntervalMs",
+              "name": "requestIntervalMs",
+              "value": 0,
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "45492c2d-5657-4be1-b317-af81aca0d806",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        224,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Resource Utilization - Days and Hours Booked\n\nOpen the **Dashboard Link** production URL in a browser, or run **Run Utilization Report** manually. The webhook is protected by HTTP Basic Auth, so you choose the username and password in the **Basic Auth** credential. No password is stored in this workflow.\n\n## Config - what each setting does\n\n- **apiUrl** - Administrate GraphQL endpoint. Only change it if Administrate moves it.\n- **lookbackMonths** - default view, in months back from today (13). Data for the whole previous calendar year is always loaded as well, for the Prior year preset.\n- **pageSize** - bookings fetched per API call (200). Lower it if requests time out.\n- **maxPages** - safety cap on API calls (200). maxPages x pageSize is the most bookings read. Raise it for very large instances.\n- **excludeBookingTypes** - comma-separated booking types to ignore (for example `plan`). Blank counts everything.\n- **includeResourceTypes** - comma-separated Resource Type names to include (for example `Rooms,Equipment`). Blank includes every type.\n- **requestIntervalMs** - pause between API calls in ms (0). Raise it to be gentler on the API.\n\n## How it works\n1. **Build Window** works out the date range to load.\n2. **Fetch Resource Bookings** reads every resource booking that starts in that range, page by page.\n3. **Prepare Bookings** applies the booking type and resource type filters. It keeps one compact record per booking: resource, type, location, dates and hours.\n4. **Build Dashboard** / **Serve Dashboard** return a self-contained Chart.js HTML page. Presets are Last 13 months, Prior year and Full range. Filters are resource type and location.\n\n## What gets measured\n**Days booked** is the number of DISTINCT calendar days a resource appears on a booking. A room used twice in one day counts as 1 day, and a 3-day booking counts as 3 days. **Hours booked** is the total length of every booking. Days show occupancy; hours show total time in use.\n\n## Before running\nAttach your Administrate OAuth2 credential to **Fetch Resource Bookings** and a Basic Auth credential to **Dashboard Link**.\n\nAll bookings are loaded and embedded in the page on every request. On very large instances, narrow the filters or the window.",
+        "height": 1040,
+        "width": 520,
+        "color": 4
+      },
+      "id": "9bf087f9-97f4-47fd-9d78-be261f6d3e09",
+      "name": "About This Workflow",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -640,
+        -200
+      ]
+    },
+    {
+      "parameters": {
+        "path": "45ccc525-8b68-40a4-9d3b-c30aa9eee997",
+        "authentication": "basicAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "e6d1bb42-459c-4672-849c-61f92f8a1c87",
+      "name": "Dashboard Link",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        144
+      ],
+      "webhookId": "2c7bbf17-8f2a-44b2-b122-fc1f790c38f5",
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "",
+          "name": "Basic Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "binary",
+        "responseDataSource": "set",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/html; charset=utf-8"
+              },
+              {
+                "name": "Content-Disposition",
+                "value": "inline"
+              },
+              {
+                "name": "Cache-Control",
+                "value": "no-store, must-revalidate"
+              }
+            ]
+          }
+        }
+      },
+      "id": "e654e48e-bfff-42ff-bd89-d38c97338310",
+      "name": "Serve Dashboard",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1344,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Loads enough history to cover BOTH the 13-month default AND the full prior calendar year.\n// Default view = last 13 months; dashboard also offers a Prior year preset.\nconst cfg = $('Config').first().json;\nconst months = Number(cfg.lookbackMonths) || 13;\nconst now = new Date();\nconst pad = n => (n < 10 ? '0' + n : '' + n);\nconst fmt = dt => dt.getUTCFullYear() + '-' + pad(dt.getUTCMonth() + 1) + '-' + pad(dt.getUTCDate());\nconst back = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - months, now.getUTCDate()));\nconst defaultFrom = fmt(back);\nconst py = now.getUTCFullYear() - 1;\nconst priorStart = py + '-01-01';\nconst priorEnd = py + '-12-31';\nconst loadStart = (defaultFrom < priorStart) ? defaultFrom : priorStart;\nconst endDay = fmt(now);\nreturn [{ json: { rangeStart: loadStart + 'T00:00:00Z', rangeEnd: endDay + 'T23:59:59Z', startDay: loadStart, endDay: endDay, defaultFrom: defaultFrom, priorStart: priorStart, priorEnd: priorEnd, generatedAt: now.toISOString() } }];"
+      },
+      "id": "8ebef833-a048-4097-ac55-854780dece1d",
+      "name": "Build Window",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        240
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "2c2527df-06e9-425c-b7a2-dff3bf5cead7",
+      "name": "Run Utilization Report",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        336
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $(\"Config\").first().json.apiUrl }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ query: \"query($first:Int!,$after:String,$rangeStart:String!,$rangeEnd:String!){ resourceBookings(first:$first,after:$after,filters:[{field: start, operation: ge, value:$rangeStart},{field: start, operation: le, value:$rangeEnd}]){ edges{ node{ id start end bookingType resource{ id name type{ id name } location{ id name } } } } pageInfo{ hasNextPage endCursor } } }\", variables: { first: $(\"Config\").first().json.pageSize, after: null, rangeStart: $(\"Build Window\").first().json.rangeStart, rangeEnd: $(\"Build Window\").first().json.rangeEnd } }) }}",
+        "options": {
+          "pagination": {
+            "pagination": {
+              "parameters": {
+                "parameters": [
+                  {
+                    "type": "body",
+                    "name": "variables",
+                    "value": "={{ { first: $(\"Config\").first().json.pageSize, after: ($response?.body?.data?.resourceBookings?.pageInfo?.endCursor ?? null), rangeStart: $(\"Build Window\").first().json.rangeStart, rangeEnd: $(\"Build Window\").first().json.rangeEnd } }}"
+                  }
+                ]
+              },
+              "paginationCompleteWhen": "other",
+              "completeExpression": "={{ !$response.body?.data?.resourceBookings?.pageInfo?.hasNextPage }}",
+              "limitPagesFetched": true,
+              "maxRequests": "={{ $(\"Config\").first().json.maxPages }}",
+              "requestInterval": "={{ $(\"Config\").first().json.requestIntervalMs }}"
+            }
+          }
+        }
+      },
+      "id": "943e3da0-fb2f-4d60-a479-c572add0ae8b",
+      "name": "Fetch Resource Bookings",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        672,
+        240
+      ],
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Outputs one compact record per booking (incl. resource location).\nconst cfg = $('Config').first().json;\nconst excludeTypes = String(cfg.excludeBookingTypes || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);\nconst includeResTypes = String(cfg.includeResourceTypes || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);\nfunction hoursOf(a, b) {\n  const s = new Date(String(a) + 'Z').getTime();\n  const e = new Date(String(b) + 'Z').getTime();\n  if (!isFinite(s) || !isFinite(e) || e <= s) return 0;\n  return (e - s) / 3600000;\n}\nconst edges = [];\nfor (const item of $input.all()) {\n  const body = item.json;\n  if (body && Array.isArray(body.errors) && body.errors.length) {\n    throw new Error('Administrate GraphQL error: ' + JSON.stringify(body.errors));\n  }\n  const e = body && body.data && body.data.resourceBookings && body.data.resourceBookings.edges;\n  if (Array.isArray(e)) edges.push(...e);\n}\nconst out = [];\nfor (const edge of edges) {\n  const n = edge && edge.node;\n  if (!n || !n.resource) continue;\n  const bType = String(n.bookingType || '').toLowerCase();\n  if (excludeTypes.includes(bType)) continue;\n  const t = (n.resource.type && n.resource.type.name) || 'Uncategorized';\n  if (includeResTypes.length && !includeResTypes.includes(t.toLowerCase())) continue;\n  out.push({\n    ri: n.resource.id,\n    rn: n.resource.name || '(unnamed)',\n    rt: t,\n    rl: (n.resource.location && n.resource.location.name) || 'No location',\n    s: String(n.start).slice(0, 10),\n    e: String(n.end).slice(0, 10),\n    et: String(n.end).slice(11, 19),\n    h: Math.round(hoursOf(n.start, n.end) * 100) / 100\n  });\n}\nif (out.length === 0) return [{ json: { __empty: true } }];\nreturn out.map(json => ({ json }));"
+      },
+      "id": "f55c222a-d33d-4e78-b9c0-959b00db338b",
+      "name": "Prepare Bookings",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        896,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Default view = last 13 months. Presets: Last 13 months / Prior year / Full range. Location column + league, US spelling.\nconst win = $('Build Window').first().json;\nconst bookings = $input.all().map(i => i.json).filter(r => !r.__empty);\nconst loadStart = String(win.startDay || '').slice(0,10);\nconst endDay = String(win.endDay || '').slice(0,10);\nconst defaultFrom = String(win.defaultFrom || loadStart).slice(0,10);\nconst priorStart = String(win.priorStart || '').slice(0,10);\nconst priorEnd = String(win.priorEnd || '').slice(0,10);\nconst gen = String(win.generatedAt || '').slice(0,19).replace('T',' ');\nconst sub = 'Loaded ' + loadStart + ' to ' + endDay + ' (' + bookings.length + ' bookings) | generated ' + gen;\nconst B = JSON.stringify(bookings);\nconst html = `<!DOCTYPE html>\n<html lang='en'><head><meta charset='utf-8'>\n<meta name='viewport' content='width=device-width, initial-scale=1'>\n<title>Resource Utilization</title>\n<script src='https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js'></script>\n<style>\n:root{--p:#6A3CE3;--pd:#4A25A8;--ink:#1c1233;--muted:#6b6580;--bg:#f5f3fb;--card:#fff;--line:#e7e2f5}\n*{box-sizing:border-box}\nbody{margin:0;font-family:Inter,system-ui,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--ink)}\nheader{background:linear-gradient(120deg,var(--p),var(--pd));color:#fff;padding:20px 24px}\nheader h1{margin:0;font-size:19px}\nheader p{margin:4px 0 0;font-size:13px;opacity:.85}\n.wrap{max-width:1180px;margin:0 auto;padding:20px 24px 56px}\n.bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:16px 0}\n.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}\n.seg button{border:0;background:#fff;font:inherit;padding:8px 14px;cursor:pointer;color:var(--ink)}\n.seg button.on{background:var(--p);color:#fff}\nlabel{font-size:13px;color:var(--muted)}\nselect,input[type=date]{font:inherit;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink)}\n.btn{border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:8px;padding:8px 12px;font:inherit;cursor:pointer}\n.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:6px 0 20px}\n.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px}\n.card .k{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}\n.card .v{font-size:26px;font-weight:700;margin-top:6px}\n.grid{display:grid;grid-template-columns:1.4fr 1fr;gap:16px}\n.panel{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px}\n.panel h2{margin:0 0 12px;font-size:14px}\n.chartbox{position:relative;height:270px}\ntable{width:100%;border-collapse:collapse;font-size:13px}\nth,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line)}\nth{color:var(--muted);cursor:pointer}\ntd.num,th.num{text-align:right}\n.chip{display:inline-block;padding:2px 8px;border-radius:999px;background:#efeaff;color:var(--pd);font-size:12px}\n.rankcell{font-weight:700;color:var(--pd)}\n#note{margin:8px 0;color:#8a6400;font-size:13px}\n@media(max-width:820px){.cards{grid-template-columns:repeat(2,1fr)}.grid{grid-template-columns:1fr}}\n</style></head>\n<body>\n<header><h1>Resource Utilization</h1><p>${sub}</p></header>\n<div class='wrap'>\n<div class='bar'><label>From</label><input type='date' id='ds' min='${loadStart}' max='${endDay}' value='${defaultFrom}'><label>To</label><input type='date' id='de' min='${loadStart}' max='${endDay}' value='${endDay}'><button id='p13' class='btn'>Last 13 months</button><button id='ppy' class='btn'>Prior year</button><button id='reset' class='btn'>Full range</button><label>Type</label><select id='tf'></select><span style='flex:1'></span><span class='seg' id='seg'><button data-m='d' class='on'>Days</button><button data-m='h'>Hours</button></span></div>\n<div id='note'></div>\n<div class='cards' id='cards'></div>\n<div class='grid'>\n<div class='panel'><h2 id='rt'>Top resources</h2><div class='chartbox'><canvas id='rank'></canvas></div></div>\n<div class='panel'><h2 id='tt'>By resource type</h2><div class='chartbox'><canvas id='type'></canvas></div></div>\n</div>\n<div class='panel' style='margin-top:16px'><h2 id='lt'>Locations - most used</h2>\n<table id='loc'><thead><tr><th class='num'>#</th><th>Location</th><th class='num'>Days</th><th class='num'>Hours</th><th class='num'>Bookings</th><th class='num'>Resources</th></tr></thead><tbody></tbody></table></div>\n<div class='panel' style='margin-top:16px'><h2>All resources</h2>\n<table id='tbl'><thead><tr><th data-s='t'>Type</th><th data-s='n'>Resource</th><th data-s='L'>Location</th><th class='num' data-s='d'>Days</th><th class='num' data-s='h'>Hours</th><th class='num' data-s='b'>Bookings</th></tr></thead><tbody></tbody></table>\n</div></div>\n<script>\nvar B = ${B};\nvar LOAD_S='${loadStart}', LOAD_E='${endDay}', DEF_F='${defaultFrom}', PY_S='${priorStart}', PY_E='${priorEnd}';\nvar from=DEF_F, to=LOAD_E, metric='d', tf='', sk='d', sd=-1, rankC, typeC, ROWS=[];\nvar PAL=['#6A3CE3','#9B7BEB','#E8A317','#3CB9C4','#E0609B','#6FB57A','#F2784B','#5A6ACF'];\nfunction one(n){return (Math.round(n*10)/10).toLocaleString();}\nfunction inRange(b){return b.s>=from && b.s<=to;}\nfunction daysOf(b){var s=b.s,e=b.e;if(b.et==='00:00:00'&&e>s){var d=new Date(e+'T00:00:00Z');d.setUTCDate(d.getUTCDate()-1);e=d.toISOString().slice(0,10);}var out=[];var cur=new Date(s+'T00:00:00Z');var last=new Date(e+'T00:00:00Z');while(cur<=last){out.push(cur.toISOString().slice(0,10));cur.setUTCDate(cur.getUTCDate()+1);}return out;}\nfunction compute(){var m={};B.forEach(function(b){if(!inRange(b))return;var r=m[b.ri];if(!r){r=m[b.ri]={n:b.rn,t:b.rt,L:b.rl,days:{},h:0,b:0};}r.b+=1;r.h+=b.h;daysOf(b).forEach(function(d){r.days[d]=1;});});ROWS=Object.keys(m).map(function(k){var r=m[k];return {n:r.n,t:r.t,L:r.L,d:Object.keys(r.days).length,h:Math.round(r.h*100)/100,b:r.b};});}\nfunction types(){var s=[];ROWS.forEach(function(r){if(s.indexOf(r.t)<0)s.push(r.t);});return s.sort();}\nfunction view(){return ROWS.filter(function(r){return !tf||r.t===tf;});}\nfunction fillTypes(){var sel=document.getElementById('tf');var keep=tf;sel.innerHTML='<option>All types</option>'+types().map(function(t){return '<option>'+t+'</option>';}).join('');if(types().indexOf(keep)>=0){tf=keep;sel.value=keep;}else{tf='';}}\nfunction cards(){var v=view();var td=v.reduce(function(a,r){return a+r.d;},0);var th=v.reduce(function(a,r){return a+r.h;},0);var c=[['Resources',v.length],['Resource types',types().length],['Total days booked',td.toLocaleString()],['Total hours booked',one(th)]];document.getElementById('cards').innerHTML=c.map(function(x){return '<div class=card><div class=k>'+x[0]+'</div><div class=v>'+x[1]+'</div></div>';}).join('');}\nfunction rank(){var key=metric;var v=view().slice().sort(function(a,b){return b[key]-a[key];}).slice(0,15);document.getElementById('rt').textContent='Top resources by '+(metric==='d'?'days':'hours')+' booked';if(rankC)rankC.destroy();rankC=new Chart(document.getElementById('rank'),{type:'bar',data:{labels:v.map(function(r){return r.n;}),datasets:[{data:v.map(function(r){return r[key];}),backgroundColor:'#6A3CE3',borderRadius:5}]},options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',plugins:{legend:{display:false}},scales:{y:{ticks:{font:{size:11}}}}}});}\nfunction typeChart(){var key=metric;var v=view();var ts=types();var vals=ts.map(function(t){return v.filter(function(r){return r.t===t;}).reduce(function(a,r){return a+r[key];},0);});document.getElementById('tt').textContent='By resource type ('+(metric==='d'?'days':'hours')+')';if(typeC)typeC.destroy();typeC=new Chart(document.getElementById('type'),{type:'doughnut',data:{labels:ts,datasets:[{data:vals,backgroundColor:ts.map(function(x,i){return PAL[i%PAL.length];})}]},options:{responsive:true,maintainAspectRatio:false,cutout:'58%',plugins:{legend:{position:'bottom',labels:{font:{size:11}}}}}});}\nfunction locAgg(){var v=view();var m={};v.forEach(function(r){var k=r.L||'No location';if(!m[k])m[k]={loc:k,d:0,h:0,b:0,res:0};m[k].d+=r.d;m[k].h+=r.h;m[k].b+=r.b;m[k].res+=1;});var a=Object.keys(m).map(function(k){return m[k];});a.sort(function(x,y){return y[metric]-x[metric];});return a;}\nfunction locTable(){document.getElementById('lt').textContent='Locations - most used (by '+(metric==='d'?'days':'hours')+')';document.querySelector('#loc tbody').innerHTML=locAgg().map(function(r,i){return '<tr><td class=\"num rankcell\">'+(i+1)+'</td><td>'+r.loc+'</td><td class=num>'+r.d.toLocaleString()+'</td><td class=num>'+one(r.h)+'</td><td class=num>'+r.b.toLocaleString()+'</td><td class=num>'+r.res+'</td></tr>';}).join('');}\nfunction tbl(){var v=view().slice().sort(function(a,b){var x=a[sk],y=b[sk];if(typeof x==='string')return x.localeCompare(y)*sd;return (x-y)*sd;});document.querySelector('#tbl tbody').innerHTML=v.map(function(r){return '<tr><td><span class=chip>'+r.t+'</span></td><td>'+r.n+'</td><td>'+r.L+'</td><td class=num>'+r.d.toLocaleString()+'</td><td class=num>'+one(r.h)+'</td><td class=num>'+r.b.toLocaleString()+'</td></tr>';}).join('');}\nfunction render(){cards();rank();typeChart();locTable();tbl();document.getElementById('note').textContent=view().length?'':'No bookings in the selected date range.';}\nfunction recompute(){compute();fillTypes();render();}\nfunction setRange(a,b){from=a;to=b;document.getElementById('ds').value=a;document.getElementById('de').value=b;recompute();}\ndocument.getElementById('ds').addEventListener('change',function(e){from=e.target.value||LOAD_S;recompute();});\ndocument.getElementById('de').addEventListener('change',function(e){to=e.target.value||LOAD_E;recompute();});\ndocument.getElementById('p13').addEventListener('click',function(){setRange(DEF_F,LOAD_E);});\ndocument.getElementById('ppy').addEventListener('click',function(){setRange(PY_S,PY_E);});\ndocument.getElementById('reset').addEventListener('click',function(){setRange(LOAD_S,LOAD_E);});\ndocument.getElementById('tf').addEventListener('change',function(e){tf=(e.target.selectedIndex===0)?'':e.target.value;render();});\nArray.prototype.forEach.call(document.querySelectorAll('#seg button'),function(b){b.addEventListener('click',function(){Array.prototype.forEach.call(document.querySelectorAll('#seg button'),function(x){x.classList.remove('on');});b.classList.add('on');metric=b.getAttribute('data-m');render();});});\nArray.prototype.forEach.call(document.querySelectorAll('#tbl th'),function(th){th.addEventListener('click',function(){var k=th.getAttribute('data-s');if(!k)return;sd=(sk===k)?-sd:-1;sk=k;tbl();});});\nrecompute();\n</script></body></html>`;\nconst fileName = 'Resource Utilization Dashboard ' + loadStart + ' to ' + endDay + '.html';\nreturn [{ json: { fileName: fileName }, binary: { data: { data: Buffer.from(html, 'utf8').toString('base64'), fileName: fileName, mimeType: 'text/html', fileExtension: 'html' } } }];"
+      },
+      "id": "55404258-bc43-4971-bda1-3d32e3ff1620",
+      "name": "Build Dashboard",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        240
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Build Window",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run Utilization Report": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Dashboard Link": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Window": {
+      "main": [
+        [
+          {
+            "node": "Fetch Resource Bookings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Resource Bookings": {
+      "main": [
+        [
+          {
+            "node": "Prepare Bookings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Bookings": {
+      "main": [
+        [
+          {
+            "node": "Build Dashboard",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Dashboard": {
+      "main": [
+        [
+          {
+            "node": "Serve Dashboard",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true,
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed"
+  },
+  "tags": []
+}

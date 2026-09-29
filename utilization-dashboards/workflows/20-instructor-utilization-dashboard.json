@@ -1,0 +1,316 @@
+{
+  "name": "Instructor Utilization - Dashboard",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "c424dda2-d83b-4a3d-bb96-8450e805c74f",
+        "authentication": "basicAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "3516657d-427c-4056-ab10-9ca48505fde0",
+      "name": "Dashboard Link",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        240
+      ],
+      "webhookId": "9de8dc9e-8681-4194-b927-1160125a6b8b",
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "",
+          "name": "Basic Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "apiUrl",
+              "name": "apiUrl",
+              "value": "https://api.getadministrate.com/graphql",
+              "type": "string"
+            },
+            {
+              "id": "lookbackMonths",
+              "name": "lookbackMonths",
+              "value": 13,
+              "type": "number"
+            },
+            {
+              "id": "namesFirst",
+              "name": "namesFirst",
+              "value": 1000,
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "b50c4223-cb82-41b0-b365-c8052a91482e",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        224,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 13 months + prior calendar year window (relative to now).\nconst cfg = $('Config').first().json;\nconst months = Number(cfg.lookbackMonths) || 13;\nconst now = new Date();\nconst pad = n => (n < 10 ? '0' + n : '' + n);\nconst fmt = dt => dt.getUTCFullYear() + '-' + pad(dt.getUTCMonth() + 1) + '-' + pad(dt.getUTCDate());\nconst back = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - months, now.getUTCDate()));\nconst defaultFrom = fmt(back);\nconst py = now.getUTCFullYear() - 1;\nconst priorStart = py + '-01-01';\nconst priorEnd = py + '-12-31';\nconst loadStart = (defaultFrom < priorStart) ? defaultFrom : priorStart;\nconst endDay = fmt(now);\nreturn [{ json: { startDay: loadStart, endDay: endDay, defaultFrom: defaultFrom, priorStart: priorStart, priorEnd: priorEnd, generatedAt: now.toISOString() } }];"
+      },
+      "id": "c8fab27b-7e80-4fcd-a884-0f30b8071596",
+      "name": "Build Window",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $(\"Config\").first().json.apiUrl }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ query: \"query($first:Int!){ staff(first:$first, filters:[{field: staffType, operation: eq, value: \\\"instructor\\\"},{field: contactHasLeftCompany, operation: eq, value: \\\"false\\\"}]){ edges{ node{ contact{ id firstName lastName } } } } }\", variables: { first: $(\"Config\").first().json.namesFirst } }) }}",
+        "options": {}
+      },
+      "id": "1af0a83b-031f-4d51-b6f3-4857401e79e8",
+      "name": "Fetch Instructor Names",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        672,
+        240
+      ],
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Build an opaque-id -> name map, live (names never persisted).\nconst body = $input.first() ? $input.first().json : {};\nconst map = {};\nconst edges = body && body.data && body.data.staff && body.data.staff.edges;\nif(Array.isArray(edges)){ edges.forEach(function(e){ const c = e && e.node && e.node.contact; if(c && c.id){ map[c.id] = ((c.firstName||'') + ' ' + (c.lastName||'')).trim() || c.id; } }); }\nreturn [{ json: { map: map, count: Object.keys(map).length } }];"
+      },
+      "id": "566b77d2-ee5f-4908-8969-49d2b5a8b306",
+      "name": "Resolve Names",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        896,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "REPLACE_WITH_INSTRUCTOR_CACHE_DATA_TABLE_ID",
+          "cachedResultName": "Instructor Utilization Cache"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "cacheKey",
+              "keyValue": "instructor"
+            }
+          ]
+        },
+        "limit": 1
+      },
+      "id": "d5a012e9-5c56-453b-aa83-a2cf1179b9cb",
+      "name": "Read Cache",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        1120,
+        240
+      ],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse the cached compact payload back into name-free records.\nconst row = $input.first() ? $input.first().json : {};\nlet obj = { ins:[], crs:[], recs:[], generatedAt:'' };\ntry { if(row && row.payload) obj = JSON.parse(row.payload); } catch(e){}\nconst g = obj.generatedAt || '';\nconst records = (obj.recs||[]).map(function(r){ return { ii: obj.ins[r[0]], ev: obj.crs[r[1]], s: r[2], e: r[3], et: r[4], h: r[5], g: g }; });\nif(!records.length) return [{ json:{ __empty:true, g: g } }];\nreturn records.map(function(json){ return { json: json }; });"
+      },
+      "id": "ce0f6e8f-492f-4cf4-8e6c-16142c2cafd3",
+      "name": "Load Cache",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1344,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "binary",
+        "responseDataSource": "set",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/html; charset=utf-8"
+              },
+              {
+                "name": "Content-Disposition",
+                "value": "inline"
+              },
+              {
+                "name": "Cache-Control",
+                "value": "no-store, must-revalidate"
+              }
+            ]
+          }
+        }
+      },
+      "id": "07f27b63-6c5d-4853-85c1-7e0e10cdf5de",
+      "name": "Serve Dashboard",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1792,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Instructor dashboard. Records are name-free (opaque id). Names + active-instructor allow-list come from the live map (excludes Left Company = Yes).\nconst win = $('Build Window').first().json;\nconst nameMap = ($('Resolve Names').first().json.map) || {};\nconst rows = $input.all().map(i => i.json).filter(r => !r.__empty);\nconst loadStart = String(win.startDay || '').slice(0,10);\nconst endDay = String(win.endDay || '').slice(0,10);\nconst defaultFrom = String(win.defaultFrom || loadStart).slice(0,10);\nconst priorStart = String(win.priorStart || '').slice(0,10);\nconst priorEnd = String(win.priorEnd || '').slice(0,10);\nconst cacheTime = (rows[0] && rows[0].g) ? String(rows[0].g).slice(0,19).replace('T',' ') : 'n/a';\nconst sub = 'Loaded ' + loadStart + ' to ' + endDay + ' (active instructors only) | data as of ' + cacheTime;\nconst B = JSON.stringify(rows.map(function(r){ return { ii:r.ii, ev:r.ev, s:r.s, e:r.e, et:r.et, h:r.h }; }));\nconst NM = JSON.stringify(nameMap);\nconst html = `<!DOCTYPE html>\n<html lang='en'><head><meta charset='utf-8'>\n<meta name='viewport' content='width=device-width, initial-scale=1'>\n<title>Instructor Utilization</title>\n<script src='https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js'></script>\n<style>\n:root{--p:#6A3CE3;--pd:#4A25A8;--ink:#1c1233;--muted:#6b6580;--bg:#f5f3fb;--card:#fff;--line:#e7e2f5}\n*{box-sizing:border-box}\nbody{margin:0;font-family:Inter,system-ui,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--ink)}\nheader{background:linear-gradient(120deg,var(--p),var(--pd));color:#fff;padding:20px 24px}\nheader h1{margin:0;font-size:19px}\nheader p{margin:4px 0 0;font-size:13px;opacity:.85}\n.wrap{max-width:1180px;margin:0 auto;padding:20px 24px 56px}\n.bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:16px 0}\n.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}\n.seg button{border:0;background:#fff;font:inherit;padding:8px 14px;cursor:pointer;color:var(--ink)}\n.seg button.on{background:var(--p);color:#fff}\nlabel{font-size:13px;color:var(--muted)}\nselect,input[type=date]{font:inherit;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);max-width:280px}\n.btn{border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:8px;padding:8px 12px;font:inherit;cursor:pointer}\n.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:6px 0 20px}\n.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px}\n.card .k{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}\n.card .v{font-size:26px;font-weight:700;margin-top:6px}\n.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}\n.panel{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px}\n.panel h2{margin:0 0 12px;font-size:14px}\n.chartbox{position:relative;height:300px}\ntable{width:100%;border-collapse:collapse;font-size:13px}\nth,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line)}\nth{color:var(--muted);cursor:pointer}\ntd.num,th.num{text-align:right}\n#note{margin:8px 0;color:#8a6400;font-size:13px}\n@media(max-width:820px){.cards{grid-template-columns:repeat(2,1fr)}.grid{grid-template-columns:1fr}}\n</style></head>\n<body>\n<header><h1>Instructor Utilization</h1><p>${sub}</p></header>\n<div class='wrap'>\n<div class='bar'><label>From</label><input type='date' id='ds' min='${loadStart}' max='${endDay}' value='${defaultFrom}'><label>To</label><input type='date' id='de' min='${loadStart}' max='${endDay}' value='${endDay}'><button id='p13' class='btn'>Last 13 months</button><button id='ppy' class='btn'>Prior year</button><button id='reset' class='btn'>Full range</button><label>Course</label><select id='cf'></select><span style='flex:1'></span><span class='seg' id='seg'><button data-m='d' class='on'>Days</button><button data-m='h'>Hours</button></span></div>\n<div id='note'></div>\n<div class='cards' id='cards'></div>\n<div class='grid'>\n<div class='panel'><h2 id='rt'>Top instructors</h2><div class='chartbox'><canvas id='rank'></canvas></div></div>\n<div class='panel'><h2 id='tt'>Top courses</h2><div class='chartbox'><canvas id='type'></canvas></div></div>\n</div>\n<div class='panel' style='margin-top:16px'><h2 id='lt'>Courses - most taught</h2>\n<table id='loc'><thead><tr><th class='num'>#</th><th>Course</th><th class='num'>Days</th><th class='num'>Hours</th><th class='num'>Sessions</th><th class='num'>Instructors</th></tr></thead><tbody></tbody></table></div>\n<div class='panel' style='margin-top:16px'><h2>All instructors</h2>\n<table id='tbl'><thead><tr><th data-s='n'>Instructor</th><th class='num' data-s='d'>Days taught</th><th class='num' data-s='h'>Hours taught</th><th class='num' data-s='b'>Sessions</th><th class='num' data-s='c'>Courses</th></tr></thead><tbody></tbody></table>\n</div></div>\n<script>\nvar B = ${B};\nvar NAMEMAP = ${NM};\nvar LOAD_S='${loadStart}', LOAD_E='${endDay}', DEF_F='${defaultFrom}', PY_S='${priorStart}', PY_E='${priorEnd}';\nvar from=DEF_F, to=LOAD_E, metric='d', cf='', sk='d', sd=-1, rankC, courseC, ROWS=[];\nfunction one(n){return (Math.round(n*10)/10).toLocaleString();}\nfunction nm(id){return NAMEMAP[id]||id;}\nfunction active(id){return Object.prototype.hasOwnProperty.call(NAMEMAP,id);}\nfunction inRange(b){return b.s>=from && b.s<=to;}\nfunction daysOf(b){var s=b.s,e=b.e;if(b.et==='00:00:00'&&e>s){var d=new Date(e+'T00:00:00Z');d.setUTCDate(d.getUTCDate()-1);e=d.toISOString().slice(0,10);}var out=[];var cur=new Date(s+'T00:00:00Z');var last=new Date(e+'T00:00:00Z');while(cur<=last){out.push(cur.toISOString().slice(0,10));cur.setUTCDate(cur.getUTCDate()+1);}return out;}\nfunction base(){return B.filter(function(r){return inRange(r) && active(r.ii);});}\nfunction courses(){var s=[];base().forEach(function(r){if(s.indexOf(r.ev)<0)s.push(r.ev);});return s.sort();}\nfunction compute(){var m={};base().forEach(function(r){if(cf && r.ev!==cf)return;var x=m[r.ii];if(!x){x=m[r.ii]={ii:r.ii,days:{},h:0,b:0,cs:{}};}x.b+=1;x.h+=r.h;x.cs[r.ev]=1;daysOf(r).forEach(function(d){x.days[d]=1;});});ROWS=Object.keys(m).map(function(k){var x=m[k];return {n:nm(x.ii),d:Object.keys(x.days).length,h:Math.round(x.h*100)/100,b:x.b,c:Object.keys(x.cs).length};});}\nfunction courseAgg(){var m={};base().forEach(function(r){var x=m[r.ev];if(!x){x=m[r.ev]={ev:r.ev,days:{},h:0,b:0,ins:{}};}x.b+=1;x.h+=r.h;x.ins[r.ii]=1;daysOf(r).forEach(function(d){x.days[d]=1;});});var a=Object.keys(m).map(function(k){var x=m[k];return {ev:x.ev,d:Object.keys(x.days).length,h:Math.round(x.h*100)/100,b:x.b,ins:Object.keys(x.ins).length};});a.sort(function(p,q){return q[metric]-p[metric];});return a;}\nfunction fillCourses(){var sel=document.getElementById('cf');var keep=cf;sel.innerHTML='<option>All courses</option>'+courses().map(function(t){return '<option>'+t+'</option>';}).join('');if(courses().indexOf(keep)>=0){cf=keep;sel.value=keep;}else{cf='';}}\nfunction cards(){var td=ROWS.reduce(function(a,r){return a+r.d;},0);var th=ROWS.reduce(function(a,r){return a+r.h;},0);var c=[['Instructors',ROWS.length],['Courses',courses().length],['Total days taught',td.toLocaleString()],['Total hours taught',one(th)]];document.getElementById('cards').innerHTML=c.map(function(x){return '<div class=card><div class=k>'+x[0]+'</div><div class=v>'+x[1]+'</div></div>';}).join('');}\nfunction rank(){var key=metric;var v=ROWS.slice().sort(function(a,b){return b[key]-a[key];}).slice(0,15);document.getElementById('rt').textContent='Top instructors by '+(metric==='d'?'days':'hours')+' taught';if(rankC)rankC.destroy();rankC=new Chart(document.getElementById('rank'),{type:'bar',data:{labels:v.map(function(r){return r.n;}),datasets:[{data:v.map(function(r){return r[key];}),backgroundColor:'#6A3CE3',borderRadius:5}]},options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',plugins:{legend:{display:false}},scales:{y:{ticks:{font:{size:11}}}}}});}\nfunction courseChart(){var key=metric;var a=courseAgg().slice(0,12);document.getElementById('tt').textContent='Top courses by '+(metric==='d'?'days':'hours');if(courseC)courseC.destroy();courseC=new Chart(document.getElementById('type'),{type:'bar',data:{labels:a.map(function(r){return r.ev;}),datasets:[{data:a.map(function(r){return r[key];}),backgroundColor:'#3CB9C4',borderRadius:5}]},options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',plugins:{legend:{display:false}},scales:{y:{ticks:{font:{size:10}}}}}});}\nfunction courseTable(){document.getElementById('lt').textContent='Courses - most taught (by '+(metric==='d'?'days':'hours')+')';document.querySelector('#loc tbody').innerHTML=courseAgg().map(function(r,i){return '<tr><td class=num>'+(i+1)+'</td><td>'+r.ev+'</td><td class=num>'+r.d.toLocaleString()+'</td><td class=num>'+one(r.h)+'</td><td class=num>'+r.b.toLocaleString()+'</td><td class=num>'+r.ins+'</td></tr>';}).join('');}\nfunction tbl(){var v=ROWS.slice().sort(function(a,b){var x=a[sk],y=b[sk];if(typeof x==='string')return x.localeCompare(y)*sd;return (x-y)*sd;});document.querySelector('#tbl tbody').innerHTML=v.map(function(r){return '<tr><td>'+r.n+'</td><td class=num>'+r.d.toLocaleString()+'</td><td class=num>'+one(r.h)+'</td><td class=num>'+r.b.toLocaleString()+'</td><td class=num>'+r.c.toLocaleString()+'</td></tr>';}).join('');}\nfunction render(){cards();rank();courseChart();courseTable();tbl();document.getElementById('note').textContent=ROWS.length?'':'No teaching sessions in the selected date range.';}\nfunction recompute(){compute();fillCourses();render();}\nfunction setRange(a,b){from=a;to=b;document.getElementById('ds').value=a;document.getElementById('de').value=b;recompute();}\ndocument.getElementById('ds').addEventListener('change',function(e){from=e.target.value||LOAD_S;recompute();});\ndocument.getElementById('de').addEventListener('change',function(e){to=e.target.value||LOAD_E;recompute();});\ndocument.getElementById('p13').addEventListener('click',function(){setRange(DEF_F,LOAD_E);});\ndocument.getElementById('ppy').addEventListener('click',function(){setRange(PY_S,PY_E);});\ndocument.getElementById('reset').addEventListener('click',function(){setRange(LOAD_S,LOAD_E);});\ndocument.getElementById('cf').addEventListener('change',function(e){cf=(e.target.selectedIndex===0)?'':e.target.value;compute();render();});\nArray.prototype.forEach.call(document.querySelectorAll('#seg button'),function(b){b.addEventListener('click',function(){Array.prototype.forEach.call(document.querySelectorAll('#seg button'),function(x){x.classList.remove('on');});b.classList.add('on');metric=b.getAttribute('data-m');rank();courseChart();courseTable();});});\nArray.prototype.forEach.call(document.querySelectorAll('#tbl th'),function(th){th.addEventListener('click',function(){var k=th.getAttribute('data-s');if(!k)return;sd=(sk===k)?-sd:-1;sk=k;tbl();});});\nrecompute();\n</script></body></html>`;\nconst fileName = 'Instructor Utilization Dashboard ' + loadStart + ' to ' + endDay + '.html';\nreturn [{ json: { fileName: fileName }, binary: { data: { data: Buffer.from(html, 'utf8').toString('base64'), fileName: fileName, mimeType: 'text/html', fileExtension: 'html' } } }];"
+      },
+      "id": "d1e0ddd9-09d4-4e01-bcbc-13b129649887",
+      "name": "Build Dashboard",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1568,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Instructor Utilization - Dashboard\n\nOpen the **Dashboard Link** production URL in a browser. It is protected by HTTP Basic Auth, so you choose the username and password in the **Basic Auth** credential. No password is stored in this workflow.\n\n1. **Config** sets the API URL, `lookbackMonths` (default 13) and `namesFirst`, the number of instructors whose names are looked up (default 1000).\n2. **Build Window** works out the default view (last 13 months) and the Prior year preset.\n3. **Fetch Instructor Names** / **Resolve Names** look up the names of current instructors live, so names are never stored in the cache.\n4. **Read Cache** / **Load Cache** read the records the Builder workflow saved.\n5. **Build Dashboard** / **Serve Dashboard** return a self-contained Chart.js HTML page with teaching hours and days per instructor.\n\n**Before running:** run the Builder workflow once. Attach your Administrate OAuth2 credential to **Fetch Instructor Names** and a Basic Auth credential to **Dashboard Link**. Select the same cache Data Table in **Read Cache**.",
+        "height": 520,
+        "width": 560,
+        "color": 4
+      },
+      "id": "26d64cb9-e4a6-4789-bab9-216d92ffd82a",
+      "name": "About This Workflow",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -560
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Dashboard Link": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Build Window",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Window": {
+      "main": [
+        [
+          {
+            "node": "Fetch Instructor Names",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Instructor Names": {
+      "main": [
+        [
+          {
+            "node": "Resolve Names",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resolve Names": {
+      "main": [
+        [
+          {
+            "node": "Read Cache",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Cache": {
+      "main": [
+        [
+          {
+            "node": "Load Cache",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load Cache": {
+      "main": [
+        [
+          {
+            "node": "Build Dashboard",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Dashboard": {
+      "main": [
+        [
+          {
+            "node": "Serve Dashboard",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true,
+    "binaryMode": "separate"
+  },
+  "tags": []
+}

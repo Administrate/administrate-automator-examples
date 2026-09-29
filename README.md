@@ -42,6 +42,7 @@ For detailed setup instructions, visit the [Automator documentation](https://sup
 | [Daily Event Resourcing Gaps Digest](./event-resourcing-digest) | Daily email listing upcoming Events that are missing instructors, rooms or other resources | 1.0.0 |
 | [Sync Event Total Session Hours](./event-total-session-hours) | Keep an Event custom field equal to the total hours of its published Sessions | 1.0.0 |
 | [Normalise Contact Mobile Numbers](./normalise-contact-mobile-numbers) | Clean up Contact mobile number formatting whenever a Contact is created or updated (UK rules by default) | 1.0.0 |
+| [Instructor and Resource Utilization Dashboards](./utilization-dashboards) | Password-protected dashboards showing instructor and resource utilisation from Administrate data | 1.0.0 |
 
 ## How to Import a Workflow
 

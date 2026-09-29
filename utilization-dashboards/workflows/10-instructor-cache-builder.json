@@ -1,0 +1,334 @@
+{
+  "name": "Instructor Utilization - Builder (cache)",
+  "nodes": [
+    {
+      "id": "637f0dc7-aef6-44d2-9944-ef4d10569c6a",
+      "name": "Run Instructor Report",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        336
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "0a619dbb-b07a-42b6-b9b5-718912dc2211",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        224,
+        240
+      ],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "apiUrl",
+              "name": "apiUrl",
+              "value": "https://api.getadministrate.com/graphql",
+              "type": "string"
+            },
+            {
+              "id": "lookbackMonths",
+              "name": "lookbackMonths",
+              "value": 13,
+              "type": "number"
+            },
+            {
+              "id": "pageSize",
+              "name": "pageSize",
+              "value": 200,
+              "type": "number"
+            },
+            {
+              "id": "maxPages",
+              "name": "maxPages",
+              "value": 100,
+              "type": "number"
+            },
+            {
+              "id": "requestIntervalMs",
+              "name": "requestIntervalMs",
+              "value": 0,
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "b7267926-3d3e-4a88-a4b6-2e3e27630768",
+      "name": "Build Window",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        240
+      ],
+      "parameters": {
+        "jsCode": "// Loads 13 months + full prior calendar year. Default view = last 13 months.\nconst cfg = $('Config').first().json;\nconst months = Number(cfg.lookbackMonths) || 13;\nconst now = new Date();\nconst pad = n => (n < 10 ? '0' + n : '' + n);\nconst fmt = dt => dt.getUTCFullYear() + '-' + pad(dt.getUTCMonth() + 1) + '-' + pad(dt.getUTCDate());\nconst back = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - months, now.getUTCDate()));\nconst defaultFrom = fmt(back);\nconst py = now.getUTCFullYear() - 1;\nconst priorStart = py + '-01-01';\nconst priorEnd = py + '-12-31';\nconst loadStart = (defaultFrom < priorStart) ? defaultFrom : priorStart;\nconst endDay = fmt(now);\nreturn [{ json: { rangeStart: loadStart + 'T00:00:00Z', rangeEnd: endDay + 'T23:59:59Z', startDay: loadStart, endDay: endDay, defaultFrom: defaultFrom, priorStart: priorStart, priorEnd: priorEnd, generatedAt: now.toISOString() } }];"
+      }
+    },
+    {
+      "id": "bea47fb5-ed20-4c3a-ae87-ce21dcfcd55c",
+      "name": "Fetch Events & Sessions",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        672,
+        240
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $(\"Config\").first().json.apiUrl }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ query: \"query($first:Int!,$after:String,$rangeStart:String!,$rangeEnd:String!){ events(first:$first,after:$after,filters:[{field: timeZonedStart, operation: ge, value:$rangeStart},{field: timeZonedStart, operation: le, value:$rangeEnd}]){ pageInfo{ hasNextPage endCursor } edges{ node{ id title lifecycleState sessions{ edges{ node{ id start end lifecycleState staff{ edges{ node{ staffType contact{ id } } } } } } } } } } }\", variables: { first: $(\"Config\").first().json.pageSize, after: null, rangeStart: $(\"Build Window\").first().json.rangeStart, rangeEnd: $(\"Build Window\").first().json.rangeEnd } }) }}",
+        "options": {
+          "pagination": {
+            "pagination": {
+              "parameters": {
+                "parameters": [
+                  {
+                    "type": "body",
+                    "name": "variables",
+                    "value": "={{ { first: $(\"Config\").first().json.pageSize, after: ($response?.body?.data?.events?.pageInfo?.endCursor ?? null), rangeStart: $(\"Build Window\").first().json.rangeStart, rangeEnd: $(\"Build Window\").first().json.rangeEnd } }}"
+                  }
+                ]
+              },
+              "paginationCompleteWhen": "other",
+              "completeExpression": "={{ !$response.body?.data?.events?.pageInfo?.hasNextPage }}",
+              "limitPagesFetched": true,
+              "maxRequests": "={{ $(\"Config\").first().json.maxPages }}",
+              "requestInterval": "={{ $(\"Config\").first().json.requestIntervalMs }}"
+            }
+          }
+        }
+      },
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "id": "72cb28bf-ff5d-4328-9182-7863f51846de",
+      "name": "Prepare Instructor Records",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        896,
+        240
+      ],
+      "parameters": {
+        "jsCode": "// One record per (instructor, teaching session) - NO NAMES (opaque contact id only). Excludes cancelled.\nfunction hoursOf(a,b){const s=new Date(String(a)+'Z').getTime();const e=new Date(String(b)+'Z').getTime();if(!isFinite(s)||!isFinite(e)||e<=s)return 0;return (e-s)/3600000;}\nconst edges=[];\nfor(const item of $input.all()){\n  const body=item.json;\n  if(body && Array.isArray(body.errors) && body.errors.length){ throw new Error('Administrate GraphQL error: '+JSON.stringify(body.errors)); }\n  const e=body && body.data && body.data.events && body.data.events.edges;\n  if(Array.isArray(e)) edges.push(...e);\n}\nconst out=[];\nfor(const ev of edges){\n  const evn=ev && ev.node; if(!evn) continue;\n  if(String(evn.lifecycleState||'').toLowerCase()==='cancelled') continue;\n  const title=evn.title||'(untitled)';\n  const sess=(evn.sessions && evn.sessions.edges)||[];\n  for(const se of sess){\n    const s=se && se.node; if(!s) continue;\n    if(String(s.lifecycleState||'').toLowerCase()==='cancelled') continue;\n    const staff=(s.staff && s.staff.edges)||[];\n    for(const st of staff){\n      const sn=st && st.node; if(!sn) continue;\n      if(String(sn.staffType||'').toLowerCase()!=='instructor') continue;\n      const c=sn.contact||{};\n      out.push({ ii: c.id||'?', s: String(s.start).slice(0,10), e: String(s.end).slice(0,10), et: String(s.end).slice(11,19), h: Math.round(hoursOf(s.start,s.end)*100)/100, ev: title });\n    }\n  }\n}\nif(out.length===0) return [{ json:{ __empty:true } }];\nreturn out.map(json=>({json}));"
+      }
+    },
+    {
+      "id": "2b890ce0-76ab-43a0-a926-08ed4b60aaad",
+      "name": "Daily Refresh",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        40
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "days",
+              "daysInterval": 1,
+              "triggerAtHour": 5,
+              "triggerAtMinute": 0
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "02522bd4-64a6-49ca-9991-1fcb35b5f619",
+      "name": "Save Cache",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        240
+      ],
+      "parameters": {
+        "jsCode": "// Compress name-free records into a compact payload. No PII: opaque instructor ids + course/date/hours only.\nconst records = $input.all().map(i => i.json).filter(r => !r.__empty);\nconst win = $('Build Window').first().json;\nconst ins = []; const insMap = {};\nconst crs = []; const crsMap = {};\nfunction iidx(id){ if(insMap[id]===undefined){ insMap[id]=ins.length; ins.push(id); } return insMap[id]; }\nfunction cidx(name){ if(crsMap[name]===undefined){ crsMap[name]=crs.length; crs.push(name); } return crsMap[name]; }\nconst recs = records.map(function(r){ return [ iidx(r.ii), cidx(r.ev || '(untitled)'), r.s, r.e, r.et, r.h ]; });\nconst payload = JSON.stringify({ ins: ins, crs: crs, recs: recs, generatedAt: win.generatedAt });\nreturn [{ json: { cacheKey: 'instructor', payload: payload, count: records.length } }];"
+      }
+    },
+    {
+      "id": "9c022954-baff-477d-b82d-8a8c529c0f50",
+      "name": "Write Cache",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        1344,
+        240
+      ],
+      "parameters": {
+        "resource": "row",
+        "operation": "upsert",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "REPLACE_WITH_INSTRUCTOR_CACHE_DATA_TABLE_ID",
+          "cachedResultName": "Instructor Utilization Cache"
+        },
+        "matchType": "anyCondition",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "cacheKey",
+              "condition": "eq",
+              "keyValue": "instructor"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "matchingColumns": [
+            "cacheKey"
+          ],
+          "value": {
+            "cacheKey": "instructor",
+            "payload": "={{ $json.payload }}"
+          },
+          "schema": [
+            {
+              "id": "cacheKey",
+              "displayName": "cacheKey",
+              "type": "string",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "payload",
+              "displayName": "payload",
+              "type": "string",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": false
+            }
+          ]
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## Instructor Utilization - Builder (cache)\n\nRuns daily at 05:00 (**Daily Refresh**) or on demand (**Run Instructor Report**).\n\n1. **Config** sets the API URL, the lookback window (`lookbackMonths`, default 13), page size, a page cap (`maxPages`) and a pause between pages (`requestIntervalMs`).\n2. **Build Window** covers the last `lookbackMonths` months plus the whole previous calendar year.\n3. **Fetch Events & Sessions** reads every event in that window, page by page, with its sessions and staff.\n4. **Prepare Instructor Records** keeps one record per instructor per non-cancelled session: instructor contact ID, course title, dates and hours. No names are stored.\n5. **Save Cache** / **Write Cache** compress the records and upsert them into the Data Table row with `cacheKey` = `instructor`.\n\n**Before running:** attach your Administrate OAuth2 credential to **Fetch Events & Sessions**. Select your cache Data Table (columns `cacheKey`, `payload`) in **Write Cache**.\n\nThe **Instructor Utilization - Dashboard** workflow reads this cache.",
+        "height": 520,
+        "width": 560,
+        "color": 4
+      },
+      "id": "52e7d6da-9f3a-4a3c-856e-51649a1b0740",
+      "name": "About This Workflow",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -560
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Run Instructor Report": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Build Window",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Window": {
+      "main": [
+        [
+          {
+            "node": "Fetch Events & Sessions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Events & Sessions": {
+      "main": [
+        [
+          {
+            "node": "Prepare Instructor Records",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Daily Refresh": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Instructor Records": {
+      "main": [
+        [
+          {
+            "node": "Save Cache",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Cache": {
+      "main": [
+        [
+          {
+            "node": "Write Cache",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true
+  },
+  "tags": []
+}
