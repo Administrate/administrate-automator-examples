@@ -1,0 +1,46 @@
+name: Lint
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.13'
+          cache: pip
+          cache-dependency-path: .github/requirements.txt
+      - name: Install Python validators
+        run: python -m pip install --require-hashes -r .github/requirements.txt
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: .github/package-lock.json
+      - name: Install n8n validator
+        run: npm ci --prefix .github --ignore-scripts
+      - name: Validate JSON
+        run: git ls-files -z '*.json' | xargs -0 check-json
+      - name: Validate YAML
+        run: git ls-files -z '*.yml' '*.yaml' | xargs -0 check-yaml
+      - name: Validate n8n workflows
+        run: |
+          node <<'JS'
+          const { globSync, readFileSync } = require('node:fs');
+          const { workflow, validateWorkflowBuilder } = require('./.github/node_modules/@n8n/workflow-sdk');
+          for (const file of globSync('automations/**/*.json')) {
+            const result = validateWorkflowBuilder(workflow.fromJSON(JSON.parse(readFileSync(file, 'utf8'))));
+            for (const issue of result.issues) {
+              console.error(`${file}: ${issue.severity} ${issue.code}: ${issue.message}`);
+            }
+            if (!result.valid) process.exitCode = 1;
+          }
+          JS

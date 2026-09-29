@@ -1,114 +1,40 @@
-# Contributing to Administrate Automator Examples
+# 🤝 Contributing to Administrate Automator Examples
 
-Thank you for your interest in contributing to the Administrate Automator Examples repository! We welcome contributions from the community.
+You can submit a pull request directly without opening an issue first.
 
-## How to Contribute
+## 🧩 Adding an example
 
-### Reporting Issues
+1. Fork the repository and create a branch with a descriptive name, such as `instructor-reminders`.
+2. Add a directory under `automations/` using a lowercase, hyphenated name:
 
-If you encounter a bug or have a suggestion:
-
-1. Check if the issue already exists in [GitHub Issues](https://github.com/Administrate/administrate-automator-examples/issues)
-2. If not, create a new issue with:
-   - Clear title and description
-   - Steps to reproduce (for bugs)
-   - Expected vs actual behavior
-   - Workflow version affected
-   - Screenshots if applicable
-
-### Submitting a New Workflow
-
-We'd love to include your workflow! Here's how:
-
-1. **Fork the repository**
-
-2. **Create a new branch**
-   ```bash
-   git checkout -b feature/my-new-workflow
-   ```
-
-3. **Create the workflow directory**
-   ```
-   my-workflow-name/
+   ```text
+   automations/my-workflow-name/
    ├── README.md
-   ├── workflow.json
-   └── screenshots/ (optional)
+   └── workflow.json
    ```
 
-4. **Follow the README template**
+   For examples with several workflows, use a `workflows/` subdirectory with numbered JSON files such as `10-error-handler.json` and `20-main-workflow.json`. Document the import order and how to connect them. Keep supporting files such as HTML forms with the example.
 
-   Your README should include:
-   - Title and version (start at 1.0.0)
-   - Problem statement
-   - Solution description
-   - Setup instructions
-   - Configuration steps
-   - Usage examples
-   - Troubleshooting tips
+3. Document the problem, solution, prerequisites, setup, configuration, usage, testing and troubleshooting in the example's README. Include required permissions, credentials and any external services. Use an existing example as a starting point.
+4. Export the workflow JSON, remove credentials and customer data and replace instance-specific URLs and IDs with clear placeholders. Leave workflows inactive and remove pinned execution data.
+5. Add a link and a short description to the workflow table in the [main README](README.md), keeping it alphabetically sorted by title.
+6. Submit a pull request explaining what the example does, why it is useful and how you tested it in Automator.
 
-5. **Export your workflow**
-   - Remove any sensitive credentials
-   - Remove instance-specific URLs
-   - Add clear comments in the workflow
-   - Use generic placeholder values
+## 🛠️ Fixing an example
 
-6. **Update main README**
-   - Add your workflow to the table in the main README.md
-   - Keep the list alphabetically sorted
+Keep the change focused on the bug and update any affected setup or usage instructions. Reproduce the failure before making the change, then repeat the same check to confirm the fix. Describe the failure and the testing performed in your pull request.
 
-7. **Submit a Pull Request**
-   - Clear description of what the workflow does
-   - Why it's useful
-   - Any special requirements or dependencies
+## 🎨 Workflow style
 
-### Improving Existing Workflows
+- Preserve the existing two-space JSON indentation and avoid unrelated export changes.
+- Use descriptive node names and group related nodes visually.
+- Use a **Config** node for values users need to change where practical, following the existing examples.
+- Add brief sticky notes for setup requirements or non-obvious logic.
+- Use placeholders such as `REPLACE_WITH_TABLE_ID` and `https://YOUR-N8N-HOST` and explain them in the README.
+- Write documentation in UK English, with emoji in headings and relative links to repository files.
 
-Found a bug or have an improvement?
+## 🧪 Validation
 
-1. Fork the repository
-2. Create a branch: `fix/workflow-name-issue` or `enhancement/workflow-name-feature`
-3. Make your changes
-4. Update the workflow's README changelog
-5. Update the version number (following semver)
-6. Submit a PR with clear description of changes
+CI checks JSON and YAML syntax and runs the official n8n workflow SDK validator on pull requests and pushes to `main`. Validator errors fail CI; warnings are reported for review.
 
-### README Template
-
-```markdown
-# Workflow Name
-
-**Version:** 1.0.0
-**Last Updated:** YYYY-MM-DD
-
-## Problem
-[Describe the problem this workflow solves]
-
-## Solution
-[Describe how the workflow solves it]
-
-## Setup Instructions
-[Step-by-step setup guide]
-
-## Usage
-[How to use the workflow]
-
-## Troubleshooting
-[Common issues and solutions]
-
-## Changelog
-### v1.0.0 (YYYY-MM-DD)
-- Initial release
-```
-
-### Workflow Best Practices
-
-- Use meaningful node names (not "HTTP Request 1")
-- Add sticky notes in the workflow to explain complex logic
-- Group related nodes visually
-- Use consistent naming conventions
-- Add example input/output data where helpful
-- Consider edge cases and error scenarios
-
-## License
-
-By contributing, you agree that your contributions will be licensed under the same license as the project.
+Workflow behaviour needs testing in Administrate Automator with test records, including relevant failure cases and repeat runs. Describe the results and your Automator/n8n version in the pull request, or say if you could not test it. CI does not connect to an Administrate instance or validate custom node parameters against instance-specific definitions.

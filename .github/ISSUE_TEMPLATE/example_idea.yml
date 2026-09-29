@@ -1,0 +1,20 @@
+name: Example idea
+description: Suggest a useful training automation example.
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: 💡 Problem
+      description: What training task needs automating and who would benefit?
+    validations:
+      required: true
+  - type: textarea
+    id: workflow
+    attributes:
+      label: 🧩 Proposed workflow
+      description: Describe the trigger, intended result and any required services or permissions. Remove credentials and customer data.
+    validations:
+      required: true
+  - type: markdown
+    attributes:
+      value: Administrate primarily maintains this repository to share examples. Pull requests with useful new examples are welcome; suggestions do not guarantee implementation.

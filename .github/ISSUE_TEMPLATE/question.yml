@@ -1,0 +1,15 @@
+name: Question
+description: Ask about using or adapting an example.
+body:
+  - type: input
+    id: example
+    attributes:
+      label: 🧩 Example
+      description: The example name or repository path, if relevant.
+  - type: textarea
+    id: question
+    attributes:
+      label: 💬 Question
+      description: What are you trying to do and what have you tried? Remove credentials and customer data.
+    validations:
+      required: true

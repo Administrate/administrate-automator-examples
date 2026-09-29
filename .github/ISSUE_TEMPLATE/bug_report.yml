@@ -1,0 +1,29 @@
+name: Bug report
+description: Report a problem with an existing Automator example.
+body:
+  - type: input
+    id: example
+    attributes:
+      label: 🧩 Example
+      description: The example name or repository path.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: 🔁 Steps to reproduce
+      description: Describe your configuration and how to trigger the problem, without credentials or customer data.
+    validations:
+      required: true
+  - type: textarea
+    id: behaviour
+    attributes:
+      label: 🐛 Expected and actual behaviour
+      description: What did you expect and what happened instead?
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: ⚙️ Environment and errors
+      description: Include your Automator/n8n version if known and relevant error messages. Remove credentials and customer data.
