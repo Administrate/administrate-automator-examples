@@ -56,6 +56,8 @@ For detailed setup instructions, visit the [Automator documentation](https://sup
 6. Configure your Administrate OAuth credentials
 7. Update any instance-specific URLs or parameters as noted in the workflow's README
 
+Some examples are made up of several workflows. These have a `workflows/` folder instead of a single `workflow.json`. Import every file in the numbered order, then follow that example's README to link them together.
+
 ## Contributing
 
 We welcome contributions! If you've created a useful workflow or have improvements to existing ones:
