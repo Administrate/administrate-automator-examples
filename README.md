@@ -40,6 +40,7 @@ For detailed setup instructions, visit the [Automator documentation](https://sup
 | [Waitlist: Timed Offers with Accept/Decline](./waitlist-offer-accept) | Offer freed places to waitlisted learners in turn, hold the place for a set time and record their accept/decline response | 1.0.0 |
 | [Bulk Register Delegates and Record Attendance](./bulk-register-delegates-record-attendance) | A web form to register delegates onto an Event and record their attendance and results in one go | 1.0.0 |
 | [Daily Event Resourcing Gaps Digest](./event-resourcing-digest) | Daily email listing upcoming Events that are missing instructors, rooms or other resources | 1.0.0 |
+| [Sync Event Total Session Hours](./event-total-session-hours) | Keep an Event custom field equal to the total hours of its published Sessions | 1.0.0 |
 
 ## How to Import a Workflow
 

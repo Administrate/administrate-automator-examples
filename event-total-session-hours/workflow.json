@@ -1,0 +1,706 @@
+{
+  "name": "Sync Event Total Session Hours",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Sync Event Total Session Hours\nKeeps a number custom field on each Event equal to the total length of its **published** sessions, so reports and certificates show what is actually scheduled.\n\n**Trigger:** Administrate *Event Updated* webhook (registered automatically when you activate the workflow).\n\n**Setup:** set `customFieldDefinitionKey` in **Config** to the key of a *number* custom field on Events. Set `deductLunchBreak` to `true` to take one hour off sessions of 4.5 hours or more that span 12:00-13:00.\n\n**Loop safety:** writing the field fires *Event Updated* again. The second run sees the value is unchanged and stops at **Value Changed?**.\n\n**Notes:**\n- Session times are treated as local times, so daylight saving changes don't skew durations.\n- Sessions are fetched 100 per page, up to 50 pages.\n- Only the target custom field is written; other custom field values are left alone.\n",
+        "height": 988,
+        "width": 436,
+        "color": 5
+      },
+      "id": "dff1bcef-7980-41e8-a815-5b8e3d7d6da3",
+      "name": "About this workflow",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Config\n- `eventId`: read from the webhook payload (`payload.node.id`). Leave as is.\n- `customFieldDefinitionKey`: the `key` of the Event custom field that holds total hours. **Replace before activating.**\n- `deductLunchBreak`: `false` by default.\n",
+        "height": 556,
+        "width": 320,
+        "color": 6
+      },
+      "id": "438602ca-a060-4498-8ea0-b6c7e057d0c5",
+      "name": "Inputs Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        480,
+        432
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Pagination\nHTTP Request node uses native cursor pagination:\n- `first: 100` per page\n- `after` updated from `pageInfo.endCursor`\n- Stops when `hasNextPage` is false\n- Hard cap of 50 pages (5000 sessions) as a safety limit\n\nEach page becomes its own item, then `Extract Sessions` + `Split Out` flatten them.",
+        "height": 560,
+        "width": 304,
+        "color": 4
+      },
+      "id": "c900548e-72b3-43dd-b00e-bf2dca5d02cb",
+      "name": "Pagination Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        864,
+        432
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Integration logs\n`Build Success Log` / `Build Error Log` produce a log item with: `status`, `timestamp`, `eventId`, `eventTitle`, `totalHours`, `errors`. To keep a record, add a node between the builder and **Merge** that sends it somewhere (Slack, a sheet, a database, the Administrate integration log).\n",
+        "height": 396,
+        "width": 304,
+        "color": 3
+      },
+      "id": "6d635b69-4823-4325-af8c-064117e257fb",
+      "name": "Integration Logs Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1264,
+        432
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "in-1",
+              "name": "eventId",
+              "value": "={{ $json.payload.node.id }}",
+              "type": "string"
+            },
+            {
+              "id": "in-2",
+              "name": "customFieldDefinitionKey",
+              "value": "REPLACE_WITH_EVENT_CUSTOM_FIELD_KEY",
+              "type": "string"
+            },
+            {
+              "id": "in-3",
+              "name": "deductLunchBreak",
+              "value": false,
+              "type": "boolean"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "d82d1904-7740-4fb6-baf5-493fe7d8dcec",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        544,
+        1008
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.getadministrate.com/graphql",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"query\": \"query EventSessions($id: String!, $after: String) {\\n  events(filters: [{ field: id, operation: eq, value: $id }]) {\\n    edges {\\n      node {\\n        id\\n        title\\n        customFieldValues { definitionKey value }\\n        sessions(first: 100, after: $after) {\\n          edges {\\n            node {\\n              id\\n              title\\n              start\\n              end\\n              lifecycleState\\n            }\\n          }\\n          pageInfo { hasNextPage endCursor totalRecords }\\n        }\\n      }\\n    }\\n  }\\n}\",\n  \"variables\": {\n    \"id\": \"{{ $json.eventId }}\",\n    \"after\": null\n  }\n}",
+        "options": {
+          "pagination": {
+            "pagination": {
+              "parameters": {
+                "parameters": [
+                  {
+                    "type": "body",
+                    "name": "variables.after",
+                    "value": "={{ $response.body.data.events.edges[0].node.sessions.pageInfo.endCursor }}"
+                  }
+                ]
+              },
+              "paginationCompleteWhen": "other",
+              "completeExpression": "={{ !$response.body.data.events.edges[0].node.sessions.pageInfo.hasNextPage }}",
+              "limitPagesFetched": true,
+              "maxRequests": 50
+            }
+          }
+        }
+      },
+      "id": "801de2b2-47c8-4f9d-b84c-ce5f92a2039a",
+      "name": "Get Event Sessions",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        752,
+        1008
+      ],
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "ex-1",
+              "name": "sessions",
+              "value": "={{ $json.data.events.edges[0].node.sessions.edges }}",
+              "type": "array"
+            },
+            {
+              "id": "ex-2",
+              "name": "eventTitle",
+              "value": "={{ $json.data.events.edges[0].node.title }}",
+              "type": "string"
+            },
+            {
+              "id": "ex-3",
+              "name": "currentCustomFieldValue",
+              "value": "={{ ($json.data.events.edges[0].node.customFieldValues || []).filter(c => c.definitionKey === $('Config').first().json.customFieldDefinitionKey).map(c => c.value)[0] || '' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "8cc91d7e-cc07-4c9d-84c3-f125513968f3",
+      "name": "Extract Sessions",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        976,
+        1008
+      ]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "sessions",
+        "options": {}
+      },
+      "id": "6a2e2d64-25f5-4c09-8e74-baf81e4a7436",
+      "name": "Split Out Sessions",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        1200,
+        1008
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "d-1",
+              "name": "durationHours",
+              "value": "={{\n(() => {\n  const isPublished = String($json.node.lifecycleState || '').toLowerCase() === 'published';\n  if (!isPublished) return 0;\n\n  const start = DateTime.fromISO($json.node.start, { zone: 'utc' });\n  const end = DateTime.fromISO($json.node.end, { zone: 'utc' });\n  const totalHours = end.diff(start, 'hours').hours;\n\n  // Optional: subtract a 1-hour lunch break from long sessions that span 12:00-13:00\n  if (!$('Config').first().json.deductLunchBreak) return totalHours;\n  const lunchStart = start.set({ hour: 12, minute: 0, second: 0, millisecond: 0 });\n  const lunchEnd = start.set({ hour: 13, minute: 0, second: 0, millisecond: 0 });\n  const overlapsLunch = start < lunchEnd && end > lunchStart;\n  return (totalHours >= 4.5 && overlapsLunch) ? totalHours - 1 : totalHours;\n})()\n}}\n",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "1fa8e8d0-8d7e-4f75-a285-788fcb242364",
+      "name": "Compute Duration",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1408,
+        1008
+      ]
+    },
+    {
+      "parameters": {
+        "fieldsToSummarize": {
+          "values": [
+            {
+              "aggregation": "sum",
+              "field": "durationHours"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "265ac45e-b9a6-4eac-9961-691b82fd42ab",
+      "name": "Sum Hours",
+      "type": "n8n-nodes-base.summarize",
+      "typeVersion": 1.1,
+      "position": [
+        1632,
+        1008
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "ft-1",
+              "name": "totalHours",
+              "value": "={{ Math.round(($json.sum_durationHours ?? 0) * 100) / 100 }}",
+              "type": "number"
+            },
+            {
+              "id": "ft-2",
+              "name": "eventId",
+              "value": "={{ $('Config').first().json.eventId }}",
+              "type": "string"
+            },
+            {
+              "id": "ft-3",
+              "name": "customFieldDefinitionKey",
+              "value": "={{ $('Config').first().json.customFieldDefinitionKey }}",
+              "type": "string"
+            },
+            {
+              "id": "ft-4",
+              "name": "eventTitle",
+              "value": "={{ $('Extract Sessions').first().json.eventTitle }}",
+              "type": "string"
+            },
+            {
+              "id": "ft-5",
+              "name": "currentValue",
+              "value": "={{ $('Extract Sessions').first().json.currentCustomFieldValue }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "c7cdeeeb-56c9-497c-904f-b7693ba81fa3",
+      "name": "Format Total",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1856,
+        1008
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.getadministrate.com/graphql",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"query\": \"mutation UpdateEventCustomField($eventId: ID!, $definitionKey: ID!, $value: String) {\\n  event {\\n    update(eventId: $eventId, input: { customFieldValues: [{ definitionKey: $definitionKey, value: $value }] }) {\\n      errors { label message value }\\n      event {\\n        id\\n        title\\n        customFieldValues { definitionKey value definition { key label } }\\n      }\\n    }\\n  }\\n}\",\n  \"variables\": {\n    \"eventId\": \"{{ $json.eventId }}\",\n    \"definitionKey\": \"{{ $json.customFieldDefinitionKey }}\",\n    \"value\": \"{{ $json.totalHours }}\"\n  }\n}",
+        "options": {}
+      },
+      "id": "decf61a7-f78f-45ee-81c4-6cf1d7298b9f",
+      "name": "Write Total Hours",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2080,
+        1008
+      ],
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "err-top",
+              "leftValue": "={{ ($json.errors || []).length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            },
+            {
+              "id": "err-input",
+              "leftValue": "={{ ($json.data && $json.data.event && $json.data.event.update && $json.data.event.update.errors || []).length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "id": "84b26e21-1349-4823-8127-6776aa162fad",
+      "name": "Has Errors?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2288,
+        1008
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "el-1",
+              "name": "status",
+              "value": "error",
+              "type": "string"
+            },
+            {
+              "id": "el-2",
+              "name": "timestamp",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            },
+            {
+              "id": "el-3",
+              "name": "eventId",
+              "value": "={{ $('Format Total').first().json.eventId }}",
+              "type": "string"
+            },
+            {
+              "id": "el-4",
+              "name": "eventTitle",
+              "value": "={{ $('Format Total').first().json.eventTitle }}",
+              "type": "string"
+            },
+            {
+              "id": "el-5",
+              "name": "errors",
+              "value": "={{ $json.errors || ($json.data && $json.data.event && $json.data.event.update && $json.data.event.update.errors) || [] }}",
+              "type": "array"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "cfa4de8e-5317-4ad0-b228-94689a6089b9",
+      "name": "Build Error Log",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2512,
+        880
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "sl-1",
+              "name": "status",
+              "value": "success",
+              "type": "string"
+            },
+            {
+              "id": "sl-2",
+              "name": "timestamp",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            },
+            {
+              "id": "sl-3",
+              "name": "eventId",
+              "value": "={{ $('Format Total').first().json.eventId }}",
+              "type": "string"
+            },
+            {
+              "id": "sl-4",
+              "name": "eventTitle",
+              "value": "={{ $('Format Total').first().json.eventTitle }}",
+              "type": "string"
+            },
+            {
+              "id": "sl-5",
+              "name": "totalHours",
+              "value": "={{ $('Format Total').first().json.totalHours }}",
+              "type": "number"
+            },
+            {
+              "id": "sl-6",
+              "name": "customFieldDefinitionKey",
+              "value": "={{ $('Format Total').first().json.customFieldDefinitionKey }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "96eb4c4b-a14e-43ec-9f8f-7ec59da791fa",
+      "name": "Build Success Log",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2512,
+        1120
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "63e7c83d-7204-4f3f-919e-46911789272a",
+      "name": "Merge",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        2736,
+        1008
+      ]
+    },
+    {
+      "parameters": {
+        "events": "V2ViaG9va1R5cGU6ZXZlbnRfdXBkYXRlZA==",
+        "name": "Event Updated - Total Session Hours"
+      },
+      "type": "CUSTOM.administrateTrigger",
+      "typeVersion": 1,
+      "position": [
+        336,
+        1008
+      ],
+      "id": "b7205ef9-230f-4e02-9682-31f9acff2c45",
+      "name": "Administrate Trigger",
+      "webhookId": "2a608275-346b-43e6-9553-1b9c83c1359e",
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "vc-1",
+              "leftValue": "={{ Number($json.currentValue) }}",
+              "rightValue": "={{ $json.totalHours }}",
+              "operator": {
+                "type": "number",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "a54c9625-0285-470d-aaa0-33d42b3c8ca5",
+      "name": "Value Changed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2032,
+        1232
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Get Event Sessions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Event Sessions": {
+      "main": [
+        [
+          {
+            "node": "Extract Sessions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Sessions": {
+      "main": [
+        [
+          {
+            "node": "Split Out Sessions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out Sessions": {
+      "main": [
+        [
+          {
+            "node": "Compute Duration",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compute Duration": {
+      "main": [
+        [
+          {
+            "node": "Sum Hours",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sum Hours": {
+      "main": [
+        [
+          {
+            "node": "Format Total",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Total": {
+      "main": [
+        [
+          {
+            "node": "Value Changed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write Total Hours": {
+      "main": [
+        [
+          {
+            "node": "Has Errors?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Errors?": {
+      "main": [
+        [
+          {
+            "node": "Build Error Log",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Success Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Error Log": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Success Log": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Administrate Trigger": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Value Changed?": {
+      "main": [
+        [
+          {
+            "node": "Write Total Hours",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Success Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "tags": []
+}
