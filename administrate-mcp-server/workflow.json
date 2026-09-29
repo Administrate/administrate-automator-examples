@@ -1,0 +1,528 @@
+{
+  "name": "Administrate MCP Server",
+  "nodes": [
+    {
+      "parameters": {
+        "authentication": "bearerAuth",
+        "path": "ae69a510-00b7-4dc1-9199-85eadce5715b"
+      },
+      "id": "074b6610-ad84-4c80-bd7f-d047057cc84e",
+      "name": "Administrate MCP Server",
+      "type": "@n8n/n8n-nodes-langchain.mcpTrigger",
+      "typeVersion": 2,
+      "position": [
+        448,
+        112
+      ],
+      "webhookId": "c9d6fa53-4ded-428c-b65b-562ad13a8154",
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "",
+          "name": "Bearer Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "toolDescription": "Search Administrate events (scheduled course sessions). Returns id, title, code, start, end, lifecycleState, places and course template. Use the filters argument for narrowing; omit it to list the most recent events.",
+        "method": "POST",
+        "url": "https://api.getadministrate.com/graphql",
+        "authentication": "predefinedCredentialType",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ query: 'query mcpEvents($filters: [EventFieldGraphFilter], $first: Int) { events(filters: $filters, first: $first) { edges { node { id title code start end lifecycleState maxPlaces bookedPlaces remainingPlaces isSoldOut courseTemplate { id title } } } } }', variables: { filters: $fromAI('filters', 'Optional JSON array of filter objects. Each object has field, operation, and either value (single scalar, for eq ne gt ge lt le like wordlike) or values (array, REQUIRED for in notin contains). isnull and notnull need neither. IMPORTANT: like needs SQL wildcards such as %excel%, while wordlike matches a bare word with no wildcards. One malformed filter fails the whole request. Allowed field values: id, title, code, start, end, timeZonedStart, timeZonedEnd, classroomStart, classroomEnd, lmsStart, lmsEnd, lifecycleState (draft published cancelled), status, courseTemplateTitle, courseTemplateCode, locationName, locationId, isSoldOut, hasPlacesRemaining, remainingPlaces, bookedPlaces, maxPlaces, minPlaces, learningMode, textSearch, eventOrCourseCodeOrTitle, bookingAccountName, bookingAccountId, staffContactId, dayOfWeek, isActive, createdAt, updatedAt, cancelledAt.', 'json'), first: $fromAI('first', 'Maximum number of events to return. Default 20.', 'number', 20) } }) }}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000
+        },
+        "nodeCredentialType": "administrateOAuth2Api"
+      },
+      "id": "b375642a-c0d7-42d9-9b68-07392f22a5ca",
+      "name": "search_events",
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.5,
+      "position": [
+        0,
+        336
+      ],
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "toolDescription": "Search Administrate course templates (the course catalogue). Returns id, title and code.",
+        "method": "POST",
+        "url": "https://api.getadministrate.com/graphql",
+        "authentication": "predefinedCredentialType",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ query: 'query mcpCourseTemplates($filters: [CourseTemplateFieldGraphFilter], $first: Int) { courseTemplates(filters: $filters, first: $first) { edges { node { id title code lifecycleState } } } }', variables: { filters: $fromAI('filters', 'Optional JSON array of filter objects with field, operation and either value (scalar, for eq ne gt ge lt le like wordlike) or values (array, REQUIRED for in notin contains). like needs SQL wildcards such as %safety%; wordlike matches a bare word. One malformed filter fails the whole request. Allowed field values: id, code, name, title, codeOrTitle, introduction, lmsSummary, lifecycleState, scheduleType, levelId, learningCategoryId, hasPriceInCurrency, hasPriceInRegion, isValidForPortal, withNoEvents, createdAt, updatedAt.', 'json'), first: $fromAI('first', 'Maximum number of templates to return. Default 20.', 'number', 20) } }) }}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000
+        },
+        "nodeCredentialType": "administrateOAuth2Api"
+      },
+      "id": "12978f08-1d74-4054-94d8-aaed6b327792",
+      "name": "search_course_templates",
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.5,
+      "position": [
+        128,
+        336
+      ],
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "toolDescription": "Search Administrate accounts (customer organisations). Returns id, name, email address and website.",
+        "method": "POST",
+        "url": "https://api.getadministrate.com/graphql",
+        "authentication": "predefinedCredentialType",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ query: 'query mcpAccounts($filters: [AccountFieldGraphFilter], $first: Int) { accounts(filters: $filters, first: $first) { edges { node { id name emailAddress website } } } }', variables: { filters: $fromAI('filters', 'Optional JSON array of filter objects with field, operation and either value (scalar, for eq ne gt ge lt le like wordlike) or values (array, REQUIRED for in notin contains). like needs SQL wildcards such as %limited%; wordlike matches a bare word. One malformed filter fails the whole request. Allowed field values: id, name, isIndividual, website, emailAddress, billingEmailAddress, notes, landlinePhoneNumber, addressTown, rootAccountId, vatNumber, companyName, companyId, hasActiveTrainingPass, isCoordinatedByContactId, createdAt, lastUpdatedAt.', 'json'), first: $fromAI('first', 'Maximum number of accounts to return. Default 20.', 'number', 20) } }) }}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000
+        },
+        "nodeCredentialType": "administrateOAuth2Api"
+      },
+      "id": "6057f1bb-9c72-4997-8953-b36739bf2bd3",
+      "name": "search_accounts",
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.5,
+      "position": [
+        256,
+        336
+      ],
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "toolDescription": "Search Administrate contacts (people, including instructors). Returns id, name, email address, instructor flag and owning account.",
+        "method": "POST",
+        "url": "https://api.getadministrate.com/graphql",
+        "authentication": "predefinedCredentialType",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ query: 'query mcpContacts($filters: [ContactFieldGraphFilter], $first: Int) { contacts(filters: $filters, first: $first) { edges { node { id firstName lastName emailAddress isInstructor isStaff account { id name } } } } }', variables: { filters: $fromAI('filters', 'Optional JSON array of filter objects with field, operation and either value (scalar, for eq ne gt ge lt le like wordlike) or values (array, REQUIRED for in notin contains). like needs SQL wildcards such as %smith%; wordlike matches a bare word. One malformed filter fails the whole request. Allowed field values: id, firstName, lastName, name, emailAddress, byNameAccountOrEmail, isInstructor, isStaff, isAdmin, isStaffOrInstructor, canStaffEvent, accountId, accountName, hasLeftCompany, jobRoleId, staffRoleId, staffRoleName, isQualifiedForEventId, isExceptionForEventId, qualifiedForCourseId, approvedCourseIds, speaksLocale, timeZoneName, companyId, companyName, createdAt, lastUpdatedAt.', 'json'), first: $fromAI('first', 'Maximum number of contacts to return. Default 20.', 'number', 20) } }) }}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000
+        },
+        "nodeCredentialType": "administrateOAuth2Api"
+      },
+      "id": "1d84c1fd-4b2a-4822-9e82-27a623bc51ab",
+      "name": "search_contacts",
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.5,
+      "position": [
+        384,
+        336
+      ],
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "toolDescription": "Run an arbitrary GraphQL query or mutation against the Administrate API of your Administrate instance. Use only when no dedicated tool fits. Mutations are namespaced under an entity, for example: mutation ($id: ID!, $input: EventUpdateInput!) { event { update(eventId: $id, input: $input) { errors { label message value } event { id } } } }. Namespaces include event, session, registration, learner, contact, account, courseTemplate, tasks, invoices, opportunities. Every mutation payload exposes errors (label, message, value) plus the mutated object; a non-empty errors list means the write was rejected even though HTTP status is 200. List queries take filters, order, first, offset, after.",
+        "method": "POST",
+        "url": "https://api.getadministrate.com/graphql",
+        "authentication": "predefinedCredentialType",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ query: $fromAI('query', 'The full GraphQL document to execute, as a single string. Use GraphQL variables rather than string interpolation.', 'string'), variables: $fromAI('variables', 'Optional JSON object of GraphQL variables matching the query.', 'json') }) }}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 45000
+        },
+        "nodeCredentialType": "administrateOAuth2Api"
+      },
+      "id": "1c5d6895-94cc-425f-a076-8569a23d2a47",
+      "name": "graphql_request",
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.5,
+      "position": [
+        512,
+        336
+      ],
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "toolDescription": "WRITE. Create a classroom event. The input object requires eventType and timeZoneName and usually courseTemplateId, title, code, timeZonedClassroomStart, timeZonedClassroomEnd, locationId, maxPlaces, lifecycleState (draft, published or cancelled). Returns the created event or a list of field errors.",
+        "method": "POST",
+        "url": "https://api.getadministrate.com/graphql",
+        "authentication": "predefinedCredentialType",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ query: 'mutation mcpCreateClassroomEvent($input: ClassroomEventCreateInput!) { event { createClassroom(input: $input) { errors { label message value } event { id title code start end } } } }', variables: { input: $fromAI('input', 'ClassroomEventCreateInput object. Required keys eventType and timeZoneName. Common optional keys courseTemplateId, title, code, locationId, venueId, maxPlaces, minPlaces, lifecycleState, classroomStartDateTime, classroomEndDateTime, timeZonedClassroomStart, timeZonedClassroomEnd, registrationDeadline, internalNotes, externalNotes.', 'json') } }) }}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 45000
+        },
+        "nodeCredentialType": "administrateOAuth2Api"
+      },
+      "id": "c72cdec9-a0cc-459c-bfad-e60e85678186",
+      "name": "create_classroom_event",
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.5,
+      "position": [
+        640,
+        336
+      ],
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "toolDescription": "WRITE. Update an existing event in your Administrate instance by its id. Returns the updated event or a list of field errors.",
+        "method": "POST",
+        "url": "https://api.getadministrate.com/graphql",
+        "authentication": "predefinedCredentialType",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ query: 'mutation mcpUpdateEvent($eventId: ID!, $input: EventUpdateInput!) { event { update(eventId: $eventId, input: $input) { errors { label message value } event { id title code start end lifecycleState maxPlaces } } } }', variables: { eventId: $fromAI('eventId', 'The base64 global id of the event to update, as returned by search_events.', 'string'), input: $fromAI('input', 'EventUpdateInput object. Optional keys include title, code, locationId, timeZoneName, lifecycleState (draft, published, cancelled), minPlaces, maxPlaces, targetFillRate, courseTemplateId, registrationDeadline, registrationOpensAt, isSoldOut, internalNotes, externalNotes, remoteMeetingUrl.', 'json') } }) }}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 45000
+        },
+        "nodeCredentialType": "administrateOAuth2Api"
+      },
+      "id": "b6631d05-b666-4a46-9cfe-b256c6cfef0e",
+      "name": "update_event",
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.5,
+      "position": [
+        768,
+        336
+      ],
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "toolDescription": "WRITE. Assign a person as staff (instructor or administrator) on an event. Returns the event or a list of field errors.",
+        "method": "POST",
+        "url": "https://api.getadministrate.com/graphql",
+        "authentication": "predefinedCredentialType",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ query: 'mutation mcpAddEventStaff($input: EventStaffInput!) { event { addStaff(input: $input) { errors { label message value } event { id title } } } }', variables: { input: $fromAI('input', 'EventStaffInput object. Required keys contactId and eventId. Optional keys staffRoleId, staffType (instructor or administrator), notes, requiredSessionsOnly.', 'json') } }) }}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 45000
+        },
+        "nodeCredentialType": "administrateOAuth2Api"
+      },
+      "id": "d736232e-88af-4b4c-be95-e0bb83e34936",
+      "name": "add_event_staff",
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.5,
+      "position": [
+        896,
+        336
+      ],
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "toolDescription": "WRITE. Register one or more contacts as learners on an event. Returns the event, the created learners, or a list of field errors.",
+        "method": "POST",
+        "url": "https://api.getadministrate.com/graphql",
+        "authentication": "predefinedCredentialType",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ query: 'mutation mcpRegisterContacts($eventId: ID!, $input: EventRegisterContactsInput!) { event { registerContacts(eventId: $eventId, input: $input) { errors { label message value } event { id title bookedPlaces remainingPlaces } } } }', variables: { eventId: $fromAI('eventId', 'The base64 global id of the event, as returned by search_events.', 'string'), input: $fromAI('input', 'EventRegisterContactsInput object. Required key contacts, an array of contact ids. Optional keys notes, priceLevelId, financialUnitId, amount, brandId, communicationsContactId, orderDate.', 'json') } }) }}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 45000
+        },
+        "nodeCredentialType": "administrateOAuth2Api"
+      },
+      "id": "4fbfc1b6-4fdc-4f54-9583-8191a96c136e",
+      "name": "register_contacts_on_event",
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.5,
+      "position": [
+        1024,
+        336
+      ],
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## Administrate MCP Server\nExposes your Administrate GraphQL API as MCP tools for AI agents and MCP clients.\n\n**Read tools:** search_events, search_course_templates, search_accounts, search_contacts, list_portals.\n**Write tools:** create_classroom_event, update_event, add_event_staff, register_contacts_on_event.\n**Escape hatch:** graphql_request runs any query or mutation.\n\n**Auth:** the MCP endpoint uses Bearer Auth. Create a Bearer Auth credential with a long random token and select it on the **Administrate MCP Server** trigger before you share the URL.\n\nAll tools run as the Administrate OAuth2 credential attached to them, so choose a user with only the permissions you need.\n\nSearch tools return the first N results (argument `first`, default 20). To see more, narrow the filters or raise `first`.",
+        "height": 460,
+        "width": 420,
+        "color": 3
+      },
+      "id": "1b0b2c27-81bd-4587-8b15-2bb80d0b4851",
+      "name": "About This Workflow",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -520,
+        -200
+      ]
+    },
+    {
+      "parameters": {
+        "toolDescription": "List the WebLink and LMS portals of your Administrate instance. Returns each portal id, url, vanity url, availability state (enabled or disabled), whether it is a booking portal or a self-registration portal, single sign-on flags, and the owning brand. Portals on administratelms.com are LMS (student) portals; portals on administrateweblink.com are WebLink booking or catalogue portals.",
+        "method": "POST",
+        "url": "https://api.getadministrate.com/graphql",
+        "authentication": "predefinedCredentialType",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ query: 'query mcpPortals($first: Int) { portals(first: $first) { edges { node { id url vanityUrl availabilityState isBookingPortal isSelfRegistrationPortal singleSignOnOnly autoProvisionLearnersViaSingleSignOn brand { id name } } } } }', variables: { first: $fromAI('first', 'Maximum number of portals to return. Default 50.', 'number', 50) } }) }}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000
+        },
+        "nodeCredentialType": "administrateOAuth2Api"
+      },
+      "id": "db8cdb6c-ac12-4c8f-b73e-52b2022c1668",
+      "name": "list_portals",
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.5,
+      "position": [
+        1120,
+        464
+      ],
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## WARNING: this server can change your data\n\n**The write tools** (create_classroom_event, update_event, add_event_staff, register_contacts_on_event) create and change events, staff assignments and registrations in Administrate.\n\n**graphql_request** runs ANY query or mutation the OAuth2 user is allowed to run. That includes deleting or changing records the dedicated tools never touch.\n\nAn AI client connected to this endpoint can use all of these without asking a person first, unless the client itself asks for confirmation.\n\n- Restrict who can reach the MCP endpoint. Keep the Bearer token secret and rotate it if it leaks.\n- For read-only use, delete the four write tool nodes **and** graphql_request before activating.\n- Test against a non-production instance first.",
+        "height": 460,
+        "width": 460,
+        "color": 3
+      },
+      "id": "ed14b112-399f-4722-8f61-a04116311653",
+      "name": "Warning - Write Tools",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        620,
+        -200
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "search_events": {
+      "ai_tool": [
+        [
+          {
+            "node": "Administrate MCP Server",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "search_course_templates": {
+      "ai_tool": [
+        [
+          {
+            "node": "Administrate MCP Server",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "search_accounts": {
+      "ai_tool": [
+        [
+          {
+            "node": "Administrate MCP Server",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "search_contacts": {
+      "ai_tool": [
+        [
+          {
+            "node": "Administrate MCP Server",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "graphql_request": {
+      "ai_tool": [
+        [
+          {
+            "node": "Administrate MCP Server",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "create_classroom_event": {
+      "ai_tool": [
+        [
+          {
+            "node": "Administrate MCP Server",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "update_event": {
+      "ai_tool": [
+        [
+          {
+            "node": "Administrate MCP Server",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "add_event_staff": {
+      "ai_tool": [
+        [
+          {
+            "node": "Administrate MCP Server",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "register_contacts_on_event": {
+      "ai_tool": [
+        [
+          {
+            "node": "Administrate MCP Server",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "list_portals": {
+      "ai_tool": [
+        [
+          {
+            "node": "Administrate MCP Server",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true,
+    "binaryMode": "separate"
+  },
+  "tags": []
+}

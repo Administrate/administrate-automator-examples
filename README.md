@@ -43,6 +43,7 @@ For detailed setup instructions, visit the [Automator documentation](https://sup
 | [Sync Event Total Session Hours](./event-total-session-hours) | Keep an Event custom field equal to the total hours of its published Sessions | 1.0.0 |
 | [Normalise Contact Mobile Numbers](./normalise-contact-mobile-numbers) | Clean up Contact mobile number formatting whenever a Contact is created or updated (UK rules by default) | 1.0.0 |
 | [Instructor and Resource Utilization Dashboards](./utilization-dashboards) | Password-protected dashboards showing instructor and resource utilisation from Administrate data | 1.0.0 |
+| [Administrate MCP Server](./administrate-mcp-server) | Expose Administrate search and update tools to AI agents such as Claude over the Model Context Protocol | 1.0.0 |
 
 ## How to Import a Workflow
 
