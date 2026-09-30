@@ -81,6 +81,12 @@
               "type": "number"
             },
             {
+              "id": "c14",
+              "name": "SCAN_PAGE_SIZE",
+              "value": 100,
+              "type": "number"
+            },
+            {
               "id": "c08",
               "name": "DRY_RUN",
               "value": false,
@@ -133,7 +139,7 @@
       "parameters": {
         "mode": "runOnceForAllItems",
         "language": "javaScript",
-        "jsCode": "// Reads every upcoming, active registration that changed inside the look-back window.\n// Re-reading a window (rather than reacting to one webhook) means a missed run is\n// caught by the next one.\nconst cfg_obj = $('Config').first().json;\nconst today_str = $now.toISODate();\nconst since_str = $now.minus({ minutes: Number(cfg_obj.LOOKBACK_MINUTES) || 180 }).toUTC().toFormat(\"yyyy-MM-dd'T'HH:mm:ss'Z'\");\nconst query_str = 'query ScanRegistrations { learners(first: 500, filters: [' +\n  '{ field: isActive, operation: eq, value: \"true\" }, ' +\n  '{ field: eventStartDate, operation: ge, value: ' + JSON.stringify(today_str) + ' }, ' +\n  '{ field: lastUpdatedAt, operation: ge, value: ' + JSON.stringify(since_str) + ' }' +\n  ']) { edges { node { id notes contact { id emailAddress personalName { firstName lastName } } event { id } customFieldValues { definitionKey value } } } } }';\nreturn [{ json: { since: since_str, body: { query: query_str } } }];"
+        "jsCode": "// Works out the look-back window. Scan Registrations then pages through every upcoming,\n// active registration changed inside it, so a missed run is caught by the next one.\nconst cfg_obj = $('Config').first().json;\nconst since_str = $now.minus({ minutes: Number(cfg_obj.LOOKBACK_MINUTES) || 180 }).toUTC().toFormat(\"yyyy-MM-dd'T'HH:mm:ss'Z'\");\nconst query_str = 'query ScanRegistrations($today: String!, $since: String!, $first: Int, $after: String) { learners(first: $first, after: $after, filters: [' +\n  '{ field: isActive, operation: eq, value: \"true\" }, ' +\n  '{ field: eventStartDate, operation: ge, value: $today }, ' +\n  '{ field: lastUpdatedAt, operation: ge, value: $since }' +\n  ']) { pageInfo { hasNextPage endCursor } edges { node { id notes contact { id emailAddress personalName { firstName lastName } } event { id } customFieldValues { definitionKey value } } } } }';\nreturn [{ json: { scanQuery: query_str, today: $now.toISODate(), since: since_str, pageSize: Number(cfg_obj.SCAN_PAGE_SIZE) || 100 } }];"
       },
       "id": "089aa0e0-d905-4e2e-ba39-1aff39753ce7",
       "name": "Build Scan Query",
@@ -153,8 +159,27 @@
         "sendBody": true,
         "contentType": "json",
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json.body) }}",
+        "jsonBody": "={{ JSON.stringify({ query: $json.scanQuery, variables: { today: $json.today, since: $json.since, first: $json.pageSize, after: null } }) }}",
         "options": {
+          "pagination": {
+            "pagination": {
+              "completeExpression": "={{ typeof $response === 'undefined' ? true : !($response?.body?.data?.learners?.pageInfo?.hasNextPage) }}",
+              "limitPagesFetched": true,
+              "maxRequests": 50,
+              "paginationCompleteWhen": "other",
+              "paginationMode": "updateAParameterInEachRequest",
+              "parameters": {
+                "parameters": [
+                  {
+                    "name": "variables",
+                    "type": "body",
+                    "value": "={{ { today: $json.today, since: $json.since, first: $json.pageSize, after: (typeof $response === 'undefined' ? null : ($response?.body?.data?.learners?.pageInfo?.endCursor ?? null)) } }}"
+                  }
+                ]
+              },
+              "requestInterval": 0
+            }
+          },
           "response": {
             "response": {
               "neverError": true
@@ -181,7 +206,7 @@
       "parameters": {
         "mode": "runOnceForAllItems",
         "language": "javaScript",
-        "jsCode": "// Keeps only the registrations flagged for substitution: one item per request.\nconst cfg_obj = $('Config').first().json;\nconst res_obj = $input.first().json || {};\nif (res_obj.errors) { throw new Error('Scan query failed: ' + JSON.stringify(res_obj.errors).slice(0, 500)); }\nconst edges_ary = (((res_obj.data || {}).learners || {}).edges || []);\nconst out_ary = [];\nfor (const edge_obj of edges_ary) {\n  const l_obj = edge_obj.node || {};\n  const cf_obj = {};\n  for (const v_obj of (l_obj.customFieldValues || [])) { cf_obj[v_obj.definitionKey] = v_obj.value; }\n  if (cf_obj[cfg_obj.CHANGE_TYPE_FIELD_KEY] !== cfg_obj.VALUE_REQUESTED) { continue; }\n  const contact_obj = l_obj.contact || {};\n  const name_obj = contact_obj.personalName || {};\n  out_ary.push({ json: {\n    learnerId: l_obj.id,\n    learnerNotes: l_obj.notes || '',\n    eventId: (l_obj.event || {}).id || '',\n    outgoingContactId: contact_obj.id || '',\n    outgoingEmail: contact_obj.emailAddress || '',\n    outgoingName: ((name_obj.firstName || '') + ' ' + (name_obj.lastName || '')).trim(),\n    replacementEmail: String(cf_obj[cfg_obj.SUBSTITUTE_EMAIL_FIELD_KEY] || '').trim().toLowerCase()\n  } });\n}\nreturn out_ary;"
+        "jsCode": "// Keeps only the registrations flagged for substitution: one item per request.\n// Scan Registrations returns one item per page of results.\nconst cfg_obj = $('Config').first().json;\nconst out_ary = [];\nconst seen_obj = {};\nfor (const page_obj of $input.all()) {\n  const res_obj = page_obj.json || {};\n  if (res_obj.errors) { throw new Error('Scan query failed: ' + JSON.stringify(res_obj.errors).slice(0, 500)); }\n  for (const edge_obj of (((res_obj.data || {}).learners || {}).edges || [])) {\n    const l_obj = edge_obj.node || {};\n    if (!l_obj.id || seen_obj[l_obj.id]) { continue; }\n    seen_obj[l_obj.id] = true;\n    const cf_obj = {};\n    for (const v_obj of (l_obj.customFieldValues || [])) { cf_obj[v_obj.definitionKey] = v_obj.value; }\n    if (cf_obj[cfg_obj.CHANGE_TYPE_FIELD_KEY] !== cfg_obj.VALUE_REQUESTED) { continue; }\n    const contact_obj = l_obj.contact || {};\n    const name_obj = contact_obj.personalName || {};\n    out_ary.push({ json: {\n      learnerId: l_obj.id,\n      learnerNotes: l_obj.notes || '',\n      eventId: (l_obj.event || {}).id || '',\n      outgoingContactId: contact_obj.id || '',\n      outgoingEmail: contact_obj.emailAddress || '',\n      outgoingName: ((name_obj.firstName || '') + ' ' + (name_obj.lastName || '')).trim(),\n      replacementEmail: String(cf_obj[cfg_obj.SUBSTITUTE_EMAIL_FIELD_KEY] || '').trim().toLowerCase()\n    } });\n  }\n}\nreturn out_ary;"
       },
       "id": "016299b0-c592-4f62-876a-3c9ecfde76a0",
       "name": "Match Requests",
@@ -201,7 +226,7 @@
         "sendBody": true,
         "contentType": "json",
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ query: 'query ReadSubstitution { contacts(filters: [{ field: emailAddress, operation: eq, value: ' + JSON.stringify($json.replacementEmail || 'no-email@invalid') + ' }]) { edges { node { id emailAddress personalName { firstName lastName } } } } events(filters: [{ field: id, operation: eq, value: ' + JSON.stringify($json.eventId) + ' }]) { edges { node { id code title start remainingPlaces internalNotes location { name } learners(first: 500) { edges { node { lifecycleState contact { id } } } } } } } }' }) }}",
+        "jsonBody": "={{ JSON.stringify({ query: 'query ReadSubstitution($email: String!, $eventId: String!) { contacts(filters: [{ field: emailAddress, operation: eq, value: $email }]) { edges { node { id emailAddress personalName { firstName lastName } } } } events(filters: [{ field: id, operation: eq, value: $eventId }]) { edges { node { id code title start remainingPlaces internalNotes location { name } } } } }', variables: { email: $json.replacementEmail || 'no-email@invalid', eventId: $json.eventId || 'none' } }) }}",
         "options": {
           "response": {
             "response": {
@@ -229,7 +254,7 @@
       "parameters": {
         "mode": "runOnceForEachItem",
         "language": "javaScript",
-        "jsCode": "// Checks the request against live data and prepares the writes. Nothing is written here.\nconst cfg_obj = $('Config').first().json;\nconst req_obj = $('Match Requests').item.json;\nconst res_obj = $json || {};\nconst stamp_str = $now.toUTC().toFormat('yyyy-MM-dd HH:mm') + ' UTC';\nconst base_obj = Object.assign({}, req_obj, { stamp: stamp_str });\nconst refuse_fn = function (reason_str) { return { json: Object.assign(base_obj, { action: 'refuse', reason: reason_str }) }; };\nif (res_obj.errors) { return { json: Object.assign(base_obj, { action: 'skip', reason: 'Read failed, will retry on the next run: ' + JSON.stringify(res_obj.errors).slice(0, 300) }) }; }\nif (!req_obj.replacementEmail) { return refuse_fn('No substitute email was entered.'); }\nconst contacts_ary = (((res_obj.data || {}).contacts || {}).edges || []).map(function (e_obj) { return e_obj.node; });\nconst event_obj = ((((res_obj.data || {}).events || {}).edges || [])[0] || {}).node;\nif (!event_obj) { return refuse_fn('The event could not be read.'); }\nif (contacts_ary.length === 0) { return refuse_fn('No contact found with the email ' + req_obj.replacementEmail + '.'); }\nif (contacts_ary.length > 1) { return refuse_fn('Several contacts share the email ' + req_obj.replacementEmail + '.'); }\nconst in_obj = contacts_ary[0];\nif (in_obj.id === req_obj.outgoingContactId) { return refuse_fn('The substitute is the same person as the learner giving up the place.'); }\nconst active_ary = (((event_obj.learners || {}).edges) || []).filter(function (e_obj) { return e_obj.node.lifecycleState === 'active'; }).map(function (e_obj) { return (e_obj.node.contact || {}).id; });\nconst inName_str = (((in_obj.personalName || {}).firstName || '') + ' ' + ((in_obj.personalName || {}).lastName || '')).trim();\nif (active_ary.indexOf(in_obj.id) >= 0) { return refuse_fn(inName_str + ' is already registered on this event.'); }\nif (event_obj.remainingPlaces !== null && event_obj.remainingPlaces !== undefined && Number(event_obj.remainingPlaces) <= 0) {\n  return refuse_fn('The event is full. The substitute is registered before the place is released, so a full event needs one place freed by an administrator first.');\n}\nconst line_str = '[Substitution ' + stamp_str + '] ' + req_obj.outgoingName + ' released the place and ' + inName_str + ' was registered instead. This is a substitution, not a withdrawal.';\nreturn { json: Object.assign(base_obj, {\n  action: 'substitute',\n  incomingContactId: in_obj.id,\n  incomingEmail: in_obj.emailAddress || '',\n  incomingName: inName_str,\n  incomingFirstName: (in_obj.personalName || {}).firstName || inName_str,\n  eventCode: event_obj.code || '',\n  eventTitle: event_obj.title || '',\n  eventStart: String(event_obj.start || '').slice(0, 16).replace('T', ' '),\n  eventLocation: (event_obj.location || {}).name || '',\n  eventNotes: event_obj.internalNotes || '',\n  auditLine: line_str\n}) };"
+        "jsCode": "// Checks the request against live data and prepares the writes. Nothing is written here.\n// Whether the substitute is already registered is checked next, by Check Existing Registration.\nconst cfg_obj = $('Config').first().json;\nconst req_obj = $('Match Requests').item.json;\nconst res_obj = $json || {};\nconst stamp_str = $now.toUTC().toFormat('yyyy-MM-dd HH:mm') + ' UTC';\nconst base_obj = Object.assign({}, req_obj, { stamp: stamp_str });\nconst refuse_fn = function (reason_str) { return { json: Object.assign(base_obj, { action: 'refuse', reason: reason_str }) }; };\nif (res_obj.errors) { return { json: Object.assign(base_obj, { action: 'skip', reason: 'Read failed, will retry on the next run: ' + JSON.stringify(res_obj.errors).slice(0, 300) }) }; }\nif (!req_obj.replacementEmail) { return refuse_fn('No substitute email was entered.'); }\nconst contacts_ary = (((res_obj.data || {}).contacts || {}).edges || []).map(function (e_obj) { return e_obj.node; });\nconst event_obj = ((((res_obj.data || {}).events || {}).edges || [])[0] || {}).node;\nif (!event_obj) { return refuse_fn('The event could not be read.'); }\nif (contacts_ary.length === 0) { return refuse_fn('No contact found with the email ' + req_obj.replacementEmail + '.'); }\nif (contacts_ary.length > 1) { return refuse_fn('Several contacts share the email ' + req_obj.replacementEmail + '.'); }\nconst in_obj = contacts_ary[0];\nif (in_obj.id === req_obj.outgoingContactId) { return refuse_fn('The substitute is the same person as the learner giving up the place.'); }\nconst inName_str = (((in_obj.personalName || {}).firstName || '') + ' ' + ((in_obj.personalName || {}).lastName || '')).trim();\nif (event_obj.remainingPlaces !== null && event_obj.remainingPlaces !== undefined && Number(event_obj.remainingPlaces) <= 0) {\n  return refuse_fn('The event is full. The substitute is registered before the place is released, so a full event needs one place freed by an administrator first.');\n}\nconst line_str = '[Substitution ' + stamp_str + '] ' + req_obj.outgoingName + ' released the place and ' + inName_str + ' was registered instead. This is a substitution, not a withdrawal.';\nreturn { json: Object.assign(base_obj, {\n  action: 'substitute',\n  incomingContactId: in_obj.id,\n  incomingEmail: in_obj.emailAddress || '',\n  incomingName: inName_str,\n  incomingFirstName: (in_obj.personalName || {}).firstName || inName_str,\n  eventCode: event_obj.code || '',\n  eventTitle: event_obj.title || '',\n  eventStart: String(event_obj.start || '').slice(0, 16).replace('T', ' '),\n  eventLocation: (event_obj.location || {}).name || '',\n  eventNotes: event_obj.internalNotes || '',\n  auditLine: line_str\n}) };"
       },
       "id": "9ec8449e-e7af-42e8-a2e9-168d749c1754",
       "name": "Decide",
@@ -237,6 +262,54 @@
       "typeVersion": 2,
       "position": [
         1440,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.getadministrate.com/graphql",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ query: 'query CheckExistingRegistration($contactId: String!, $eventId: String!) { learners(first: 1, filters: [{ field: contactId, operation: eq, value: $contactId }, { field: eventId, operation: eq, value: $eventId }, { field: isCancelled, operation: eq, value: \"false\" }]) { edges { node { id } } } }', variables: { contactId: $json.incomingContactId || 'none', eventId: $json.eventId || 'none' } }) }}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "55ec8570-8885-4dcd-9a26-55d0401b3449",
+      "name": "Check Existing Registration",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1680,
+        100
+      ],
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "language": "javaScript",
+        "jsCode": "// Refuses the request if the substitute already has an active registration on the event.\n// A targeted lookup, so it stays correct however many learners the event has.\nconst dec_obj = $('Decide').item.json;\nif (dec_obj.action !== 'substitute') { return { json: dec_obj }; }\nconst res_obj = $json || {};\nif (res_obj.errors) { return { json: Object.assign({}, dec_obj, { action: 'skip', reason: 'Registration check failed, will retry on the next run: ' + JSON.stringify(res_obj.errors).slice(0, 300) }) }; }\nconst found_ary = (((res_obj.data || {}).learners || {}).edges || []);\nif (found_ary.length > 0) { return { json: Object.assign({}, dec_obj, { action: 'refuse', reason: dec_obj.incomingName + ' is already registered on this event.' }) }; }\nreturn { json: dec_obj };"
+      },
+      "id": "08e76bb5-2397-4d0f-a111-e8511f0eed3c",
+      "name": "Confirm Not Registered",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1920,
         100
       ]
     },
@@ -267,7 +340,7 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        1680,
+        2160,
         100
       ]
     },
@@ -310,7 +383,7 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        1920,
+        2400,
         -120
       ]
     },
@@ -390,7 +463,7 @@
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3.2,
       "position": [
-        1920,
+        2400,
         180
       ]
     },
@@ -417,7 +490,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        2160,
+        2640,
         80
       ],
       "credentials": {
@@ -431,14 +504,14 @@
       "parameters": {
         "mode": "runOnceForEachItem",
         "language": "javaScript",
-        "jsCode": "// registerNamedLearners returns a list of results, one per learner in the input.\nconst dec_obj = $('Decide').item.json;\nconst res_obj = $json || {};\nconst raw_any = ((res_obj.data || {}).event || {}).registerNamedLearners;\nconst results_ary = Array.isArray(raw_any) ? raw_any : (raw_any ? [raw_any] : []);\nlet errs_ary = (res_obj.errors || []).slice();\nlet learners_ary = [];\nfor (const r_obj of results_ary) {\n  errs_ary = errs_ary.concat((r_obj && r_obj.errors) || []);\n  learners_ary = learners_ary.concat((r_obj && r_obj.learners) || []);\n}\nconst ok_bool = errs_ary.length === 0 && learners_ary.length > 0;\nreturn { json: Object.assign({}, dec_obj, {\n  registered: ok_bool,\n  incomingLearnerId: ok_bool ? learners_ary[0].id : '',\n  reason: ok_bool ? '' : 'Administrate refused to register the substitute: ' + (errs_ary.map(function (e_obj) { return e_obj.message; }).join('; ') || 'no learner was returned')\n}) };"
+        "jsCode": "// registerNamedLearners returns a list of results, one per learner in the input.\nconst dec_obj = $('Confirm Not Registered').item.json;\nconst res_obj = $json || {};\nconst raw_any = ((res_obj.data || {}).event || {}).registerNamedLearners;\nconst results_ary = Array.isArray(raw_any) ? raw_any : (raw_any ? [raw_any] : []);\nlet errs_ary = (res_obj.errors || []).slice();\nlet learners_ary = [];\nfor (const r_obj of results_ary) {\n  errs_ary = errs_ary.concat((r_obj && r_obj.errors) || []);\n  learners_ary = learners_ary.concat((r_obj && r_obj.learners) || []);\n}\nconst ok_bool = errs_ary.length === 0 && learners_ary.length > 0;\nreturn { json: Object.assign({}, dec_obj, {\n  registered: ok_bool,\n  incomingLearnerId: ok_bool ? learners_ary[0].id : '',\n  reason: ok_bool ? '' : 'Administrate refused to register the substitute: ' + (errs_ary.map(function (e_obj) { return e_obj.message; }).join('; ') || 'no learner was returned')\n}) };"
       },
       "id": "3233f156-0ed8-46be-b7f0-db266fdb7946",
       "name": "Check Registration",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2400,
+        2880,
         80
       ]
     },
@@ -469,7 +542,7 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        2640,
+        3120,
         80
       ]
     },
@@ -496,7 +569,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        2880,
+        3360,
         -20
       ],
       "credentials": {
@@ -517,7 +590,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        3120,
+        3600,
         -20
       ]
     },
@@ -548,7 +621,7 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        3360,
+        3840,
         -20
       ]
     },
@@ -563,7 +636,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        3600,
+        4080,
         -120
       ]
     },
@@ -590,7 +663,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        3840,
+        4320,
         -120
       ],
       "credentials": {
@@ -611,7 +684,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2880,
+        3360,
         300
       ]
     },
@@ -638,7 +711,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        3120,
+        3600,
         300
       ],
       "credentials": {
@@ -655,7 +728,7 @@
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
       "position": [
-        2160,
+        2640,
         420
       ]
     },
@@ -677,7 +750,7 @@
     },
     {
       "parameters": {
-        "content": "## Config\n\n- `CHANGE_TYPE_FIELD_KEY` / `SUBSTITUTE_EMAIL_FIELD_KEY`: definition keys of the two Learner custom fields\n- `VALUE_*`: the four options of the Change Type field, spelled exactly as in Administrate\n- `LOOKBACK_MINUTES`: how far back each run looks for changed registrations\n- `DRY_RUN`: report decisions without writing anything\n- `SEND_EMAIL`, `SENDING_ADDRESS_ID`, `BRAND_NAME`, `BRAND_COLOUR`: the email to the substitute\n- `ORIGIN_IDENTIFIER`: name shown in the event's External Integration Log",
+        "content": "## Config\n\n- `CHANGE_TYPE_FIELD_KEY` / `SUBSTITUTE_EMAIL_FIELD_KEY`: definition keys of the two Learner custom fields\n- `VALUE_*`: the four options of the Change Type field, spelled exactly as in Administrate\n- `LOOKBACK_MINUTES`: how far back each run looks for changed registrations\n- `SCAN_PAGE_SIZE`: registrations read per page (the scan pages through all of them)\n- `DRY_RUN`: report decisions without writing anything\n- `SEND_EMAIL`, `SENDING_ADDRESS_ID`, `BRAND_NAME`, `BRAND_COLOUR`: the email to the substitute\n- `ORIGIN_IDENTIFIER`: name shown in the event's External Integration Log",
         "height": 300,
         "width": 520,
         "color": 5
@@ -775,7 +848,7 @@
       "main": [
         [
           {
-            "node": "Dry Run?",
+            "node": "Check Existing Registration",
             "type": "main",
             "index": 0
           }
@@ -915,6 +988,28 @@
         [
           {
             "node": "Mark Refused and Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Existing Registration": {
+      "main": [
+        [
+          {
+            "node": "Confirm Not Registered",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Confirm Not Registered": {
+      "main": [
+        [
+          {
+            "node": "Dry Run?",
             "type": "main",
             "index": 0
           }
