@@ -1,0 +1,7 @@
+{
+  "name": "administrate-automator-examples-ci",
+  "private": true,
+  "devDependencies": {
+    "@n8n/workflow-sdk": "0.34.0"
+  }
+}

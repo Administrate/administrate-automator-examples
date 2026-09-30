@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Administrate Support
+    url: https://support.getadministrate.com/hc/en-us/requests/new
+    about: Get help with your Administrate instance or Automator access.
