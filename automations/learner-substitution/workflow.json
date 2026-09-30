@@ -1,0 +1,930 @@
+{
+  "name": "Learner Substitution",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 5
+            }
+          ]
+        }
+      },
+      "id": "91df0b4f-9da2-4db2-b610-5ab25de05798",
+      "name": "Every 5 Minutes",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "38b7fee2-f1df-4dff-9b47-58e881716f65",
+      "name": "Run Now",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c01",
+              "name": "CHANGE_TYPE_FIELD_KEY",
+              "value": "REPLACE_WITH_CHANGE_TYPE_FIELD_KEY",
+              "type": "string"
+            },
+            {
+              "id": "c02",
+              "name": "SUBSTITUTE_EMAIL_FIELD_KEY",
+              "value": "REPLACE_WITH_SUBSTITUTE_EMAIL_FIELD_KEY",
+              "type": "string"
+            },
+            {
+              "id": "c03",
+              "name": "VALUE_REQUESTED",
+              "value": "Substitution requested",
+              "type": "string"
+            },
+            {
+              "id": "c04",
+              "name": "VALUE_RELEASED",
+              "value": "Substitution completed - place released",
+              "type": "string"
+            },
+            {
+              "id": "c05",
+              "name": "VALUE_TAKEN_OVER",
+              "value": "Substitution completed - place taken over",
+              "type": "string"
+            },
+            {
+              "id": "c06",
+              "name": "VALUE_REFUSED",
+              "value": "Substitution refused",
+              "type": "string"
+            },
+            {
+              "id": "c07",
+              "name": "LOOKBACK_MINUTES",
+              "value": 180,
+              "type": "number"
+            },
+            {
+              "id": "c08",
+              "name": "DRY_RUN",
+              "value": false,
+              "type": "boolean"
+            },
+            {
+              "id": "c09",
+              "name": "SEND_EMAIL",
+              "value": true,
+              "type": "boolean"
+            },
+            {
+              "id": "c10",
+              "name": "SENDING_ADDRESS_ID",
+              "value": "REPLACE_WITH_SENDING_ADDRESS_ID",
+              "type": "string"
+            },
+            {
+              "id": "c11",
+              "name": "BRAND_NAME",
+              "value": "Your Organisation",
+              "type": "string"
+            },
+            {
+              "id": "c12",
+              "name": "BRAND_COLOUR",
+              "value": "#1F3A5F",
+              "type": "string"
+            },
+            {
+              "id": "c13",
+              "name": "ORIGIN_IDENTIFIER",
+              "value": "Learner Substitution",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "eb7e96c9-41fb-486c-815e-ef8911285ccb",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        240,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// Reads every upcoming, active registration that changed inside the look-back window.\n// Re-reading a window (rather than reacting to one webhook) means a missed run is\n// caught by the next one.\nconst cfg_obj = $('Config').first().json;\nconst today_str = $now.toISODate();\nconst since_str = $now.minus({ minutes: Number(cfg_obj.LOOKBACK_MINUTES) || 180 }).toUTC().toFormat(\"yyyy-MM-dd'T'HH:mm:ss'Z'\");\nconst query_str = 'query ScanRegistrations { learners(first: 500, filters: [' +\n  '{ field: isActive, operation: eq, value: \"true\" }, ' +\n  '{ field: eventStartDate, operation: ge, value: ' + JSON.stringify(today_str) + ' }, ' +\n  '{ field: lastUpdatedAt, operation: ge, value: ' + JSON.stringify(since_str) + ' }' +\n  ']) { edges { node { id notes contact { id emailAddress personalName { firstName lastName } } event { id } customFieldValues { definitionKey value } } } } }';\nreturn [{ json: { since: since_str, body: { query: query_str } } }];"
+      },
+      "id": "089aa0e0-d905-4e2e-ba39-1aff39753ce7",
+      "name": "Build Scan Query",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.getadministrate.com/graphql",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.body) }}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "751ca8a1-e6fb-4ba5-9e8c-a654c20fb4bc",
+      "name": "Scan Registrations",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        720,
+        100
+      ],
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// Keeps only the registrations flagged for substitution: one item per request.\nconst cfg_obj = $('Config').first().json;\nconst res_obj = $input.first().json || {};\nif (res_obj.errors) { throw new Error('Scan query failed: ' + JSON.stringify(res_obj.errors).slice(0, 500)); }\nconst edges_ary = (((res_obj.data || {}).learners || {}).edges || []);\nconst out_ary = [];\nfor (const edge_obj of edges_ary) {\n  const l_obj = edge_obj.node || {};\n  const cf_obj = {};\n  for (const v_obj of (l_obj.customFieldValues || [])) { cf_obj[v_obj.definitionKey] = v_obj.value; }\n  if (cf_obj[cfg_obj.CHANGE_TYPE_FIELD_KEY] !== cfg_obj.VALUE_REQUESTED) { continue; }\n  const contact_obj = l_obj.contact || {};\n  const name_obj = contact_obj.personalName || {};\n  out_ary.push({ json: {\n    learnerId: l_obj.id,\n    learnerNotes: l_obj.notes || '',\n    eventId: (l_obj.event || {}).id || '',\n    outgoingContactId: contact_obj.id || '',\n    outgoingEmail: contact_obj.emailAddress || '',\n    outgoingName: ((name_obj.firstName || '') + ' ' + (name_obj.lastName || '')).trim(),\n    replacementEmail: String(cf_obj[cfg_obj.SUBSTITUTE_EMAIL_FIELD_KEY] || '').trim().toLowerCase()\n  } });\n}\nreturn out_ary;"
+      },
+      "id": "016299b0-c592-4f62-876a-3c9ecfde76a0",
+      "name": "Match Requests",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        960,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.getadministrate.com/graphql",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ query: 'query ReadSubstitution { contacts(filters: [{ field: emailAddress, operation: eq, value: ' + JSON.stringify($json.replacementEmail || 'no-email@invalid') + ' }]) { edges { node { id emailAddress personalName { firstName lastName } } } } events(filters: [{ field: id, operation: eq, value: ' + JSON.stringify($json.eventId) + ' }]) { edges { node { id code title start remainingPlaces internalNotes location { name } learners(first: 500) { edges { node { lifecycleState contact { id } } } } } } } }' }) }}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "3bf31e67-4b0b-48ed-aac6-cda40bdcec16",
+      "name": "Read Replacement and Event",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1200,
+        100
+      ],
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "language": "javaScript",
+        "jsCode": "// Checks the request against live data and prepares the writes. Nothing is written here.\nconst cfg_obj = $('Config').first().json;\nconst req_obj = $('Match Requests').item.json;\nconst res_obj = $json || {};\nconst stamp_str = $now.toUTC().toFormat('yyyy-MM-dd HH:mm') + ' UTC';\nconst base_obj = Object.assign({}, req_obj, { stamp: stamp_str });\nconst refuse_fn = function (reason_str) { return { json: Object.assign(base_obj, { action: 'refuse', reason: reason_str }) }; };\nif (res_obj.errors) { return { json: Object.assign(base_obj, { action: 'skip', reason: 'Read failed, will retry on the next run: ' + JSON.stringify(res_obj.errors).slice(0, 300) }) }; }\nif (!req_obj.replacementEmail) { return refuse_fn('No substitute email was entered.'); }\nconst contacts_ary = (((res_obj.data || {}).contacts || {}).edges || []).map(function (e_obj) { return e_obj.node; });\nconst event_obj = ((((res_obj.data || {}).events || {}).edges || [])[0] || {}).node;\nif (!event_obj) { return refuse_fn('The event could not be read.'); }\nif (contacts_ary.length === 0) { return refuse_fn('No contact found with the email ' + req_obj.replacementEmail + '.'); }\nif (contacts_ary.length > 1) { return refuse_fn('Several contacts share the email ' + req_obj.replacementEmail + '.'); }\nconst in_obj = contacts_ary[0];\nif (in_obj.id === req_obj.outgoingContactId) { return refuse_fn('The substitute is the same person as the learner giving up the place.'); }\nconst active_ary = (((event_obj.learners || {}).edges) || []).filter(function (e_obj) { return e_obj.node.lifecycleState === 'active'; }).map(function (e_obj) { return (e_obj.node.contact || {}).id; });\nconst inName_str = (((in_obj.personalName || {}).firstName || '') + ' ' + ((in_obj.personalName || {}).lastName || '')).trim();\nif (active_ary.indexOf(in_obj.id) >= 0) { return refuse_fn(inName_str + ' is already registered on this event.'); }\nif (event_obj.remainingPlaces !== null && event_obj.remainingPlaces !== undefined && Number(event_obj.remainingPlaces) <= 0) {\n  return refuse_fn('The event is full. The substitute is registered before the place is released, so a full event needs one place freed by an administrator first.');\n}\nconst line_str = '[Substitution ' + stamp_str + '] ' + req_obj.outgoingName + ' released the place and ' + inName_str + ' was registered instead. This is a substitution, not a withdrawal.';\nreturn { json: Object.assign(base_obj, {\n  action: 'substitute',\n  incomingContactId: in_obj.id,\n  incomingEmail: in_obj.emailAddress || '',\n  incomingName: inName_str,\n  incomingFirstName: (in_obj.personalName || {}).firstName || inName_str,\n  eventCode: event_obj.code || '',\n  eventTitle: event_obj.title || '',\n  eventStart: String(event_obj.start || '').slice(0, 16).replace('T', ' '),\n  eventLocation: (event_obj.location || {}).name || '',\n  eventNotes: event_obj.internalNotes || '',\n  auditLine: line_str\n}) };"
+      },
+      "id": "9ec8449e-e7af-42e8-a2e9-168d749c1754",
+      "name": "Decide",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1440,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $('Config').first().json.DRY_RUN }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "c9b2b120-4586-4aea-a29c-11200476b4c3",
+      "name": "Dry Run?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1680,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "d1",
+              "name": "action",
+              "value": "={{ $json.action }}",
+              "type": "string"
+            },
+            {
+              "id": "d2",
+              "name": "learner",
+              "value": "={{ $json.outgoingName }}",
+              "type": "string"
+            },
+            {
+              "id": "d3",
+              "name": "substitute",
+              "value": "={{ $json.incomingName || $json.replacementEmail }}",
+              "type": "string"
+            },
+            {
+              "id": "d4",
+              "name": "reason",
+              "value": "={{ $json.reason || '' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "ff6ba5ab-3d72-48b4-913e-2b8c59cbf8d2",
+      "name": "Dry Run Report",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1920,
+        -120
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "outputKey": "substitute",
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.action }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "rightValue": "substitute"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "outputKey": "refuse",
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.action }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "rightValue": "refuse"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "outputKey": "skip",
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.action }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "rightValue": "skip"
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "0dc0193d-0960-4053-9483-a9a9dff238b5",
+      "name": "Route by Outcome",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        1920,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.getadministrate.com/graphql",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ query: 'mutation RegisterSubstitute($notes: String) { event { registerNamedLearners(input: [{ eventId: ' + JSON.stringify($json.eventId) + ', contactId: ' + JSON.stringify($json.incomingContactId) + ', notes: $notes, customFieldValues: [{ definitionKey: ' + JSON.stringify($('Config').first().json.CHANGE_TYPE_FIELD_KEY) + ', value: ' + JSON.stringify($('Config').first().json.VALUE_TAKEN_OVER) + ' }, { definitionKey: ' + JSON.stringify($('Config').first().json.SUBSTITUTE_EMAIL_FIELD_KEY) + ', value: ' + JSON.stringify($json.outgoingEmail) + ' }] }]) { errors { label message value } learners { id } } } }', variables: { notes: $json.auditLine } }) }}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "77f06820-f0ee-4b2a-90e0-8ffe308c3b6e",
+      "name": "Register Substitute",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2160,
+        80
+      ],
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "language": "javaScript",
+        "jsCode": "// registerNamedLearners returns a list of results, one per learner in the input.\nconst dec_obj = $('Decide').item.json;\nconst res_obj = $json || {};\nconst raw_any = ((res_obj.data || {}).event || {}).registerNamedLearners;\nconst results_ary = Array.isArray(raw_any) ? raw_any : (raw_any ? [raw_any] : []);\nlet errs_ary = (res_obj.errors || []).slice();\nlet learners_ary = [];\nfor (const r_obj of results_ary) {\n  errs_ary = errs_ary.concat((r_obj && r_obj.errors) || []);\n  learners_ary = learners_ary.concat((r_obj && r_obj.learners) || []);\n}\nconst ok_bool = errs_ary.length === 0 && learners_ary.length > 0;\nreturn { json: Object.assign({}, dec_obj, {\n  registered: ok_bool,\n  incomingLearnerId: ok_bool ? learners_ary[0].id : '',\n  reason: ok_bool ? '' : 'Administrate refused to register the substitute: ' + (errs_ary.map(function (e_obj) { return e_obj.message; }).join('; ') || 'no learner was returned')\n}) };"
+      },
+      "id": "3233f156-0ed8-46be-b7f0-db266fdb7946",
+      "name": "Check Registration",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2400,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.registered }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "8618de46-1438-4d89-9c6a-0e352af4ff88",
+      "name": "Registered?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2640,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.getadministrate.com/graphql",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ query: 'mutation ReleasePlace($learnerNotes: String, $eventNotes: String, $message: String!, $origin: String!) { tag: learner { update(input: { learnerId: ' + JSON.stringify($json.learnerId) + ', notes: $learnerNotes, customFieldValues: [{ definitionKey: ' + JSON.stringify($('Config').first().json.CHANGE_TYPE_FIELD_KEY) + ', value: ' + JSON.stringify($('Config').first().json.VALUE_RELEASED) + ' }] }) { errors { label message value } } } cancel: learner { cancel(input: { learnerId: ' + JSON.stringify($json.learnerId) + ' }) { errors { label message value } } } note: event { update(eventId: ' + JSON.stringify($json.eventId) + ', input: { internalNotes: $eventNotes }) { errors { label message value } } } log: externalLog { createExternalIntegrationLog(input: { originIdentifier: $origin, nodeId: ' + JSON.stringify($json.eventId) + ', message: $message, status: success }) { errors { label message value } } } }', variables: { learnerNotes: ($json.learnerNotes ? $json.learnerNotes + String.fromCharCode(10) : '') + $json.auditLine, eventNotes: $json.auditLine + ($json.eventNotes ? String.fromCharCode(10) + $json.eventNotes : ''), message: $json.auditLine, origin: $('Config').first().json.ORIGIN_IDENTIFIER } }) }}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "5e88da98-8895-4219-80ca-828f116e1a45",
+      "name": "Release Place, Note and Log",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2880,
+        -20
+      ],
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "language": "javaScript",
+        "jsCode": "// The substitute is already registered at this point. If releasing the old place failed,\n// stop loudly so the error workflow records it and an administrator can finish by hand.\nconst dec_obj = $('Check Registration').item.json;\nconst res_obj = $json || {};\nconst d_obj = res_obj.data || {};\nconst errs_ary = (res_obj.errors || [])\n  .concat(((d_obj.tag || {}).update || {}).errors || [])\n  .concat(((d_obj.cancel || {}).cancel || {}).errors || [])\n  .concat(((d_obj.note || {}).update || {}).errors || [])\n  .concat(((d_obj.log || {}).createExternalIntegrationLog || {}).errors || []);\nif (errs_ary.length > 0) {\n  throw new Error('Substitute ' + dec_obj.incomingName + ' was registered on event ' + dec_obj.eventId + ' but releasing the place of ' + dec_obj.outgoingName + ' (learner ' + dec_obj.learnerId + ') failed: ' + errs_ary.map(function (e_obj) { return e_obj.message; }).join('; '));\n}\nreturn { json: dec_obj };"
+      },
+      "id": "19dc8696-5d77-49e6-bcc0-17509362d9b1",
+      "name": "Check Release",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3120,
+        -20
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $('Config').first().json.SEND_EMAIL }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "cd6f2964-65b9-494e-826e-c4ebdd92b915",
+      "name": "Send Email?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        3360,
+        -20
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "language": "javaScript",
+        "jsCode": "const cfg_obj = $('Config').first().json;\nconst d_obj = $json;\nconst esc_fn = function (v_any) { return String(v_any === null || v_any === undefined ? '' : v_any).split('&').join('&amp;').split('<').join('&lt;').split('>').join('&gt;').split('\"').join('&quot;'); };\nconst row_fn = function (k_str, v_str) { return '<tr><td style=\"padding:8px 0;color:#5A6472;font-size:13px;width:160px;\">' + esc_fn(k_str) + '</td><td style=\"padding:8px 0;color:#16202B;font-size:14px;\">' + esc_fn(v_str) + '</td></tr>'; };\nconst html_str = '<div style=\"font-family:Arial,Helvetica,sans-serif;background:#F4F6F8;padding:24px;\"><table width=\"600\" cellpadding=\"0\" cellspacing=\"0\" style=\"background:#FFFFFF;border-radius:8px;\"><tr><td style=\"background:' + esc_fn(cfg_obj.BRAND_COLOUR) + ';padding:18px 24px;color:#FFFFFF;font-size:18px;font-weight:bold;\">' + esc_fn(cfg_obj.BRAND_NAME) + '</td></tr><tr><td style=\"padding:24px;\"><p style=\"font-size:15px;color:#16202B;\">Hello ' + esc_fn(d_obj.incomingFirstName) + ',</p><p style=\"font-size:15px;color:#16202B;\">' + esc_fn(d_obj.outgoingName) + ' can no longer attend <strong>' + esc_fn(d_obj.eventTitle) + '</strong> and the place has been transferred to you. Your registration is confirmed.</p><table cellpadding=\"0\" cellspacing=\"0\" style=\"margin:16px 0;\">' + row_fn('Event', d_obj.eventCode) + row_fn('Starts', d_obj.eventStart) + row_fn('Location', d_obj.eventLocation) + '</table><p style=\"font-size:13px;color:#5A6472;\">If you cannot attend, please let us know as soon as possible so the place can be offered to someone else.</p></td></tr></table></div>';\nreturn { json: Object.assign({}, d_obj, { emailBody: { query: 'mutation SendSubstitutionEmail($subject: String!, $body: String!) { contactAdhocEmails { sendContactAdhocEmail(input: { contactId: ' + JSON.stringify(d_obj.incomingContactId) + ', subject: $subject, body: $body, sendingAddressId: ' + JSON.stringify(cfg_obj.SENDING_ADDRESS_ID) + ' }) { errors { label message value } } } }', variables: { subject: 'A place has been transferred to you: ' + d_obj.eventTitle, body: html_str } } }) };"
+      },
+      "id": "dc455a76-a020-46fc-9c5f-a609e2e13846",
+      "name": "Build Email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3600,
+        -120
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.getadministrate.com/graphql",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.emailBody) }}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "6ee83deb-0a2a-4607-b76f-cc86d05ebc2b",
+      "name": "Send Email",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3840,
+        -120
+      ],
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "language": "javaScript",
+        "jsCode": "// Marks the request as refused on the registration, with the reason in its notes,\n// so the administrator sees why and the next run does not try again.\nconst cfg_obj = $('Config').first().json;\nconst d_obj = $json;\nconst line_str = '[Substitution refused ' + d_obj.stamp + '] ' + d_obj.reason;\nconst notes_str = (d_obj.learnerNotes ? d_obj.learnerNotes + String.fromCharCode(10) : '') + line_str;\nconst logPart_str = d_obj.eventId ? ' log: externalLog { createExternalIntegrationLog(input: { originIdentifier: $origin, nodeId: ' + JSON.stringify(d_obj.eventId) + ', message: $message, status: failed }) { errors { label message value } } }' : '';\nconst query_str = 'mutation RefuseSubstitution($notes: String, $message: String!, $origin: String!) { tag: learner { update(input: { learnerId: ' + JSON.stringify(d_obj.learnerId) + ', notes: $notes, customFieldValues: [{ definitionKey: ' + JSON.stringify(cfg_obj.CHANGE_TYPE_FIELD_KEY) + ', value: ' + JSON.stringify(cfg_obj.VALUE_REFUSED) + ' }] }) { errors { label message value } } }' + logPart_str + ' }';\nreturn { json: Object.assign({}, d_obj, { refuseBody: { query: query_str, variables: { notes: notes_str, message: 'Substitution refused for ' + d_obj.outgoingName + ': ' + d_obj.reason, origin: cfg_obj.ORIGIN_IDENTIFIER } } }) };"
+      },
+      "id": "66e2d1e0-e6ff-4939-8b12-4033187aba2c",
+      "name": "Prepare Refusal",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2880,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.getadministrate.com/graphql",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.refuseBody) }}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "e80b8963-ae01-4b4e-8e81-e7f021345a8e",
+      "name": "Mark Refused and Log",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3120,
+        300
+      ],
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "47a45109-bc16-419f-bbdf-66bdbc97782f",
+      "name": "Retry on Next Run",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        2160,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Learner Substitution\n\nLets an administrator hand a learner's place to a named colleague from inside Administrate, without the swap counting as a withdrawal.\n\n1. On the learner record, set **Change Type** to `Substitution requested` and enter the substitute's email.\n2. Every 5 minutes this workflow checks the request, **registers the substitute first**, then releases the original place, so the place is never exposed to a waitlist in between.\n3. Both registrations are tagged, notes are added to both and to the event, and the result is logged on the event.\n4. Refused requests are marked `Substitution refused` with the reason in the learner notes.\n\nSee the README for setup and testing.",
+        "height": 380,
+        "width": 520,
+        "color": 7
+      },
+      "id": "8cd456b9-3203-4c6b-8e90-7a8797608f76",
+      "name": "Sticky - Overview",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -420
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Config\n\n- `CHANGE_TYPE_FIELD_KEY` / `SUBSTITUTE_EMAIL_FIELD_KEY`: definition keys of the two Learner custom fields\n- `VALUE_*`: the four options of the Change Type field, spelled exactly as in Administrate\n- `LOOKBACK_MINUTES`: how far back each run looks for changed registrations\n- `DRY_RUN`: report decisions without writing anything\n- `SEND_EMAIL`, `SENDING_ADDRESS_ID`, `BRAND_NAME`, `BRAND_COLOUR`: the email to the substitute\n- `ORIGIN_IDENTIFIER`: name shown in the event's External Integration Log",
+        "height": 300,
+        "width": 520,
+        "color": 5
+      },
+      "id": "ec8d94bc-f4fd-4822-83e2-36d12d32908e",
+      "name": "Sticky - Config Explained",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        520,
+        -420
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Every 5 Minutes": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run Now": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Build Scan Query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Scan Query": {
+      "main": [
+        [
+          {
+            "node": "Scan Registrations",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scan Registrations": {
+      "main": [
+        [
+          {
+            "node": "Match Requests",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Match Requests": {
+      "main": [
+        [
+          {
+            "node": "Read Replacement and Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Replacement and Event": {
+      "main": [
+        [
+          {
+            "node": "Decide",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Decide": {
+      "main": [
+        [
+          {
+            "node": "Dry Run?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Dry Run?": {
+      "main": [
+        [
+          {
+            "node": "Dry Run Report",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Route by Outcome",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route by Outcome": {
+      "main": [
+        [
+          {
+            "node": "Register Substitute",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare Refusal",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Retry on Next Run",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Register Substitute": {
+      "main": [
+        [
+          {
+            "node": "Check Registration",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Registration": {
+      "main": [
+        [
+          {
+            "node": "Registered?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Registered?": {
+      "main": [
+        [
+          {
+            "node": "Release Place, Note and Log",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare Refusal",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Release Place, Note and Log": {
+      "main": [
+        [
+          {
+            "node": "Check Release",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Release": {
+      "main": [
+        [
+          {
+            "node": "Send Email?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Email?": {
+      "main": [
+        [
+          {
+            "node": "Build Email",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Build Email": {
+      "main": [
+        [
+          {
+            "node": "Send Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Refusal": {
+      "main": [
+        [
+          {
+            "node": "Mark Refused and Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": []
+}
