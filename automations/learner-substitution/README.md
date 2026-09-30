@@ -46,7 +46,7 @@ The option values must match the `VALUE_*` keys in the Config node exactly. You 
 
 #### 1. Set OAuth credentials
 
-Attach your Administrate OAuth2 credential to the six HTTP Request nodes: `Scan Registrations`, `Read Replacement and Event`, `Register Substitute`, `Release Place, Note and Log`, `Send Email` and `Mark Refused and Log`.
+Attach your Administrate OAuth2 credential to the seven HTTP Request nodes: `Scan Registrations`, `Read Replacement and Event`, `Check Existing Registration`, `Register Substitute`, `Release Place, Note and Log`, `Send Email` and `Mark Refused and Log`.
 
 #### 2. Fill in the Config node
 
@@ -56,6 +56,7 @@ Attach your Administrate OAuth2 credential to the six HTTP Request nodes: `Scan 
 | `SUBSTITUTE_EMAIL_FIELD_KEY` | `REPLACE_WITH_SUBSTITUTE_EMAIL_FIELD_KEY` -> definition key of the Substitute Email field |
 | `VALUE_REQUESTED`, `VALUE_RELEASED`, `VALUE_TAKEN_OVER`, `VALUE_REFUSED` | The four options of the Registration Change Type field, spelled exactly as in Administrate |
 | `LOOKBACK_MINUTES` | How far back each run looks for changed registrations (default `180`) |
+| `SCAN_PAGE_SIZE` | Registrations read per request while paging through the scan (default `100`) |
 | `DRY_RUN` | `true` to report decisions without writing anything (default `false`) |
 | `SEND_EMAIL` | `false` to skip the email to the substitute (default `true`) |
 | `SENDING_ADDRESS_ID` | `REPLACE_WITH_SENDING_ADDRESS_ID` -> ID of a verified sending address |
@@ -95,14 +96,18 @@ If you use a shared error workflow, such as [Log Automation Failures to Administ
 ## How It Works
 
 1. **Every 5 Minutes** (or **Run Now**) reads the Config node.
-2. **Build Scan Query** and **Scan Registrations** read every active registration on an upcoming event that changed within `LOOKBACK_MINUTES`.
+2. **Build Scan Query** and **Scan Registrations** read every active registration on an upcoming event that changed within `LOOKBACK_MINUTES`, paging through the results `SCAN_PAGE_SIZE` at a time (up to 50 pages per run).
 3. **Match Requests** keeps those whose Registration Change Type is `VALUE_REQUESTED`, one item per request.
-4. **Read Replacement and Event** looks up the substitute by email and reads the event, its remaining places and its active learners.
-5. **Decide** refuses the request if the email is missing or unknown, matches several contacts, matches the learner giving up the place, belongs to someone already registered or if the event is full. Otherwise it prepares the substitution. Nothing is written in this step.
+4. **Read Replacement and Event** looks up the substitute by email and reads the event and its remaining places.
+5. **Decide** refuses the request if the email is missing or unknown, matches several contacts, matches the learner giving up the place or if the event is full. **Check Existing Registration** and **Confirm Not Registered** then refuse it if the substitute already has an active registration on the event. Otherwise the substitution is prepared. Nothing is written in these steps.
 6. **Register Substitute** registers the substitute with the `VALUE_TAKEN_OVER` tag and a note, and **Check Registration** confirms Administrate accepted it. If it did not, the request is refused with Administrate's message.
 7. **Release Place, Note and Log** tags and cancels the original registration, prepends the note to the event's internal notes and writes a success log on the event. **Check Release** stops the run with a clear error if any of these writes failed.
 8. **Build Email** and **Send Email** send the confirmation to the substitute when `SEND_EMAIL` is on.
 9. **Prepare Refusal** and **Mark Refused and Log** set refused requests to `VALUE_REFUSED`, add the reason to the learner notes and write a failed log on the event.
+
+### Scan volume
+
+The Administrate API cannot yet filter learners by a custom field value, so each run reads every upcoming registration changed within `LOOKBACK_MINUTES` and keeps the substitution requests in the workflow. On busy instances, keep `LOOKBACK_MINUTES` as short as your schedule allows.
 
 ## Troubleshooting
 
