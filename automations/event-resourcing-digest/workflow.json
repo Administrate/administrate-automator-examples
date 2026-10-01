@@ -109,21 +109,23 @@
         "jsonBody": "={{ ({ query: \"query EventsInWindow($start:String!,$end:String!,$first:Int,$after:String){ events(first:$first, after:$after, filters:[{field:timeZonedStart,operation:ge,value:$start},{field:timeZonedStart,operation:le,value:$end}]){ pageInfo{ hasNextPage endCursor } edges{ node{ id title code start end lifecycleState location{ id name } requiredResources{ id quantity allSessions resourceType{ id name } sessions{ id } } } } } }\", variables: { start: $now.toISO(), end: $now.plus({ days: Number($('Config').first().json.WINDOW_DAYS) }).toISO(), first: Number($('Config').first().json.PAGE_SIZE), after: null } }) }}",
         "options": {
           "pagination": {
-            "paginationMode": "updateAParameterInEachRequest",
-            "parameters": {
-              "parameters": [
-                {
-                  "type": "body",
-                  "name": "variables",
-                  "value": "={{ { start: $now.toISO(), end: $now.plus({ days: Number($('Config').first().json.WINDOW_DAYS) }).toISO(), first: Number($('Config').first().json.PAGE_SIZE), after: ($response?.body?.data?.events?.pageInfo?.endCursor ?? null) } }}"
-                }
-              ]
-            },
-            "paginationCompleteWhen": "other",
-            "completeExpression": "={{ !$response.body?.data?.events?.pageInfo?.hasNextPage }}",
-            "limitPagesFetched": true,
-            "maxRequests": "={{ Math.max(1, Math.ceil(Number($('Config').first().json.MAX_EVENTS) / Number($('Config').first().json.PAGE_SIZE))) }}",
-            "requestInterval": 0
+            "pagination": {
+              "paginationMode": "updateAParameterInEachRequest",
+              "parameters": {
+                "parameters": [
+                  {
+                    "type": "body",
+                    "name": "variables",
+                    "value": "={{ { start: $now.toISO(), end: $now.plus({ days: Number($('Config').first().json.WINDOW_DAYS) }).toISO(), first: Number($('Config').first().json.PAGE_SIZE), after: ($response?.body?.data?.events?.pageInfo?.endCursor ?? null) } }}"
+                  }
+                ]
+              },
+              "paginationCompleteWhen": "other",
+              "completeExpression": "={{ !$response.body?.data?.events?.pageInfo?.hasNextPage }}",
+              "limitPagesFetched": true,
+              "maxRequests": "={{ Math.max(1, Math.ceil(Number($('Config').first().json.MAX_EVENTS) / Number($('Config').first().json.PAGE_SIZE))) }}",
+              "requestInterval": 0
+            }
           }
         }
       },
@@ -153,21 +155,23 @@
         "jsonBody": "={{ ({ query: \"query EventIssuesFromDate($start:String!,$first:Int,$after:String){ eventIssues(first:$first, after:$after, filters:[{field:rangeStart,operation:ge,value:$start}]){ pageInfo{ hasNextPage endCursor } edges{ node{ id title code start end lifecycleState learningMode locationName hasInstructors hasAllRequiredResources fillRate targetFillRate sessions{ id staffRoleFulfillment{ id name numRequired numBooked numMissing } missingResourceTypes{ id name numMissing } } } } } }\", variables: { start: $now.toISODate(), first: Number($('Config').first().json.PAGE_SIZE), after: null } }) }}",
         "options": {
           "pagination": {
-            "paginationMode": "updateAParameterInEachRequest",
-            "parameters": {
-              "parameters": [
-                {
-                  "type": "body",
-                  "name": "variables",
-                  "value": "={{ { start: $now.toISODate(), first: Number($('Config').first().json.PAGE_SIZE), after: ($response?.body?.data?.eventIssues?.pageInfo?.endCursor ?? null) } }}"
-                }
-              ]
-            },
-            "paginationCompleteWhen": "other",
-            "completeExpression": "={{ !$response.body?.data?.eventIssues?.pageInfo?.hasNextPage }}",
-            "limitPagesFetched": true,
-            "maxRequests": "={{ Math.max(1, Math.ceil(Number($('Config').first().json.MAX_EVENTS) / Number($('Config').first().json.PAGE_SIZE))) }}",
-            "requestInterval": 0
+            "pagination": {
+              "paginationMode": "updateAParameterInEachRequest",
+              "parameters": {
+                "parameters": [
+                  {
+                    "type": "body",
+                    "name": "variables",
+                    "value": "={{ { start: $now.toISODate(), first: Number($('Config').first().json.PAGE_SIZE), after: ($response?.body?.data?.eventIssues?.pageInfo?.endCursor ?? null) } }}"
+                  }
+                ]
+              },
+              "paginationCompleteWhen": "other",
+              "completeExpression": "={{ !$response.body?.data?.eventIssues?.pageInfo?.hasNextPage }}",
+              "limitPagesFetched": true,
+              "maxRequests": "={{ Math.max(1, Math.ceil(Number($('Config').first().json.MAX_EVENTS) / Number($('Config').first().json.PAGE_SIZE))) }}",
+              "requestInterval": 0
+            }
           }
         }
       },
