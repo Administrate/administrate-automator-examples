@@ -31,6 +31,7 @@ Examples with several workflows have a `workflows/` subdirectory. Download the r
 | [Auto Assign Instructors to Event](automations/auto-assign-instructors-to-event/) | Automatically assign available approved instructors to new events based on availability and workplace location |
 | [Auto Assign Tasks](automations/auto-assign-tasks/) | Redistribute tasks by task type to the account owner, booking owner, instructor and administrator |
 | [Auto-Finalise Invoices Before Event Start](automations/auto-finalise-invoices/) | Finalise draft invoices and move bookings on as events approach, with a dry-run mode and a Slack summary |
+| [Bulk Complete LMS Content](automations/bulk-complete-lms-content/) | Mark SCORM LMS content as complete in bulk for flagged learners on an event |
 | [Bulk Register Delegates and Record Attendance](automations/bulk-register-delegates-record-attendance/) | A web form to register delegates onto an event and record their attendance and results in one go |
 | [Bulk Resource Removal](automations/bulk-resource-removal/) | Remove all resources from an event in bulk |
 | [Certificate Renewal Reminders](automations/certificate-renewal-reminders/) | Remind learners before their certificates or achievements expire, with dry-run mode, a send cap and a deduplication log |
