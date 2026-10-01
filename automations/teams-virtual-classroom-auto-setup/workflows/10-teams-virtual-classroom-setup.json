@@ -1,0 +1,510 @@
+{
+  "name": "Teams Virtual Classroom Auto Setup",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Teams Virtual Classroom Auto Setup\n\nTriggers on **Event Created**. If the Event's location matches `LOCATION_NAME` and the classroom is not already configured, it runs three GraphQL mutations:\n1. `event.addStaff`: books the host contact (`HOST_CONTACT_ID`) on the Event with the host staff role (`HOST_STAFF_ROLE_ID`). This must happen before the host is assigned.\n2. `event.update`: sets `remoteMeetingType: msteams` to configure the virtual classroom.\n3. `event.update`: sets `remoteMeetingHostContactId` and `remoteMeetingHostStaffRoleId`. Administrate then generates the Teams link.\n\n## Why there are two guards\n**Already Configured (Payload)?** skips Events that already have a Teams host or use another provider. **Already Configured (Fresh)?** re-reads the Event after staff are added, so a link set up in the meantime is never overwritten.\n\n## Setup\n- Fill in the **Config** node (see the README).\n- Select your Administrate OAuth2 credential on the trigger and the four HTTP Request nodes.\n- The trigger registers its webhook in Administrate when you activate the workflow.\n- **Build Log** and the skip logs return `status` and `remoteMeetingUrl` for downstream alerting.",
+        "height": 940,
+        "width": 500,
+        "color": 5
+      },
+      "id": "b13087a2-290c-4d01-a723-2d606e8b45b1",
+      "name": "Sticky Note - Overview",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        6528,
+        992
+      ]
+    },
+    {
+      "parameters": {
+        "events": "V2ViaG9va1R5cGU6ZXZlbnRfY3JlYXRlZA==",
+        "name": "Teams Virtual Classroom - Event Created",
+        "query": "query webhookQuery($objectid: ID!) {\n  node(id: $objectid) {\n    ... on Event {\n      id\n      legacyId\n      code\n      title\n      lifecycleState\n      location { name }\n      remoteMeeting { type url }\n      remoteMeetingHostContact { id }\n    }\n  }\n}"
+      },
+      "type": "CUSTOM.administrateTrigger",
+      "typeVersion": 1,
+      "position": [
+        6400,
+        2096
+      ],
+      "id": "af0dc1d4-9353-4983-9cfb-53eda744ae05",
+      "name": "Administrate Trigger",
+      "webhookId": "704bedbd-e17f-40d0-8a3f-76de84214e3c",
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "loc-check-1",
+              "leftValue": "={{ $json.payload.node.location?.name }}",
+              "rightValue": "={{ $('Config').first().json.LOCATION_NAME }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "6eadfb54-7cda-45e6-94a8-382b1da2e190",
+      "name": "Location Matches?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        6880,
+        2096
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "already-cfg-1",
+              "leftValue": "={{ (!!$json.payload.node.remoteMeeting?.type && $json.payload.node.remoteMeeting?.type !== 'msteams') || !!$json.payload.node.remoteMeetingHostContact?.id }}\n",
+              "rightValue": "true",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "id": "9af730f0-de29-4ec4-95e4-90758af474d5",
+      "name": "Already Configured (Payload)?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        7136,
+        2080
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Nothing to do: the classroom is already set to Teams with a host, or uses another provider.\n// Stops the workflow from overwriting a classroom that was set up another way.\nconst node = $json.payload.node;\nreturn [{\n  json: {\n    status: 'skipped',\n    timestamp: $now.toISO(),\n    eventId: node.id,\n    eventCode: node.code,\n    eventTitle: node.title,\n    reason: 'Virtual classroom already configured (Teams host assigned or non-Teams provider already set); left unchanged',\n    remoteMeetingUrl: node.remoteMeeting?.url ?? null,\n  },\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        7360,
+        1952
+      ],
+      "id": "ba5e6d24-b428-45ac-bd99-16c8a3021bd3",
+      "name": "Skip Log (Payload)"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "in-1",
+              "name": "eventId",
+              "value": "={{ $json.payload.node.id }}",
+              "type": "string"
+            },
+            {
+              "id": "in-2",
+              "name": "contactId",
+              "value": "={{ $('Config').first().json.HOST_CONTACT_ID }}",
+              "type": "string"
+            },
+            {
+              "id": "in-3",
+              "name": "staffRoleId",
+              "value": "={{ $('Config').first().json.HOST_STAFF_ROLE_ID }}",
+              "type": "string"
+            },
+            {
+              "id": "in-4",
+              "name": "eventCode",
+              "value": "={{ $json.payload.node.code }}",
+              "type": "string"
+            },
+            {
+              "id": "in-5",
+              "name": "eventTitle",
+              "value": "={{ $json.payload.node.title }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a97bd877-d08a-42f3-9143-25bd3e3e87f1",
+      "name": "Set Inputs",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        7360,
+        2208
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').first().json.ADMINISTRATE_API_URL }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  query: `mutation AddPersonnel($input: EventStaffInput!) {\n    event {\n      addStaff(input: $input) {\n        errors { label message value }\n        event { id staff { edges { node { id contact { id } staffRole { id name } } } } }\n      }\n    }\n  }`,\n  variables: {\n    input: {\n      eventId: $json.eventId,\n      contactId: $json.contactId,\n      staffRoleId: $json.staffRoleId\n    }\n  }\n}) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        7584,
+        2208
+      ],
+      "id": "37daa520-4562-4626-a225-8938a70ce38c",
+      "name": "1. Add Personnel",
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').first().json.ADMINISTRATE_API_URL }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  query: `mutation ConfigureVirtualClassroom($eventId: ID!) {\n    event {\n      update(eventId: $eventId, input: { remoteMeetingType: msteams }) {\n        errors { label message value }\n        event { id remoteMeeting { type } }\n      }\n    }\n  }`,\n  variables: {\n    eventId: $('Set Inputs').first().json.eventId\n  }\n}) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        8416,
+        2336
+      ],
+      "id": "5b95242e-0516-496a-bc70-0ea319a90698",
+      "name": "2. Configure Virtual Classroom",
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').first().json.ADMINISTRATE_API_URL }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  query: `mutation AssignHost($eventId: ID!, $hostContactId: ID!, $hostStaffRoleId: ID!) {\n    event {\n      update(eventId: $eventId, input: {\n        remoteMeetingHostContactId: $hostContactId,\n        remoteMeetingHostStaffRoleId: $hostStaffRoleId\n      }) {\n        errors { label message value }\n        event { id remoteMeeting { id type url } }\n      }\n    }\n  }`,\n  variables: {\n    eventId: $('Set Inputs').first().json.eventId,\n    hostContactId: $('Set Inputs').first().json.contactId,\n    hostStaffRoleId: $('Set Inputs').first().json.staffRoleId\n  }\n}) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        8640,
+        2336
+      ],
+      "id": "5be300ff-557f-4e29-935e-1d041592bb61",
+      "name": "3. Assign Host",
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Final status log. Add Slack, email or Google Sheets after this node if needed.\nconst inputs = $('Set Inputs').first().json;\nconst addP = $('1. Add Personnel').first().json;\nconst cfg = $('2. Configure Virtual Classroom').first().json;\nconst host = $('3. Assign Host').first().json;\n\nconst errors = [];\nconst collect = (resp, path, label) => {\n  if (!resp) { errors.push(`${label}: no response`); return; }\n  if (resp.errors) errors.push(...resp.errors.map(e => `${label}: ${e.message || JSON.stringify(e)}`));\n  const inner = path(resp);\n  if (inner && inner.length) errors.push(...inner.map(e => `${label}: ${e.message} (${e.label ?? ''})`));\n};\ncollect(addP, r => r.data?.event?.addStaff?.errors, 'addPersonnel');\ncollect(cfg, r => r.data?.event?.update?.errors, 'configureClassroom');\ncollect(host, r => r.data?.event?.update?.errors, 'assignHost');\n\nreturn [{\n  json: {\n    status: errors.length ? 'error' : 'success',\n    timestamp: $now.toISO(),\n    eventId: inputs.eventId,\n    eventCode: inputs.eventCode,\n    eventTitle: inputs.eventTitle,\n    remoteMeetingType: cfg.data?.event?.update?.event?.remoteMeeting?.type ?? null,\n    remoteMeetingUrl: host.data?.event?.update?.event?.remoteMeeting?.url ?? null,\n    errors,\n  },\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        8864,
+        2336
+      ],
+      "id": "cbce6439-0c9c-4c85-8cb3-c8f7a5988857",
+      "name": "Build Log"
+    },
+    {
+      "parameters": {
+        "url": "={{ $('Config').first().json.ADMINISTRATE_API_URL }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  query: `query($eventId: ID!) {\n    node(id: $eventId) {\n      ... on Event {\n        id\n        remoteMeeting { type url }\n        remoteMeetingHostContact { id }\n      }\n    }\n  }`,\n  variables: { eventId: $('Set Inputs').first().json.eventId }\n}) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        7840,
+        2208
+      ],
+      "id": "ce12ee95-9114-459b-90f8-571fc7e154b0",
+      "name": "Check Classroom State",
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const inputs = $('Set Inputs').first().json;\nconst state = $json.data.node;\nreturn [{\n  json: {\n    status: 'skipped',\n    timestamp: $now.toISO(),\n    eventId: inputs.eventId,\n    eventCode: inputs.eventCode,\n    eventTitle: inputs.eventTitle,\n    reason: 'Classroom already configured (host assigned or non-Teams provider already set); left unchanged so it is not overwritten',\n    remoteMeetingUrl: state.remoteMeeting?.url ?? null,\n  },\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        8416,
+        2096
+      ],
+      "id": "02789d99-9eab-47da-9476-f8c0c8275cf8",
+      "name": "Skip Log (Fresh)"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "88e98d7c-592d-48fe-8cf3-11c5ef1a44e0",
+              "leftValue": "={{ (!!$json.data.node.remoteMeeting?.type && $json.data.node.remoteMeeting?.type !== 'msteams') || !!$json.data.node.remoteMeetingHostContact?.id }}\n",
+              "rightValue": "true",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        8128,
+        2208
+      ],
+      "id": "8c091d51-3f95-40dc-819b-f2cca0464add",
+      "name": "Already Configured (Fresh)?"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "d07242cb-172e-43cc-ab6a-394e03e37302",
+              "name": "LOCATION_NAME",
+              "value": "REPLACE_WITH_VIRTUAL_LOCATION_NAME",
+              "type": "string"
+            },
+            {
+              "id": "878e9ee7-e237-4d08-8b12-0675fae2bbdd",
+              "name": "HOST_CONTACT_ID",
+              "value": "REPLACE_WITH_HOST_CONTACT_ID",
+              "type": "string"
+            },
+            {
+              "id": "d13aa164-1f4c-4754-9498-921b2ac1efd7",
+              "name": "HOST_STAFF_ROLE_ID",
+              "value": "REPLACE_WITH_HOST_STAFF_ROLE_ID",
+              "type": "string"
+            },
+            {
+              "id": "85945250-eceb-4f80-8dc3-47abd4fe6cdc",
+              "name": "ADMINISTRATE_API_URL",
+              "value": "https://api.getadministrate.com/graphql",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        6640,
+        2096
+      ],
+      "id": "321d45ee-ee07-43b9-9a22-8d17698c2308",
+      "name": "Config"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Set Inputs": {
+      "main": [
+        [
+          {
+            "node": "1. Add Personnel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "1. Add Personnel": {
+      "main": [
+        [
+          {
+            "node": "Check Classroom State",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "2. Configure Virtual Classroom": {
+      "main": [
+        [
+          {
+            "node": "3. Assign Host",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "3. Assign Host": {
+      "main": [
+        [
+          {
+            "node": "Build Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Administrate Trigger": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Location Matches?": {
+      "main": [
+        [
+          {
+            "node": "Already Configured (Payload)?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Already Configured (Payload)?": {
+      "main": [
+        [
+          {
+            "node": "Skip Log (Payload)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Set Inputs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Classroom State": {
+      "main": [
+        [
+          {
+            "node": "Already Configured (Fresh)?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Already Configured (Fresh)?": {
+      "main": [
+        [
+          {
+            "node": "Skip Log (Fresh)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "2. Configure Virtual Classroom",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Location Matches?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "tags": []
+}
