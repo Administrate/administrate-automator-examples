@@ -1,0 +1,852 @@
+{
+  "name": "Instructor Invitations - Recompute Event Summary",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "eventId"
+            }
+          ]
+        }
+      },
+      "id": "4dc5ea95-01c1-487b-bc8a-7e38d8a0803f",
+      "name": "Called With",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c1",
+              "name": "GRAPHQL_URL",
+              "type": "string",
+              "value": "https://api.getadministrate.com/graphql"
+            },
+            {
+              "id": "c2",
+              "name": "COORDINATOR_ROLE_NAME",
+              "type": "string",
+              "value": "Coordinator"
+            },
+            {
+              "id": "c3",
+              "name": "INVITATIONS_TABLE_ID",
+              "type": "string",
+              "value": "REPLACE_WITH_INVITATIONS_TABLE_ID"
+            },
+            {
+              "id": "c4",
+              "name": "SUMMARY_FIELD_KEY",
+              "type": "string",
+              "value": "REPLACE_WITH_STAFFING_SUMMARY_FIELD_KEY"
+            },
+            {
+              "id": "c5",
+              "name": "COMPLETE_PREFIX",
+              "type": "string",
+              "value": "Staffing complete"
+            },
+            {
+              "id": "c6",
+              "name": "ORIGIN_IDENTIFIER",
+              "type": "string",
+              "value": "Automator - Instructor Invitations"
+            },
+            {
+              "id": "c7",
+              "name": "SENDING_ADDRESS_ID",
+              "type": "string",
+              "value": "REPLACE_WITH_SENDING_ADDRESS_ID"
+            },
+            {
+              "id": "c8",
+              "name": "PUBLISH_LINKS_TABLE_ID",
+              "type": "string",
+              "value": "REPLACE_WITH_PUBLISH_LINKS_TABLE_ID"
+            },
+            {
+              "id": "c9",
+              "name": "PUBLISH_PAGE_URL",
+              "type": "string",
+              "value": "https://YOUR-N8N-HOST/webhook/452ecc33-23f3-4c9b-a85b-0365322545b2"
+            },
+            {
+              "id": "c10",
+              "name": "AUTO_PUBLISH_FIELD_KEY",
+              "type": "string",
+              "value": "REPLACE_WITH_AUTO_PUBLISH_FIELD_KEY"
+            },
+            {
+              "id": "c11",
+              "name": "SUPPRESS_EMAIL_FIELD_KEY",
+              "type": "string",
+              "value": "REPLACE_WITH_SUPPRESS_COMPLETION_EMAIL_FIELD_KEY"
+            },
+            {
+              "id": "c12",
+              "name": "CHECKBOX_TRUE_VALUES",
+              "type": "string",
+              "value": "true,1,yes,on"
+            },
+            {
+              "id": "c13",
+              "name": "PUBLISHED_STATE",
+              "type": "string",
+              "value": "published"
+            },
+            {
+              "id": "c14",
+              "name": "VERB_BASE",
+              "type": "string",
+              "value": "deliver"
+            },
+            {
+              "id": "c15",
+              "name": "VERB_GERUND",
+              "type": "string",
+              "value": "delivering"
+            },
+            {
+              "id": "c16",
+              "name": "BRAND_NAME",
+              "type": "string",
+              "value": "Your Organisation"
+            },
+            {
+              "id": "c17",
+              "name": "EMAIL_PALETTE",
+              "type": "string",
+              "value": "FONT=Segoe UI,Roboto,Helvetica Neue,Arial,sans-serif|SHELLBG=#F2F4F7|ACCENT=#1F5FAD|DARK=#163F73|TINT=#E8EFF8|AMBER=#7F5F00|AMBERBG=#FDF0D5|DANGER=#A3241F|DANGERBG=#FBEDEC|INK=#1A1A1A|MUTED=#5A5A5A|LINE=#D4D4D4"
+            },
+            {
+              "id": "c18",
+              "name": "EMAIL_SHELL",
+              "type": "string",
+              "value": "<div style=\"background:%%SHELLBG%%;padding:24px 12px;font-family:%%FONT%%;\"><table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" width=\"100%\"><tr><td align=\"center\"><table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" width=\"600\" style=\"width:600px;max-width:600px;background:#FFFFFF;border:1px solid %%LINE%%;\"><tr><td style=\"background:%%DARK%%;padding:16px 28px;\"><span style=\"color:#FFFFFF;font-size:12px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;font-family:%%FONT%%;\">%%BRAND%%</span></td></tr><tr><td style=\"padding:26px 28px 8px;font-size:15px;line-height:1.55;color:%%INK%%;font-family:%%FONT%%;\">%%BODY%%</td></tr></table></td></tr></table></div>"
+            },
+            {
+              "id": "c19",
+              "name": "EMAIL_BUTTON",
+              "type": "string",
+              "value": "<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"margin:4px 0 18px;\"><tr><td style=\"background:%%ACCENT%%;\"><a href=\"%%URL%%\" style=\"display:inline-block;padding:12px 26px;font-size:15px;font-weight:600;color:#FFFFFF;text-decoration:none;font-family:%%FONT%%;\">%%LABEL%%</a></td></tr></table>"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "db670512-7128-4366-86e7-e5df4382e4ad",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        224,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').first().json.GRAPHQL_URL }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ query: 'query SummaryContext($eventId: ID!) { node(id: $eventId) { ... on Event { id title lifecycleState requiredStaff { quantity staffRole { id name } } customFieldValues { definitionKey value } staff { edges { node { id staffRole { id name } contact { id firstName lastName } } } } } } }', variables: { eventId: $('Called With').first().json.eventId } }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "b87aa32c-5c32-45ce-b69d-6b2c353bd11d",
+      "name": "Fetch Event",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        448,
+        80
+      ],
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Config').first().json.INVITATIONS_TABLE_ID }}"
+        },
+        "returnAll": true
+      },
+      "id": "917d16b6-1d1a-42fb-aad7-2f5284fb71f2",
+      "name": "Read Invitation Rows",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        672,
+        80
+      ],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "/*\tRecompute the at-a-glance summary for one event, from source.\n\tThis is the only place the summary is calculated - the response handler and the\n\treminder sweep both call it, so the wording and the completeness rule cannot drift\t*/\n\nconst cfg = $('Config').first().json;\nconst eventId = String($('Called With').first().json.eventId || '');\nconst rows = $input.all().map(i => i.json).filter(r => String(r.event_id) === eventId);\n\nconst node = (($('Fetch Event').first().json.data || {}).node) || {};\nconst required = node.requiredStaff || [];\nconst staff = ((node.staff || {}).edges || []).map(e => e.node);\nconst coordRole = String(cfg.COORDINATOR_ROLE_NAME).trim();\nconst completePrefix = String(cfg.COMPLETE_PREFIX);\nconst isDraft = String(node.lifecycleState || '') === 'draft';\n\n/*\tThe previous summary is the edge detection marker. It lives on the event,\n\tso no extra state is needed and a human can see it\t*/\nlet previousSummary = '';\n\nfor (const cf of (node.customFieldValues || [])) {\n\tif (String(cf.definitionKey || '') === String(cfg.SUMMARY_FIELD_KEY)) {\n\t\tpreviousSummary = String(cf.value === null || cf.value === undefined ? '' : cf.value);\n\t}\n}\n\n/*\tWithout somebody in the coordinator role nothing can be told to anybody: responses\n\tlose their coordinator recipient, the staffing complete email never fires, and the\n\tpublish link has nowhere to go. It is worth saying on the event itself, because that\n\tis the only surface a human looks at\t*/\nconst coordinatorIds = staff.filter(s => String((s.staffRole || {}).name || '').trim() === coordRole).map(s => s.id);\nconst hasCoordinator = coordinatorIds.length > 0;\nconst noCoordinatorNotice = 'NO ' + coordRole.toUpperCase() + ' ASSIGNED, nobody can be notified';\n\nconst accepted = rows.filter(r => String(r.status || '') === 'accepted');\nconst maybeCount = rows.filter(r => String(r.status || '') === 'maybe').length;\nconst attentionCount = rows.filter(r => String(r.status || '') === 'assign_failed').length;\nconst attentionText = attentionCount + (attentionCount === 1 ? ' needs attention' : ' need attention');\n\nconst answeredIds = {};\nfor (const r of rows) { answeredIds[String(r.contact_id)] = String(r.status || ''); }\n\nlet outstanding = 0;\nfor (const s of staff) {\n\tif (!s.contact) { continue; }\n\tif (String((s.staffRole || {}).name || '').trim() === coordRole) { continue; }\n\tconst st = answeredIds[String(s.contact.id)];\n\tif (st !== 'accepted' && st !== 'maybe') { outstanding = outstanding + 1; }\n}\n\n/*\tPer role: required against confirmed. Self correcting when somebody declines and is replaced\t*/\nlet totalRequired = 0;\nlet totalConfirmed = 0;\nconst roleParts = [];\n\nfor (const req of required) {\n\tconst roleName = String((req.staffRole || {}).name || '').trim();\n\tconst qty = Number(req.quantity || 0);\n\tif (qty === 0) { continue; }\n\n\t/*\tAn event can list the coordinator in its required personnel, and that line is worth\n\t\tshowing. It is read from staffing rather than from accepted responses, because a\n\t\tcoordinator is set by hand and never answers an invitation, and it is deliberately\n\t\tkept out of the totals below: counting it would hold every event permanently one\n\t\tshort, so staffing would never complete\t*/\n\tif (roleName === coordRole) {\n\t\tconst held = staff.filter(s => String((s.staffRole || {}).name || '').trim() === coordRole).length;\n\t\troleParts.push(Math.min(held, qty) + ' of ' + qty + ' ' + roleName);\n\t\tcontinue;\n\t}\n\n\tconst confirmed = accepted.filter(r => String(r.staff_role || '').trim() === roleName).length;\n\ttotalRequired = totalRequired + qty;\n\ttotalConfirmed = totalConfirmed + Math.min(confirmed, qty);\n\troleParts.push(confirmed + ' of ' + qty + ' ' + roleName);\n}\n\nconst complete = totalRequired > 0 && totalConfirmed >= totalRequired;\nconst stillNeeded = Math.max(totalRequired - totalConfirmed, 0);\n\n/*\tSomebody who accepted but could not be assigned only needs a human while there is\n\tstill a place for them. Once the event is fully staffed the slot has been filled by\n\tsomebody else, and once it leaves draft the staffing decision has been made, so in\n\tboth cases the flag is noise. The row itself is kept either way\t*/\nconst showAttention = attentionCount > 0 && !complete && isDraft;\n\nconst tail = [];\nif (outstanding > 0) { tail.push(outstanding + ' awaiting reply'); }\nif (maybeCount > 0) { tail.push(maybeCount + ' undecided'); }\nif (showAttention) { tail.push(attentionText); }\n\nlet summary;\n\nif (totalRequired === 0) {\n\tsummary = accepted.length + ' confirmed'\n\t\t+ (tail.length ? ', ' + tail.join(', ') : '')\n\t\t+ ' - no required personnel set on this event';\n} else if (complete) {\n\tsummary = completePrefix + ' - ' + roleParts.join(', ');\n} else {\n\tsummary = roleParts.join(', ') + ' confirmed - ' + stillNeeded + ' still needed'\n\t\t+ (tail.length ? ', ' + tail.join(', ') : '');\n}\n\n/*\tAppended rather than prefixed, because the complete prefix is the edge detection\n\tmarker and must stay at the front\t*/\nif (!hasCoordinator) {\n\tsummary = summary + ' - ' + noCoordinatorNotice;\n}\n\n/*\tThe completion email needs two things at once: staffing complete, and somebody to\n\tsend it to. Those can arrive in either order, and a coordinator added after the last\n\tacceptance is a normal way round.\n\tSo the marker is not was it complete, it is was anybody actually told. An event that\n\treached complete with no coordinator carries the warning in its summary, and that\n\twarning is what says the email has not gone yet. Without this, completing first and\n\tadding the coordinator second missed the email permanently, because the field already\n\tread complete and the transition looked spent\t*/\nconst wasNotified = previousSummary.indexOf(completePrefix) === 0\n\t&& previousSummary.indexOf(noCoordinatorNotice) === -1;\n\nconst justCompleted = complete && !wasNotified && isDraft && hasCoordinator;\n\nconst esc = (v) => String(v === null || v === undefined ? '' : v)\n\t.split('&').join('&amp;').split('<').join('&lt;').split('>').join('&gt;').split('\"').join('&quot;');\n\n/*\tEverybody running this event, as staff records. The ids address the completion email,\n\tthe names go in its body. Read after the caller has finished writing, so somebody who\n\thas only just been assigned is included\t*/\nconst instructors = staff.filter(s => s.contact && String((s.staffRole || {}).name || '').trim() !== coordRole);\nconst instructorIds = instructors.map(s => s.id);\nconst instructorNames = instructors.map(s => esc(s.contact.firstName + ' ' + s.contact.lastName));\n\nreturn [{ json: {\n\teventId: eventId,\n\teventTitle: String(node.title || ''),\n\tsummary: summary,\n\tpreviousSummary: previousSummary,\n\tchanged: summary !== previousSummary,\n\tcomplete: complete,\n\tjustCompleted: justCompleted,\n\thasCoordinator: hasCoordinator,\n\twasNotified: wasNotified,\n\tcoordinatorIds: coordinatorIds,\n\tinstructorIds: instructorIds,\n\troleParts: roleParts,\n\tinstructorNames: instructorNames,\n\ttotalRequired: totalRequired,\n\ttotalConfirmed: totalConfirmed,\n\tstillNeeded: stillNeeded,\n\toutstanding: outstanding,\n\tneedsAttention: attentionCount,\n\tshowsAttention: showAttention\n} }];"
+      },
+      "id": "9c388a89-5f76-41b6-9b44-1ddfa253dc70",
+      "name": "Build Summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        896,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ $json.changed }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              },
+              "rightValue": ""
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "e7fbd2e2-9294-4d8f-bbf6-41b7f8626c10",
+      "name": "IF Summary Changed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1120,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').first().json.GRAPHQL_URL }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ query: 'mutation SetSummary($eventId: ID!, $key: ID!, $val: String!){ event { update(eventId:$eventId, input:{ customFieldValues:[{ definitionKey:$key, value:$val }] }){ event{ id } errors{ label message value } } } }', variables: { eventId: $json.eventId, key: $('Config').first().json.SUMMARY_FIELD_KEY, val: $json.summary } }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "25205e16-de08-4a22-a825-334939cd0fd6",
+      "name": "Write Summary",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1344,
+        0
+      ],
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      },
+      "onError": "continueRegularOutput",
+      "notes": "Only writes when the text actually changed, so a sweep over an unchanged event costs nothing."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "j1",
+              "leftValue": "={{ $('Build Summary').first().json.justCompleted === true && !$json.error && !(($json.errors || []).length) && !(((($json.data || {}).event || {}).update || {}).errors || []).length }}",
+              "operator": {
+                "operation": "true",
+                "singleValue": true,
+                "type": "boolean"
+              },
+              "rightValue": ""
+            }
+          ],
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          }
+        },
+        "options": {}
+      },
+      "id": "14dbb687-c84e-4842-92e0-fc975765491e",
+      "name": "IF Staffing Just Completed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1568,
+        0
+      ],
+      "notes": "Only on the call that writes the complete summary, and only when that write succeeded. The written summary is the marker that the email has gone, so a later call (from 40 or the 50 sweep) sees it and stays quiet. If the write failed nothing is sent, and the next call retries."
+    },
+    {
+      "parameters": {
+        "jsCode": "/*\tStaffing has just become complete. Two independent gates decide what happens next:\n\twhether the event publishes on its own, and whether the coordinator is told.\n\tBoth are off by default, so leaving them alone gives an email and no auto publish\t*/\n\nconst cfg = $('Config').first().json;\n\n/*\tA random, unguessable token. 32 bytes from a secure source, hex encoded. It is\n\tnever derived from the event or contact ID. Uses the crypto module where the Code\n\tnode allows it, otherwise the Web Crypto API\t*/\nconst randomToken = () => {\n\tlet bytes = null;\n\ttry {\n\t\tbytes = Array.from(require('crypto').randomBytes(32));\n\t} catch (error) {\n\t\tif (typeof crypto !== 'undefined' && crypto.getRandomValues) {\n\t\t\tbytes = Array.from(crypto.getRandomValues(new Uint8Array(32)));\n\t\t}\n\t}\n\tif (!bytes) {\n\t\tthrow new Error('No secure random source available. Allow the crypto module in Code nodes (NODE_FUNCTION_ALLOW_BUILTIN=crypto).');\n\t}\n\treturn bytes.map((b) => b.toString(16).padStart(2, '0')).join('');\n};\n\n/*\tThe summary just calculated, and the event as read at the start of this run. The\n\tcustom fields read here are the same Publish Automatically and Suppress Completion\n\tEmail fields whichever workflow called this one\t*/\nconst s = $('Build Summary').first().json;\nconst node = (($('Fetch Event').first().json.data || {}).node) || {};\n\nconst coordRole = String(cfg.COORDINATOR_ROLE_NAME).trim();\nconst trueValues = String(cfg.CHECKBOX_TRUE_VALUES).split(',').map(v => v.trim().toLowerCase());\n\n/*\tThe verb for what an instructor does with an event. Both forms appear here: needed to\n\tdeliver this event, and the Delivering it label. Change VERB_BASE and VERB_GERUND in Config\t*/\nconst verb = String(cfg.VERB_BASE || 'deliver').trim();\nconst verbing = String(cfg.VERB_GERUND || 'delivering').trim();\nconst titleCase = (v) => v.charAt(0).toUpperCase() + v.slice(1);\n\nconst reads = (key) => {\n\tfor (const cf of (node.customFieldValues || [])) {\n\t\tif (String(cf.definitionKey || '') !== String(key)) { continue; }\n\t\treturn trueValues.indexOf(String(cf.value === null || cf.value === undefined ? '' : cf.value).trim().toLowerCase()) !== -1;\n\t}\n\treturn false;\n};\n\nconst autoPublish = reads(cfg.AUTO_PUBLISH_FIELD_KEY);\nconst suppressEmail = reads(cfg.SUPPRESS_EMAIL_FIELD_KEY);\n\n/*\tThe publish page warns a human about missing personnel and lets them proceed anyway,\n\tbecause they may have a reason. An automation has no such reason, so this only fires\n\twhen the requirement is genuinely met\t*/\nconst requirementMet = s.complete === true;\nconst shouldPublish = autoPublish && requirementMet && String(node.lifecycleState || '') === 'draft';\n\nconst esc = (v) => String(v === null || v === undefined ? '' : v)\n\t.split('&').join('&amp;').split('<').join('&lt;').split('>').join('&gt;').split('\"').join('&quot;');\n\n/*\tFrame, button and palette come from Config, the same three values the response\n\thandler uses. Change the look there, not here\t*/\nconst pal = {};\nfor (const part of String(cfg.EMAIL_PALETTE || '').split('|')) {\n\tconst at = part.indexOf('=');\n\tif (at > 0) { pal[part.slice(0, at).trim()] = part.slice(at + 1).trim(); }\n}\n\nconst fill = (tpl, extra) => {\n\tlet s2 = String(tpl || '');\n\tfor (const k of Object.keys(pal)) { s2 = s2.split('%%' + k + '%%').join(pal[k]); }\n\tfor (const k of Object.keys(extra || {})) { s2 = s2.split('%%' + k + '%%').join(extra[k]); }\n\treturn s2;\n};\n\nconst emailShell = (inner) => fill(cfg.EMAIL_SHELL, { BRAND: esc(cfg.BRAND_NAME), BODY: inner });\n\n/*\tMerge fields, not values - Administrate resolves them per recipient, so several\n\tcoordinators each get their own link from a single send. They cannot appear in an\n\tn8n expression, which is why this string is built here. Left unescaped, because the\n\tbraces must reach Administrate intact\t*/\n/*\tOne random publish token per completion email, saved by Save Publish Link before the\n\temail goes. A newer completion email replaces it, so older publish links expire\t*/\nconst publishToken = randomToken();\nconst linkTail = '?e=' + '{' + '{ staff.event.encoded_id }' + '}' + '&c=' + '{' + '{ staff.contact.encoded_id }' + '}' + '&t=' + publishToken;\nconst link = String(cfg.PUBLISH_PAGE_URL) + linkTail;\n\nconst button = fill(cfg.EMAIL_BUTTON, { URL: link, LABEL: 'Review and publish this event' });\n\nconst running = (s.instructorNames || []).length\n\t? '<p style=\"margin:0 0 4px;color:' + pal.MUTED + ';font-size:13px;\">' + esc(titleCase(verbing)) + ' it</p>'\n\t\t+ '<p style=\"margin:0 0 18px;\">' + s.instructorNames.join(', ') + '</p>'\n\t: '';\n\nconst head = '<p style=\"margin:0 0 6px;color:' + pal.MUTED + ';font-size:13px;\">Staffing complete</p>'\n\t+ '<p style=\"margin:0 0 18px;font-size:20px;font-weight:600;color:' + pal.INK + ';\">' + esc(s.eventTitle) + '</p>'\n\t+ '<div style=\"background:' + pal.TINT + ';border-left:3px solid ' + pal.ACCENT + ';padding:12px 14px;margin:0 0 18px;\">'\n\t+ '<p style=\"margin:0;\">Everybody needed to ' + esc(verb) + ' this event has confirmed. ' + esc((s.roleParts || []).join(', ')) + '.</p></div>'\n\t+ running;\n\n/*\tThe email says what happened, not what could happen - otherwise a coordinator gets\n\ta Publish button for an event that is already live\t*/\nconst body = emailShell(shouldPublish\n\t? head + '<p style=\"margin:0 0 16px;\">The event is now live in Administrate. Nothing further is needed.</p>'\n\t: head + '<p style=\"margin:0 0 4px;\">The event is still a draft.</p>' + button\n\t\t+ '<p style=\"margin:0 0 16px;color:' + pal.MUTED + ';\">Publishing is your decision. Nothing has been changed.</p>');\n\n/*\tKept for if the people running the event are ever told at this point too. They are\n\tnot at present: their confirmation comes from the publish handler\t*/\nconst instructorBody = emailShell(shouldPublish\n\t? head + '<p style=\"margin:0 0 16px;\">The event is now live in Administrate. Nothing further is needed from you.</p>'\n\t: head + '<p style=\"margin:0 0 16px;\">The ' + esc(coordRole) + ' will confirm the event shortly. Nothing further is needed from you.</p>');\n\nconst publishBody = shouldPublish\n\t? JSON.stringify({\n\t\tquery: 'mutation AutoPublish($eventId: ID!, $state: EventLifecycleState!){ event { update(eventId:$eventId, input:{ lifecycleState:$state }){ event{ id lifecycleState } errors{ label message value } } } }',\n\t\tvariables: { eventId: s.eventId, state: cfg.PUBLISHED_STATE }\n\t})\n\t: JSON.stringify({ query: 'query NoOp { __typename }' });\n\nreturn [{ json: {\n\teventId: s.eventId,\n\teventTitle: s.eventTitle,\n\tcoordinatorIds: s.coordinatorIds,\n\tinstructorIds: s.instructorIds || [],\n\tautoPublish: autoPublish,\n\trequirementMet: requirementMet,\n\tpublished: shouldPublish,\n\tnotify: !suppressEmail && (s.coordinatorIds || []).length > 0,\n\tnotifyInstructors: false,\n\tpublishBody: publishBody,\n\tpublishToken: publishToken,\n\tnow: new Date().toISOString(),\n\tsubject: (shouldPublish ? 'Now live: ' : 'Staffing complete - ') + s.eventTitle,\n\tbody: body,\n\tinstructorBody: instructorBody,\n\tlogMessage: 'Staffing complete for ' + s.eventTitle + '. '\n\t\t+ (shouldPublish ? 'Event published automatically.' : (autoPublish ? 'Auto publish is on but the required personnel are not met, so nothing was published.' : coordRole + ' invited to publish.'))\n\t\t+ (suppressEmail ? ' Coordinator email suppressed on this event.' : '')\n} }];"
+      },
+      "id": "9a528e11-10d8-42e9-aeb7-bd0785a2d7b7",
+      "name": "Compose Completion Email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1792,
+        0
+      ],
+      "notes": "The publish link contains Administrate merge fields in double braces. Those cannot appear inside an n8n expression, because n8n tries to evaluate them as its own and fails with invalid syntax. Building the string here keeps the braces out of any node parameter."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').first().json.GRAPHQL_URL }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.publishBody }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "41c3febd-4307-4f9f-8a90-66993be21a99",
+      "name": "Auto Publish If Enabled",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2016,
+        0
+      ],
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      },
+      "notes": "Runs a harmless no-op query unless the event is set to publish automatically and the required personnel are genuinely met."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "n1",
+              "leftValue": "={{ $('Compose Completion Email').first().json.notify }}",
+              "operator": {
+                "operation": "true",
+                "singleValue": true,
+                "type": "boolean"
+              },
+              "rightValue": ""
+            }
+          ],
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          }
+        },
+        "options": {}
+      },
+      "id": "571a9e52-4c94-4c94-bd60-d7903b815657",
+      "name": "IF Notify Coordinator?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2240,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Config').first().json.PUBLISH_LINKS_TABLE_ID }}"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "event_id",
+              "keyValue": "={{ $('Compose Completion Email').first().json.eventId }}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "matchingColumns": [
+            "event_id"
+          ],
+          "schema": [
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "event_id",
+              "id": "event_id",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "token",
+              "id": "token",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "created_at",
+              "id": "created_at",
+              "required": false,
+              "type": "string"
+            }
+          ],
+          "value": {
+            "event_id": "={{ $('Compose Completion Email').first().json.eventId }}",
+            "token": "={{ $('Compose Completion Email').first().json.publishToken }}",
+            "created_at": "={{ $('Compose Completion Email').first().json.now }}"
+          }
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        2464,
+        -96
+      ],
+      "name": "Save Publish Link",
+      "notes": "One publish token per event. Saving a new one expires the link in any earlier completion email.",
+      "id": "c7d51e8d-02e5-4ccd-8ff5-ae4bacc34c03"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').first().json.GRAPHQL_URL }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ query: 'mutation StaffingComplete($eventId: String!, $staffIds: [String], $sendingAddressId: ID, $subject: String, $body: String){ bulkAdhocEmails{ sendBulkStaffAdhocEmail(input:{ eventId:$eventId, staffIds:$staffIds, sendingAddressId:$sendingAddressId, subject:$subject, body:$body }){ errors{ label message value } } } }', variables: { eventId: $('Compose Completion Email').first().json.eventId, staffIds: $('Compose Completion Email').first().json.coordinatorIds, sendingAddressId: $('Config').first().json.SENDING_ADDRESS_ID, subject: $('Compose Completion Email').first().json.subject, body: $('Compose Completion Email').first().json.body } }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "6dc67ad1-cb18-4e2c-9c30-680973be366c",
+      "name": "Tell Coordinator Staffing Is Complete",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2688,
+        -96
+      ],
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      },
+      "notes": "One email to all coordinators on the event. The publish link uses Administrate merge fields for the event and contact, plus the publish token, so each coordinator gets their own link from a single send.",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').first().json.GRAPHQL_URL }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $('Compose Completion Email').first().json.notifyInstructors ? JSON.stringify({ query: 'mutation TellInstructors($eventId: String!, $staffIds: [String], $sendingAddressId: ID, $subject: String, $body: String){ bulkAdhocEmails{ sendBulkStaffAdhocEmail(input:{ eventId:$eventId, staffIds:$staffIds, sendingAddressId:$sendingAddressId, subject:$subject, body:$body }){ errors{ label message value } } } }', variables: { eventId: $('Compose Completion Email').first().json.eventId, staffIds: $('Compose Completion Email').first().json.instructorIds, sendingAddressId: $('Config').first().json.SENDING_ADDRESS_ID, subject: $('Compose Completion Email').first().json.subject, body: $('Compose Completion Email').first().json.instructorBody } }) : JSON.stringify({ query: 'query NoOp { __typename }' }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "c5f11bd9-d8d9-4c49-8a3d-d4eca5238ff0",
+      "name": "Tell Instructors Staffing Is Complete",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2464,
+        96
+      ],
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      },
+      "disabled": true,
+      "onError": "continueRegularOutput",
+      "notes": "The same news as the coordinator gets, minus the publish link, because only the coordinator can act on it. Addressed by staff record rather than by contact, which is safe here because everybody confirmed is on the event by definition. Runs a harmless no-op query when there is nobody to tell."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').first().json.GRAPHQL_URL }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ query: 'mutation Log($originIdentifier: String!, $nodeId: ID!, $message: String!, $status: ExternalLogTypeStatus!, $payload: String){ externalLog{ createExternalIntegrationLog(input:{ originIdentifier:$originIdentifier, nodeId:$nodeId, message:$message, status:$status, payload:$payload }){ errors{ label message value } } } }', variables: { originIdentifier: $('Config').first().json.ORIGIN_IDENTIFIER, nodeId: $('Compose Completion Email').first().json.eventId, message: (($json.error || ($json.errors || []).length || (((($json.data || {}).bulkAdhocEmails || {}).sendBulkStaffAdhocEmail || {}).errors || []).length) ? 'Staffing complete for ' + $('Compose Completion Email').first().json.eventTitle + ', but the email to the ' + $('Config').first().json.COORDINATOR_ROLE_NAME + ' failed. Send the publish link by hand or publish in Administrate.' : $('Compose Completion Email').first().json.logMessage), status: (($json.error || ($json.errors || []).length || (((($json.data || {}).bulkAdhocEmails || {}).sendBulkStaffAdhocEmail || {}).errors || []).length) ? 'failed' : 'success'), payload: JSON.stringify($json) } }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "3b092fda-3f6e-4495-b801-2d88f7eaef20",
+      "name": "Log Staffing Complete",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2912,
+        -96
+      ],
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      },
+      "onError": "continueRegularOutput",
+      "notes": "Logs failed rather than success when Administrate refused the coordinator email, so a lost email is visible on the event."
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "r1",
+              "name": "eventId",
+              "type": "string",
+              "value": "={{ $('Build Summary').first().json.eventId }}"
+            },
+            {
+              "id": "r2",
+              "name": "summary",
+              "type": "string",
+              "value": "={{ $('Build Summary').first().json.summary }}"
+            },
+            {
+              "id": "r3",
+              "name": "complete",
+              "type": "boolean",
+              "value": "={{ $('Build Summary').first().json.complete }}"
+            },
+            {
+              "id": "r4",
+              "name": "justCompleted",
+              "type": "boolean",
+              "value": "={{ $('Build Summary').first().json.justCompleted }}"
+            },
+            {
+              "id": "r5",
+              "name": "coordinatorIds",
+              "type": "array",
+              "value": "={{ $('Build Summary').first().json.coordinatorIds }}"
+            },
+            {
+              "id": "r6",
+              "name": "roleParts",
+              "type": "array",
+              "value": "={{ $('Build Summary').first().json.roleParts }}"
+            },
+            {
+              "id": "r7",
+              "name": "instructorNames",
+              "type": "array",
+              "value": "={{ $('Build Summary').first().json.instructorNames }}"
+            },
+            {
+              "id": "r8",
+              "name": "eventTitle",
+              "type": "string",
+              "value": "={{ $('Build Summary').first().json.eventTitle }}"
+            },
+            {
+              "id": "r9",
+              "name": "instructorIds",
+              "type": "array",
+              "value": "={{ $('Build Summary').first().json.instructorIds }}"
+            },
+            {
+              "id": "r10",
+              "name": "completionHandled",
+              "type": "boolean",
+              "value": "={{ $('Compose Completion Email').isExecuted }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "67c205cf-2881-4c84-bf19-2af1d96ee2ed",
+      "name": "Return",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        3136,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 20 Recompute Event Summary (shared)\n\nCalled by **40 Response Handler** after a response and by **50 Reminders and Expiry** after a reminder and on its daily refresh. It is the only place the staffing summary is calculated and the only place the staffing complete email is sent, so the wording, the completeness rule and the email cannot drift between callers.\n\n### What it does\n1. Works out the summary and writes it to the event when the text changed.\n2. When staffing has *just* become complete and that write succeeded, it publishes automatically if **Publish Automatically** is Yes. Unless **Suppress Completion Email** is Yes, it saves a fresh publish token (replacing the event's old one) and emails the coordinator a link to **60**.\n\n### One email per completion\nThe summary stored on the event is the marker. Once the complete summary is written, every later call from 40 or 50 sees it and sends nothing. If the write fails, nothing is sent and the next call (at the latest the next daily sweep) tries again. A coordinator added after completion is picked up the same way.\n\n### Rules worth knowing\n- A required coordinator is shown in the breakdown but not counted, because a coordinator never answers an invitation.\n- *Needs attention* only shows while the event is a draft and still short.\n\n### Setup\nAdministrate OAuth2 credential on every HTTP Request node. Activate is not needed: it runs when called. Copy this workflow's ID into `SUMMARY_WORKFLOW_ID` in 40 and 50.",
+        "height": 688,
+        "width": 600,
+        "color": 4
+      },
+      "id": "550b4e54-21a8-4540-a788-0fb1d0352156",
+      "name": "Sticky Note - 20 Recompute Event Summary (shared)",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -704,
+        -704
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Config\n\n**COORDINATOR_ROLE_NAME** - the staff role that coordinates the event. Excluded from the counts and used to address the completion email. Must match the role name in Administrate.\n\n**INVITATIONS_TABLE_ID** - the invitations Data Table.\n\n**PUBLISH_LINKS_TABLE_ID** - the publish links Data Table. One token per event.\n\n**PUBLISH_PAGE_URL** - production URL of **60 Publish Event Page**.\n\n**SUMMARY_FIELD_KEY** - `definitionKey` of the Event text field that shows the summary.\n\n**AUTO_PUBLISH_FIELD_KEY**, **SUPPRESS_EMAIL_FIELD_KEY** - Event Yes/No field keys for automatic publishing and for stopping the completion email.\n\n**CHECKBOX_TRUE_VALUES** - values that count as yes. Anything else means no.\n\n**PUBLISHED_STATE** - lifecycle state used when publishing automatically.\n\n**COMPLETE_PREFIX** - text a complete summary starts with. It is also the marker that the completion email has gone, so changing it makes every event look newly complete once.\n\n**ORIGIN_IDENTIFIER**, **SENDING_ADDRESS_ID**, **VERB_BASE**, **VERB_GERUND**, **BRAND_NAME**, **EMAIL_PALETTE**, **EMAIL_SHELL**, **EMAIL_BUTTON** - as in 40 and 50.",
+        "height": 656,
+        "width": 700,
+        "color": 6
+      },
+      "id": "31a48629-12d2-4caf-a960-87a1e890c56f",
+      "name": "Sticky Note - Config",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -32,
+        -1440
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Called With": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Fetch Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Event": {
+      "main": [
+        [
+          {
+            "node": "Read Invitation Rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Invitation Rows": {
+      "main": [
+        [
+          {
+            "node": "Build Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Summary": {
+      "main": [
+        [
+          {
+            "node": "IF Summary Changed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Summary Changed?": {
+      "main": [
+        [
+          {
+            "node": "Write Summary",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Return",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write Summary": {
+      "main": [
+        [
+          {
+            "node": "IF Staffing Just Completed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Staffing Just Completed?": {
+      "main": [
+        [
+          {
+            "node": "Compose Completion Email",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Return",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compose Completion Email": {
+      "main": [
+        [
+          {
+            "node": "Auto Publish If Enabled",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Auto Publish If Enabled": {
+      "main": [
+        [
+          {
+            "node": "IF Notify Coordinator?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Notify Coordinator?": {
+      "main": [
+        [
+          {
+            "node": "Save Publish Link",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Tell Instructors Staffing Is Complete",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Return",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Publish Link": {
+      "main": [
+        [
+          {
+            "node": "Tell Coordinator Staffing Is Complete",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tell Coordinator Staffing Is Complete": {
+      "main": [
+        [
+          {
+            "node": "Log Staffing Complete",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Staffing Complete": {
+      "main": [
+        [
+          {
+            "node": "Return",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true,
+    "binaryMode": "separate"
+  },
+  "tags": []
+}

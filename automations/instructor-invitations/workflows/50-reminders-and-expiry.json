@@ -1,0 +1,895 @@
+{
+  "name": "Instructor Invitations - Reminders and Expiry",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 8 * * *"
+            }
+          ]
+        }
+      },
+      "id": "349b386e-045c-41dc-b7e2-adee711be414",
+      "name": "Daily Sweep",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c1",
+              "name": "GRAPHQL_URL",
+              "type": "string",
+              "value": "https://api.getadministrate.com/graphql"
+            },
+            {
+              "id": "c2",
+              "name": "ORIGIN_IDENTIFIER",
+              "type": "string",
+              "value": "Automator - Instructor Invitations"
+            },
+            {
+              "id": "c3",
+              "name": "COORDINATOR_ROLE_NAME",
+              "type": "string",
+              "value": "Coordinator"
+            },
+            {
+              "id": "c4",
+              "name": "SENDING_ADDRESS_ID",
+              "type": "string",
+              "value": "REPLACE_WITH_SENDING_ADDRESS_ID"
+            },
+            {
+              "id": "c5",
+              "name": "INVITATIONS_TABLE_ID",
+              "type": "string",
+              "value": "REPLACE_WITH_INVITATIONS_TABLE_ID"
+            },
+            {
+              "id": "c6",
+              "name": "RESPONSE_BASE_URL",
+              "type": "string",
+              "value": "https://YOUR-N8N-HOST/webhook/311377a4-5399-4bb7-8f6a-8d671ba0e3d3"
+            },
+            {
+              "id": "c7",
+              "name": "REMINDERS_FIELD_KEY",
+              "type": "string",
+              "value": "REPLACE_WITH_SEND_REMINDERS_FIELD_KEY"
+            },
+            {
+              "id": "c8",
+              "name": "CHECKBOX_TRUE_VALUES",
+              "type": "string",
+              "value": "true,1,yes,on"
+            },
+            {
+              "id": "c9",
+              "name": "CHASEABLE_STATUSES",
+              "type": "string",
+              "value": "maybe,reminded,invited"
+            },
+            {
+              "id": "c10",
+              "name": "REMINDER_FIRST_DAYS",
+              "type": "number",
+              "value": 3
+            },
+            {
+              "id": "c11",
+              "name": "REMINDER_SECOND_DAYS",
+              "type": "number",
+              "value": 7
+            },
+            {
+              "id": "c12",
+              "name": "EXPIRY_DAYS",
+              "type": "number",
+              "value": 10
+            },
+            {
+              "id": "c13",
+              "name": "FALLBACK_LOG_EVENT_ID",
+              "type": "string",
+              "value": "REPLACE_WITH_FALLBACK_LOG_EVENT_ID"
+            },
+            {
+              "id": "c14",
+              "name": "FALLBACK_ROLE_NAME",
+              "type": "string",
+              "value": "Instructor"
+            },
+            {
+              "id": "c14b",
+              "name": "VERB_BASE",
+              "type": "string",
+              "value": "deliver"
+            },
+            {
+              "id": "c14c",
+              "name": "VERB_GERUND",
+              "type": "string",
+              "value": "delivering"
+            },
+            {
+              "id": "c15",
+              "name": "BRAND_NAME",
+              "type": "string",
+              "value": "Your Organisation"
+            },
+            {
+              "id": "c16",
+              "name": "EMAIL_PALETTE",
+              "type": "string",
+              "value": "FONT=Segoe UI,Roboto,Helvetica Neue,Arial,sans-serif|SHELLBG=#F2F4F7|ACCENT=#1F5FAD|DARK=#163F73|TINT=#E8EFF8|AMBER=#7F5F00|AMBERBG=#FDF0D5|DANGER=#A3241F|DANGERBG=#FBEDEC|INK=#1A1A1A|MUTED=#5A5A5A|LINE=#D4D4D4"
+            },
+            {
+              "id": "c17",
+              "name": "EMAIL_SHELL",
+              "type": "string",
+              "value": "<div style=\"background:%%SHELLBG%%;padding:24px 12px;font-family:%%FONT%%;\"><table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" width=\"100%\"><tr><td align=\"center\"><table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" width=\"600\" style=\"width:600px;max-width:600px;background:#FFFFFF;border:1px solid %%LINE%%;\"><tr><td style=\"background:%%DARK%%;padding:16px 28px;\"><span style=\"color:#FFFFFF;font-size:12px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;font-family:%%FONT%%;\">%%BRAND%%</span></td></tr><tr><td style=\"padding:26px 28px 8px;font-size:15px;line-height:1.55;color:%%INK%%;font-family:%%FONT%%;\">%%BODY%%</td></tr></table></td></tr></table></div>"
+            },
+            {
+              "id": "c18",
+              "name": "EMAIL_BUTTON",
+              "type": "string",
+              "value": "<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"margin:4px 0 18px;\"><tr><td style=\"background:%%ACCENT%%;\"><a href=\"%%URL%%\" style=\"display:inline-block;padding:12px 26px;font-size:15px;font-weight:600;color:#FFFFFF;text-decoration:none;font-family:%%FONT%%;\">%%LABEL%%</a></td></tr></table>"
+            },
+            {
+              "id": "626833b8-65fe-4730-942f-db72a006c188",
+              "name": "SUMMARY_WORKFLOW_ID",
+              "type": "string",
+              "value": "REPLACE_WITH_ID_OF_RECOMPUTE_EVENT_SUMMARY_WORKFLOW"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "c7e7f838-e96d-4985-8358-f4c6e753dd84",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        224,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Config').first().json.INVITATIONS_TABLE_ID }}"
+        },
+        "returnAll": true
+      },
+      "id": "d93d2651-bff2-43e2-bc1e-50550d1d1058",
+      "name": "Read Responses So Far",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        448,
+        96
+      ],
+      "alwaysOutputData": true,
+      "notes": "Anyone with a recorded answer is out of scope. Everyone else on an opted-in draft event is still silent."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "f1",
+              "leftValue": "={{ (($json.errors || []).length > 0) }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              },
+              "rightValue": ""
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "6385502d-bda9-4285-887b-c44905248e42",
+      "name": "IF Fetch Errors?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1120,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').first().json.GRAPHQL_URL }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ query: 'mutation Log($originIdentifier: String!, $nodeId: ID!, $message: String!, $status: ExternalLogTypeStatus!, $payload: String){ externalLog{ createExternalIntegrationLog(input:{ originIdentifier:$originIdentifier, nodeId:$nodeId, message:$message, status:$status, payload:$payload }){ errors{ label message value } } } }', variables: { originIdentifier: $('Config').first().json.ORIGIN_IDENTIFIER, nodeId: ($('Who Needs Chasing').isExecuted && $('Who Needs Chasing').all().length ? $('Who Needs Chasing').first().json.eventId : $('Config').first().json.FALLBACK_LOG_EVENT_ID), message: 'Reminder sweep failed', status: 'failed', payload: JSON.stringify($json) } }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "fc5ca53d-11ea-49f1-aa56-2d0206ffe166",
+      "name": "Log Failure",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2016,
+        0
+      ],
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      },
+      "onError": "continueRegularOutput",
+      "notes": "Both failure paths converge here. When the sweep failed before any event was identified, the entry is attached to FALLBACK_LOG_EVENT_ID, a draft event kept for the purpose."
+    },
+    {
+      "parameters": {
+        "errorMessage": "Reminder sweep failed: Administrate returned errors (check both errors arrays)."
+      },
+      "id": "f812601a-9da5-4b19-addd-eb0eb3e1358a",
+      "name": "Stop",
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        2240,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "/*\tWork out who is due a nudge or has run out of time.\n\tOne item per action. Nothing on a quiet day, which is correct rather than a failure.\n\tRole names, the verb and email styling all come from Config, never hardcoded\t*/\n\nconst cfg = $('Config').first().json;\n\n/*\tA random, unguessable token. 32 bytes from a secure source, hex encoded. It is\n\tnever derived from the event or contact ID. Uses the crypto module where the Code\n\tnode allows it, otherwise the Web Crypto API\t*/\nconst randomToken = () => {\n\tlet bytes = null;\n\ttry {\n\t\tbytes = Array.from(require('crypto').randomBytes(32));\n\t} catch (error) {\n\t\tif (typeof crypto !== 'undefined' && crypto.getRandomValues) {\n\t\t\tbytes = Array.from(crypto.getRandomValues(new Uint8Array(32)));\n\t\t}\n\t}\n\tif (!bytes) {\n\t\tthrow new Error('No secure random source available. Allow the crypto module in Code nodes (NODE_FUNCTION_ALLOW_BUILTIN=crypto).');\n\t}\n\treturn bytes.map((b) => b.toString(16).padStart(2, '0')).join('');\n};\n\nconst ctx = $('Which Events To Check').first().json;\n\nconst coordRole = String(cfg.COORDINATOR_ROLE_NAME).trim();\nconst fallbackRole = String(cfg.FALLBACK_ROLE_NAME || 'Instructor').trim();\nconst remindersKey = String(cfg.REMINDERS_FIELD_KEY).trim();\nconst trueValues = String(cfg.CHECKBOX_TRUE_VALUES).split(',').map(v => v.trim().toLowerCase());\nconst firstDays = Number(cfg.REMINDER_FIRST_DAYS);\nconst secondDays = Number(cfg.REMINDER_SECOND_DAYS);\nconst expiryDays = Number(cfg.EXPIRY_DAYS);\n\n/*\tThe verb for what an instructor does with an event. The literal is a last resort if\n\tconfig is blank, not the setting - change VERB_BASE in Config\t*/\nconst verb = String(cfg.VERB_BASE || 'deliver').trim();\n\n/*\tFetch Draft Events pages through the events, one item per page, so every page is\n\tread. Only reading the first page would silently skip events beyond the first 100\t*/\nconst events = {};\nfor (const page of $input.all()) {\n\tfor (const edge of ((((page.json.data || {}).events || {}).edges) || [])) {\n\t\tevents[String(edge.node.id)] = edge.node;\n\t}\n}\n\n/*\tSAFETY CATCH. Only events with the reminders field set to Yes are chased.\n\tNo, unset and absent all mean no. Matched on key so the label can be renamed\t*/\nconst optedIn = (ev) => {\n\tfor (const cf of (ev.customFieldValues || [])) {\n\t\tif (String(cf.definitionKey || '') !== remindersKey) { continue; }\n\t\treturn trueValues.indexOf(String(cf.value === null || cf.value === undefined ? '' : cf.value).trim().toLowerCase()) !== -1;\n\t}\n\treturn false;\n};\n\nconst esc = (v) => String(v === null || v === undefined ? '' : v)\n\t.split('&').join('&amp;').split('<').join('&lt;').split('>').join('&gt;').split('\"').join('&quot;');\n\n/*\tThe email frame, the button and the palette all live in Config, so a change to the\n\tlook is made in one place per workflow rather than hunted through code. Pipe separated\n\tbecause the font list itself contains commas\t*/\nconst pal = {};\nfor (const part of String(cfg.EMAIL_PALETTE || '').split('|')) {\n\tconst at = part.indexOf('=');\n\tif (at > 0) { pal[part.slice(0, at).trim()] = part.slice(at + 1).trim(); }\n}\n\n/*\tPalette tokens first, then the content, so a colour name appearing inside the body\n\tcannot be substituted twice\t*/\nconst fill = (tpl, extra) => {\n\tlet s = String(tpl || '');\n\tfor (const k of Object.keys(pal)) { s = s.split('%%' + k + '%%').join(pal[k]); }\n\tfor (const k of Object.keys(extra || {})) { s = s.split('%%' + k + '%%').join(extra[k]); }\n\treturn s;\n};\n\nconst emailShell = (inner) => fill(cfg.EMAIL_SHELL, { BRAND: esc(cfg.BRAND_NAME), BODY: inner });\nconst emailButton = (url, label) => fill(cfg.EMAIL_BUTTON, { URL: esc(url), LABEL: esc(label) });\n\nconst out = [];\nconst now = Date.now();\n\nfor (const row of (ctx.openRows || [])) {\n\tconst ev = events[String(row.event_id)];\n\tif (!ev) { continue; }\n\tif (!optedIn(ev)) { continue; }\n\tif (String(ev.lifecycleState || '') !== 'draft') { continue; }\n\n\t/*\tIf staffing is already complete there is nobody left to chase for this event.\n\t\tThe coordinator role is skipped, because it is filled by hand and never answers\t*/\n\tconst staff = ((ev.staff || {}).edges || []).map(e => e.node);\n\tlet complete = false;\n\tfor (const req of (ev.requiredStaff || [])) {\n\t\tconst roleName = String((req.staffRole || {}).name || '').trim();\n\t\tconst qty = Number(req.quantity || 0);\n\t\tif (roleName === coordRole || qty === 0) { continue; }\n\t\tif (staff.filter(s => String((s.staffRole || {}).name || '').trim() === roleName).length >= qty) { complete = true; }\n\t}\n\tif (complete) { continue; }\n\n\tconst since = String(row.last_reminder_at || row.responded_at || row.updated_at || '');\n\tconst t = new Date(since).getTime();\n\tif (isNaN(t)) { continue; }\n\tconst ageDays = Math.floor((now - t) / 86400000);\n\n\tlet action = '';\n\tif (ageDays >= expiryDays) { action = 'expire'; }\n\telse if (ageDays >= secondDays) { action = 'remind2'; }\n\telse if (ageDays >= firstDays) { action = 'remind1'; }\n\tif (action === '') { continue; }\n\n\tconst coordinatorIds = staff.filter(s => String((s.staffRole || {}).name || '').trim() === coordRole).map(s => s.id);\n\tconst isExpiry = action === 'expire';\n\n\t/*\tA reminder goes to the person being asked, who may not be staff on the event, so\n\t\tit is sent as a contact. An expiry notice goes to the coordinator, who is staff\t*/\n\tif (isExpiry && coordinatorIds.length === 0) { continue; }\n\n\t/*\tWhether this person is actually on the event decides what the expiry notice can\n\t\ttruthfully say. Under the pre-staffed pattern somebody is invited after being\n\t\tassigned, so silence does not mean they are absent from the event\t*/\n\tconst onEvent = staff.some(s => s.contact && String(s.contact.id) === String(row.contact_id));\n\n\tconst name = String(row.contact_name || 'the person invited');\n\t/*\tThe reminder carries the person's personal token. A row recorded by the coordinator\n\t\ton their behalf may not have one yet, so one is created here and saved by Record The Chase\t*/\n\tconst token = row.token ? String(row.token) : randomToken();\n\tconst link = String(cfg.RESPONSE_BASE_URL) + '?e=' + encodeURIComponent(row.event_id) + '&c=' + encodeURIComponent(row.contact_id) + '&t=' + encodeURIComponent(token);\n\n\tconst expiryBody = emailShell(\n\t\t'<p style=\"margin:0 0 6px;color:' + pal.AMBER + ';font-size:13px;font-weight:600;\">No answer after ' + expiryDays + ' days</p>'\n\t\t+ '<p style=\"margin:0 0 18px;font-size:20px;font-weight:600;color:' + pal.INK + ';\">' + esc(name) + '</p>'\n\t\t+ '<p style=\"margin:0 0 16px;\">They have not given a firm answer about <strong>' + esc(ev.title) + '</strong>.</p>'\n\t\t+ (onEvent\n\t\t\t? '<div style=\"background:' + pal.AMBERBG + ';border-left:3px solid ' + pal.AMBER + ';padding:12px 14px;margin:0 0 16px;\">'\n\t\t\t\t+ '<p style=\"margin:0;\"><strong>They are still assigned to the event.</strong> Nothing has been changed automatically, so if you want to ask somebody else you will need to take them off it first.</p></div>'\n\t\t\t: '<p style=\"margin:0 0 16px;color:' + pal.MUTED + ';\">They are not assigned to the event and nothing has been changed. You may want to ask somebody else.</p>'));\n\n\tconst reminderBody = emailShell(\n\t\t'<p style=\"margin:0 0 16px;\">Hi ' + esc(String(name).split(' ')[0]) + ',</p>'\n\t\t+ '<p style=\"margin:0 0 6px;color:' + pal.MUTED + ';font-size:13px;\">Still waiting to hear</p>'\n\t\t+ '<p style=\"margin:0 0 18px;font-size:20px;font-weight:600;color:' + pal.INK + ';\">' + esc(ev.title) + '</p>'\n\t\t+ '<p style=\"margin:0 0 4px;\">We asked whether you are available to ' + esc(verb) + ' this event and do not yet have a firm answer.</p>'\n\t\t+ emailButton(link, 'Give your answer')\n\t\t+ '<p style=\"margin:0 0 16px;color:' + pal.MUTED + ';\">If the answer is no, saying so helps us ask someone else quickly.</p>'\n\t\t+ '<p style=\"margin:20px 0 8px;padding-top:14px;border-top:1px solid ' + pal.LINE + ';color:' + pal.MUTED + ';font-size:13px;\">' + esc(cfg.BRAND_NAME) + '</p>');\n\n\tout.push({ json: {\n\t\taction: action,\n\t\tisExpiry: isExpiry,\n\t\tonEvent: onEvent,\n\t\teventId: String(row.event_id),\n\t\teventTitle: String(ev.title || row.event_title || ''),\n\t\tcontactId: String(row.contact_id),\n\t\tcontactName: name,\n\t\tcontactEmail: String(row.contact_email || ''),\n\t\ttoken: token,\n\t\tstaffRole: String(row.staff_role || fallbackRole),\n\t\tcoordinatorIds: coordinatorIds,\n\t\tageDays: ageDays,\n\t\tstatus: isExpiry ? 'expired' : 'reminded',\n\t\tlogStatus: isExpiry ? 'warning' : 'success',\n\t\tnow: new Date().toISOString(),\n\t\tsubject: isExpiry\n\t\t\t? 'No answer yet from ' + name + ' - ' + ev.title\n\t\t\t: 'Reminder: are you available to ' + verb + ' ' + ev.title + '?',\n\t\tbody: isExpiry ? expiryBody : reminderBody,\n\t\tlogMessage: isExpiry\n\t\t\t? 'No firm answer from ' + name + ' after ' + ageDays + ' days. ' + (onEvent ? 'They are still assigned to the event and have not been removed.' : 'They are not assigned to the event.') + ' ' + coordRole + ' notified.'\n\t\t\t: 'Reminder sent to ' + name + ', ' + ageDays + ' days since their last response.',\n\t\tlogPayload: JSON.stringify({ action: action, ageDays: ageDays, contactId: row.contact_id, onEvent: onEvent })\n\t} });\n}\n\nreturn out;"
+      },
+      "id": "64db061e-4b1f-4828-9cdd-3e03c7dab2f9",
+      "name": "Who Needs Chasing",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1344,
+        176
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').first().json.GRAPHQL_URL }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.isExpiry ? JSON.stringify({ query: 'mutation NotifyCoordinator($eventId: String!, $staffIds: [String], $sendingAddressId: ID, $subject: String, $body: String){ bulkAdhocEmails{ sendBulkStaffAdhocEmail(input:{ eventId:$eventId, staffIds:$staffIds, sendingAddressId:$sendingAddressId, subject:$subject, body:$body }){ errors{ label message value } } } }', variables: { eventId: $json.eventId, staffIds: $json.coordinatorIds, sendingAddressId: $('Config').first().json.SENDING_ADDRESS_ID, subject: $json.subject, body: $json.body } }) : JSON.stringify({ query: 'mutation RemindCandidate($contactIds: [String]!, $eventId: String, $sendingAddressId: ID, $subject: String, $body: String){ bulkAdhocEmails{ sendBulkContactAdhocEmail(input:{ contactIds:$contactIds, eventId:$eventId, sendingAddressId:$sendingAddressId, subject:$subject, body:$body }){ errors{ label message value } } } }', variables: { contactIds: [$json.contactId], eventId: $json.eventId, sendingAddressId: $('Config').first().json.SENDING_ADDRESS_ID, subject: $json.subject, body: $json.body } }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "944f0d3f-3b6e-45c4-ac21-d108bafd4557",
+      "name": "Send Reminder or Notice",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1568,
+        176
+      ],
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      },
+      "onError": "continueRegularOutput",
+      "notes": "A reminder goes to the instructor. An expiry notice goes to the coordinator instead, and changes nothing on the event."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "s1",
+              "leftValue": "={{ (($json.errors || []).length > 0) || (((($json.data || {}).bulkAdhocEmails || {}).sendBulkStaffAdhocEmail || {}).errors || []).length > 0 || (((($json.data || {}).bulkAdhocEmails || {}).sendBulkContactAdhocEmail || {}).errors || []).length > 0 }}",
+              "operator": {
+                "operation": "true",
+                "singleValue": true,
+                "type": "boolean"
+              },
+              "rightValue": ""
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "50ab7adf-9d7b-41f2-870a-802c08801c45",
+      "name": "IF Send Errors?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1792,
+        176
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Config').first().json.INVITATIONS_TABLE_ID }}"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "event_id",
+              "keyValue": "={{ $('Who Needs Chasing').all()[$itemIndex].json.eventId }}"
+            },
+            {
+              "keyName": "contact_id",
+              "keyValue": "={{ $('Who Needs Chasing').all()[$itemIndex].json.contactId }}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "matchingColumns": [
+            "event_id",
+            "contact_id"
+          ],
+          "schema": [
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "event_id",
+              "id": "event_id",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "event_title",
+              "id": "event_title",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "contact_id",
+              "id": "contact_id",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "contact_name",
+              "id": "contact_name",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "contact_email",
+              "id": "contact_email",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "staff_role",
+              "id": "staff_role",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "status",
+              "id": "status",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "last_reminder_at",
+              "id": "last_reminder_at",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "updated_at",
+              "id": "updated_at",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "token",
+              "id": "token",
+              "required": false,
+              "type": "string"
+            }
+          ],
+          "value": {
+            "contact_email": "={{ $('Who Needs Chasing').all()[$itemIndex].json.contactEmail }}",
+            "contact_id": "={{ $('Who Needs Chasing').all()[$itemIndex].json.contactId }}",
+            "contact_name": "={{ $('Who Needs Chasing').all()[$itemIndex].json.contactName }}",
+            "event_id": "={{ $('Who Needs Chasing').all()[$itemIndex].json.eventId }}",
+            "event_title": "={{ $('Who Needs Chasing').all()[$itemIndex].json.eventTitle }}",
+            "last_reminder_at": "={{ $('Who Needs Chasing').all()[$itemIndex].json.now }}",
+            "staff_role": "={{ $('Who Needs Chasing').all()[$itemIndex].json.staffRole }}",
+            "status": "={{ $('Who Needs Chasing').all()[$itemIndex].json.status }}",
+            "updated_at": "={{ $('Who Needs Chasing').all()[$itemIndex].json.now }}",
+            "token": "={{ $('Who Needs Chasing').all()[$itemIndex].json.token }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "8771c7c8-6745-4cf6-bf5a-d6d92a4793cd",
+      "name": "Record The Chase",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        2016,
+        224
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').first().json.GRAPHQL_URL }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ query: 'mutation Log($originIdentifier: String!, $nodeId: ID!, $message: String!, $status: ExternalLogTypeStatus!, $payload: String){ externalLog{ createExternalIntegrationLog(input:{ originIdentifier:$originIdentifier, nodeId:$nodeId, message:$message, status:$status, payload:$payload }){ errors{ label message value } } } }', variables: { originIdentifier: $('Config').first().json.ORIGIN_IDENTIFIER, nodeId: $('Who Needs Chasing').all()[$itemIndex].json.eventId, message: $('Who Needs Chasing').all()[$itemIndex].json.logMessage, status: $('Who Needs Chasing').all()[$itemIndex].json.logStatus, payload: $('Who Needs Chasing').all()[$itemIndex].json.logPayload } }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "c98e08f2-7775-4650-8e68-af54b11a6e70",
+      "name": "Log Success",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2240,
+        224
+      ],
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {},
+      "id": "e06c867e-d623-4770-bf33-a8b244f9aa55",
+      "name": "Done",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        2688,
+        224
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 50 Reminders and Expiry\n\nRuns daily at 08:00.\n\n### 1. Chases people who have gone quiet\nOnly on **draft** events whose *Send reminders* field is Yes, and only rows whose status is in `CHASEABLE_STATUSES`. After `REMINDER_FIRST_DAYS` and `REMINDER_SECOND_DAYS` the person gets a reminder with their **personal link** (a token is created and saved if the row has none). After `EXPIRY_DAYS` the coordinator is told and the row is marked `expired`. Nobody is removed from an event automatically.\n\nAge is measured from the row's last reminder, response or update. Administrate does not tell n8n when you send an invitation, so somebody who never asks for their personal link has no row and is not chased.\n\n### 2. Refreshes the staffing summary\nFor every draft event with invitation rows, whether or not reminders are on, by calling 20. If an event has become fully staffed since the last run (for example a coordinator was added after the last acceptance), 20 sends the staffing complete email and publish link, exactly as it does for 40, and only once.\n\n### Paging\n**Fetch Draft Events** reads events 100 at a time and follows `pageInfo` to the end, up to 50 pages (5,000 events). Each page is one item, and **Who Needs Chasing** and **Events To Refresh** read every page.\n\n### Setup\nAdministrate OAuth2 credential on **Fetch Draft Events**, **Send Reminder or Notice**, **Log Success** and **Log Failure**. Fill in Config, then activate.\n\nRun it by hand with no event opted in first: it should send nothing and still refresh summaries.",
+        "height": 640,
+        "width": 684,
+        "color": 4
+      },
+      "id": "e5a9298b-874e-4e9c-8d7d-89db7d5c2f41",
+      "name": "Sticky Note - 50 Reminders and Expiry",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -752,
+        -624
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Config\n\n**RESPONSE_BASE_URL** - production URL of **30 Response Form**.\n\n**SUMMARY_WORKFLOW_ID** - ID of **20 Recompute Event Summary**.\n\n**REMINDERS_FIELD_KEY** - `definitionKey` of the Event Yes/No field that opts an event in.\n\n**CHASEABLE_STATUSES** - invitation statuses still worth a nudge.\n\n**REMINDER_FIRST_DAYS** / **REMINDER_SECOND_DAYS** / **EXPIRY_DAYS** - cadence in days.\n\n**FALLBACK_LOG_EVENT_ID** - an event to attach a failure log to when no event is known yet. Use a draft event kept for the purpose.\n\n**SENDING_ADDRESS_ID**, **INVITATIONS_TABLE_ID**, **COORDINATOR_ROLE_NAME**, **FALLBACK_ROLE_NAME**, **VERB_BASE**, **VERB_GERUND**, **CHECKBOX_TRUE_VALUES**, **BRAND_NAME** and the email styling keys - as in 40.",
+        "height": 456,
+        "width": 748,
+        "color": 6
+      },
+      "id": "62c0e314-4f6a-4577-a29c-a365097513a9",
+      "name": "Sticky Note - Config",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        -2000
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').first().json.GRAPHQL_URL }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ query: 'query ChaseContext($ids: [String]!, $first: Int!, $after: String) { events(filters: [{ field: id, operation: in, values: $ids }], first: $first, after: $after) { pageInfo { hasNextPage endCursor } edges { node { id title lifecycleState customFieldValues { definitionKey value } requiredStaff { quantity staffRole { id name } } staff { edges { node { id staffRole { id name } contact { id firstName lastName } } } } } } } }', variables: { ids: $json.eventIds, first: 100, after: null } }) }}",
+        "options": {
+          "pagination": {
+            "pagination": {
+              "paginationMode": "updateAParameterInEachRequest",
+              "parameters": {
+                "parameters": [
+                  {
+                    "type": "body",
+                    "name": "variables",
+                    "value": "={{ { ids: $json.eventIds, first: 100, after: (typeof $response === 'undefined' ? null : ($response?.body?.data?.events?.pageInfo?.endCursor ?? null)) } }}"
+                  }
+                ]
+              },
+              "paginationCompleteWhen": "other",
+              "completeExpression": "={{ typeof $response === 'undefined' ? true : !($response?.body?.data?.events?.pageInfo?.hasNextPage) }}",
+              "limitPagesFetched": true,
+              "maxRequests": 50,
+              "requestInterval": 0
+            }
+          },
+          "timeout": 60000
+        }
+      },
+      "id": "66095fb2-58ab-48f4-b25f-d1c0b1eedfd3",
+      "name": "Fetch Draft Events",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        896,
+        96
+      ],
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      },
+      "notes": "Reads every event that has an invitation row, 100 per page, following pageInfo until there are no more (up to 50 pages, so 5,000 events). Each page is one output item; the nodes after it read all of them."
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Config').first().json.SUMMARY_WORKFLOW_ID }}"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "schema": [
+            {
+              "canBeUsedToMatch": true,
+              "display": true,
+              "displayName": "eventId",
+              "id": "eventId",
+              "required": false,
+              "type": "string"
+            }
+          ],
+          "value": {
+            "eventId": "={{ $json.eventId }}"
+          }
+        },
+        "mode": "each",
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "c69445f6-e37c-41a2-bbe1-6bad77247e0b",
+      "name": "Recompute Summary",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        2464,
+        224
+      ],
+      "notes": "Calls 20 Recompute Event Summary (SUMMARY_WORKFLOW_ID in Config) so the summary is refreshed after a chase. If that completes staffing, 20 sends the staffing complete email."
+    },
+    {
+      "parameters": {
+        "jsCode": "/*\tWork out which events this automation is involved with, and which of those have\n\tsomebody worth chasing. Those are two different sets and the sweep needs both.\n\n\tEvery event with an invitation row is refreshed, whether or not anybody is being\n\tchased, because the status field can go stale for reasons that have nothing to do\n\twith a response - a coordinator being added after staffing completed, somebody being\n\ttaken off by hand. Nothing in Administrate tells us when that happens, so a daily\n\tpass over the events we already know about is how it gets noticed.\n\n\tThe invitations table is the only record of who has been asked, which is also why the\n\tsend log matters: until Administrate exposes it, a row exists only once somebody has\n\tclicked their link\t*/\n\nconst cfg = $('Config').first().json;\nconst chaseable = String(cfg.CHASEABLE_STATUSES).split(',').map(s => s.trim().toLowerCase());\n\nconst rows = $input.all().map(i => i.json).filter(r => r && r.event_id);\nconst open = rows.filter(r => chaseable.indexOf(String(r.status || '').toLowerCase()) !== -1);\n\n/*\tEvery event we hold a row for, not only the ones with somebody outstanding\t*/\nconst ids = [];\nfor (const r of rows) {\n\tif (ids.indexOf(String(r.event_id)) === -1) { ids.push(String(r.event_id)); }\n}\n\n/*\tNo rows at all means this automation has never touched anything. Nothing to do,\n\twhich is the normal case on a fresh tenant rather than a failure\t*/\nif (ids.length === 0) { return []; }\n\nreturn [{ json: { eventIds: ids, openRows: open } }];"
+      },
+      "id": "ca3f4345-a286-4da4-9e13-756efb03db3c",
+      "name": "Which Events To Check",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        672,
+        96
+      ],
+      "notes": "Collects the distinct events that have an unresolved invitation, so only those are read back from Administrate."
+    },
+    {
+      "parameters": {
+        "jsCode": "/*\tOne item per draft event we hold invitation rows for, so each gets its summary\n\trefreshed. This runs whether or not anybody was chased: the point is to notice\n\tchanges nothing else tells us about, such as a coordinator added after staffing\n\talready completed, which otherwise leaves the completion email permanently owed.\n\n\tPublished and cancelled events are skipped. Their staffing decision has been made\n\tand the field will not change again\t*/\n\n/*\tOne input item per page of events. All pages are read, and an event is only\n\tlisted once even if it somehow appears on two pages\t*/\nconst out = [];\nconst seen = {};\n\nfor (const page of $input.all()) {\n\tfor (const edge of ((((page.json.data || {}).events || {}).edges) || [])) {\n\t\tconst ev = edge.node || {};\n\t\tif (String(ev.lifecycleState || '') !== 'draft') { continue; }\n\t\tif (seen[String(ev.id)]) { continue; }\n\t\tseen[String(ev.id)] = true;\n\t\tout.push({ json: { eventId: String(ev.id), eventTitle: String(ev.title || '') } });\n\t}\n}\n\nreturn out;"
+      },
+      "id": "8d56d2f3-1ed8-4c66-b08e-09bce224e21b",
+      "name": "Events To Refresh",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1344,
+        496
+      ],
+      "notes": "One item per draft event this automation holds rows for. Published and cancelled events are skipped, because their staffing is settled and the field will not change again."
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Config').first().json.SUMMARY_WORKFLOW_ID }}"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "schema": [
+            {
+              "canBeUsedToMatch": true,
+              "display": true,
+              "displayName": "eventId",
+              "id": "eventId",
+              "required": false,
+              "type": "string"
+            }
+          ],
+          "value": {
+            "eventId": "={{ $json.eventId }}"
+          }
+        },
+        "mode": "each",
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "ad2fc43c-8372-44d8-9049-294363e93dba",
+      "name": "Refresh Summary",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        1568,
+        496
+      ],
+      "onError": "continueRegularOutput",
+      "notes": "Calls 20 once per draft event. 20 only writes when the text changed, and when the event has just become fully staffed it sends the staffing complete email and publish link itself, so nothing more is needed here."
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Daily Sweep": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Read Responses So Far",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Fetch Errors?": {
+      "main": [
+        [
+          {
+            "node": "Log Failure",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Who Needs Chasing",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Events To Refresh",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Failure": {
+      "main": [
+        [
+          {
+            "node": "Stop",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Who Needs Chasing": {
+      "main": [
+        [
+          {
+            "node": "Send Reminder or Notice",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Reminder or Notice": {
+      "main": [
+        [
+          {
+            "node": "IF Send Errors?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Send Errors?": {
+      "main": [
+        [
+          {
+            "node": "Log Failure",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Record The Chase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Record The Chase": {
+      "main": [
+        [
+          {
+            "node": "Log Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Draft Events": {
+      "main": [
+        [
+          {
+            "node": "IF Fetch Errors?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Success": {
+      "main": [
+        [
+          {
+            "node": "Recompute Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Recompute Summary": {
+      "main": [
+        [
+          {
+            "node": "Done",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Responses So Far": {
+      "main": [
+        [
+          {
+            "node": "Which Events To Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Which Events To Check": {
+      "main": [
+        [
+          {
+            "node": "Fetch Draft Events",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Events To Refresh": {
+      "main": [
+        [
+          {
+            "node": "Refresh Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true,
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed"
+  },
+  "tags": []
+}
