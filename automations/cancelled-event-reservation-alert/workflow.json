@@ -231,7 +231,8 @@
           "id": "",
           "name": "Administrate OAuth2"
         }
-      }
+      },
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -302,6 +303,149 @@
         580,
         380
       ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// One input item per owner email, in the same order as Build Owner Email.\nconst results = [];\nconst items = $input.all();\n\nfor (let index = 0; index < items.length; index++) {\n  const response = items[index].json ?? {};\n  const owner = $('Owner Contact Found?').itemMatching(index).json;\n\n  const reasons = [];\n  if (response.error) {\n    const message = typeof response.error === 'string' ? response.error : response.error.message;\n    reasons.push(`Request failed: ${message ?? 'unknown error'}`);\n  }\n  if (Array.isArray(response.errors) && response.errors.length > 0) {\n    reasons.push(...response.errors.map((error) => `Administrate returned an error: ${error.message}`));\n  }\n  const mutationErrors = response.data?.contactAdhocEmails?.sendContactAdhocEmail?.errors ?? [];\n  reasons.push(...mutationErrors.map((error) => `sendContactAdhocEmail error: ${error.label ? `${error.label}: ` : ''}${error.message}`));\n  if (reasons.length === 0 && !response.data?.contactAdhocEmails?.sendContactAdhocEmail) {\n    reasons.push('No result returned for sendContactAdhocEmail');\n  }\n\n  results.push({\n    json: {\n      status: reasons.length > 0 ? 'failed' : 'sent',\n      reason: reasons.length > 0 ? reasons.join('; ') : null,\n      ownerContactId: owner.ownerContactId,\n      opportunityCount: owner.opportunityCount,\n      opportunityIds: (owner.opportunities ?? []).map((opportunity) => opportunity.opportunityId),\n      opportunityNames: (owner.opportunities ?? []).map((opportunity) => opportunity.opportunityName),\n      eventId: owner.eventId,\n      eventTitle: owner.eventTitle,\n      eventStart: owner.eventStart,\n      eventUrl: owner.eventUrl,\n    },\n  });\n}\n\nreturn results;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1088,
+        0
+      ],
+      "id": "5ca97906-9471-469a-9a30-b7db3b923dd0",
+      "name": "Check Send Results"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "a376501b-d160-493f-8179-33d4e25c4baa",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "failed",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1312,
+        0
+      ],
+      "id": "2a6b50b8-5ea0-4b99-9c8a-843632ca3d25",
+      "name": "Send Failed?"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "778987b5-f239-4aee-85a7-9507faeb193b",
+              "name": "timestamp",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1536,
+        -96
+      ],
+      "id": "a6f50a1e-9943-4558-99c9-fe6110f28a55",
+      "name": "Log Failed Send"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1760,
+        96
+      ],
+      "id": "ab73bdca-4f3f-455e-adab-f5cb29118c65",
+      "name": "Collect Results"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "be41b0ca-df46-4bd9-8478-b8cd720f06b6",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "failed",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1984,
+        96
+      ],
+      "id": "cea9a6cd-13f4-4e5a-ab5f-29b4d372446d",
+      "name": "Any Send Failed?"
+    },
+    {
+      "parameters": {
+        "errorMessage": "={{ $input.all().length }} owner email(s) failed to send for cancelled Event {{ $json.eventTitle }}. {{ $input.all().map((item) => `Owner Contact ${item.json.ownerContactId}: ${item.json.reason}`).join(' | ') }}"
+      },
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        2208,
+        0
+      ],
+      "id": "7113c7f3-675d-407a-9975-1373038ffa11",
+      "name": "Fail Run on Send Errors"
+    },
+    {
+      "parameters": {
+        "content": "## Failed sends\n**Check Send Results** treats a request error, top-level GraphQL `errors` or `sendContactAdhocEmail` `errors` as a failure. Each failure goes to **Log Failed Send** with the owner and `reason`, so other owners still get their email.\n\nAfter skipped Interests are logged, **Fail Run on Send Errors** marks the run as failed if any email failed.",
+        "height": 260,
+        "width": 440,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1300,
+        -400
+      ],
+      "id": "f56878fb-35df-4152-af69-e8cb1b7d7722",
+      "name": "Failed Sends Note"
     }
   ],
   "pinData": {},
@@ -373,6 +517,83 @@
         [
           {
             "node": "Send Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Notification": {
+      "main": [
+        [
+          {
+            "node": "Check Send Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Send Results": {
+      "main": [
+        [
+          {
+            "node": "Send Failed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Failed?": {
+      "main": [
+        [
+          {
+            "node": "Log Failed Send",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Failed Send": {
+      "main": [
+        [
+          {
+            "node": "Collect Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Skipped Interest": {
+      "main": [
+        [
+          {
+            "node": "Collect Results",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Collect Results": {
+      "main": [
+        [
+          {
+            "node": "Any Send Failed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Any Send Failed?": {
+      "main": [
+        [
+          {
+            "node": "Fail Run on Send Errors",
             "type": "main",
             "index": 0
           }

@@ -15,6 +15,7 @@ When an Event is cancelled, this workflow finds every Opportunity Interest on it
 - Lists each affected Opportunity once, with its Account name and a direct link
 - Pages through Events with many Interests (100 per page, up to 5,000 Interests)
 - Skips and logs any Interest with no Opportunity, no owner or an owner without a linked Contact
+- Checks every send, logs each failed email with the owner and reason and marks the run as failed, while still emailing the other owners
 - Sends from a sending address of your choice, with optional CC addresses
 - Passes all email content to the API as GraphQL variables, so names containing quotes or special characters don't break the request
 
@@ -68,6 +69,10 @@ The opening lines of the email are in the `body` field of **Build Owner Email**.
 
 **Log Skipped Interest** produces one item for each Interest that couldn't be emailed. Each item contains `status`, `reason`, `timestamp`, `interestId`, `opportunityId`, `opportunityName`, `accountName` and the Event details. To keep a record, connect a node after it, for example Slack, Google Sheets or an Administrate integration log.
 
+#### 4. Optional: record failed sends
+
+**Log Failed Send** produces one item for each owner whose email failed. Each item contains `status` (`failed`), `reason`, `timestamp`, `ownerContactId`, `opportunityCount`, `opportunityIds`, `opportunityNames` and the Event details. Connect a node after it in the same way if you want failures recorded somewhere other than the execution log.
+
 ### 🧪 Testing
 
 1. Activate the workflow. The Administrate Trigger registers an *Event Cancelled* webhook for you.
@@ -76,6 +81,7 @@ The opening lines of the email are in the `body` field of **Build Owner Email**.
 4. Check that the first User receives one email listing both Opportunities and the second User receives one email listing theirs.
 5. Repeat with an Opportunity whose owner has no linked Contact. That Interest should appear in **Log Skipped Interest** and no email should be sent for it.
 6. Cancel an Event with no Interests. The run should stop at **Group Interests by Owner** without sending anything.
+7. Set `SENDING_ADDRESS_ID` to an invalid ID and cancel another test Event. Each owner should appear in **Log Failed Send** with a `reason` and the execution should end as failed at **Fail Run on Send Errors**. Restore the correct ID afterwards.
 
 ## 🔍 How It Works
 
@@ -85,7 +91,11 @@ The opening lines of the email are in the `body` field of **Build Owner Email**.
 4. **Group Interests by Owner**: combines the pages, stops with an error if the API returned errors, groups the Interests by the owner's Contact and builds the list of affected Opportunities. Interests that can't be emailed are passed on with a `reason`.
 5. **Owner Contact Found?**: sends owner groups to the email branch and skipped Interests to **Log Skipped Interest**.
 6. **Build Owner Email**: assembles the recipient, subject, body, sending address and CC list.
-7. **Send Notification**: calls the `sendContactAdhocEmail` mutation once for each owner.
+7. **Send Notification**: calls the `sendContactAdhocEmail` mutation once for each owner. A failed request is passed on rather than stopping the run, so one failure doesn't stop emails to the other owners.
+8. **Check Send Results**: marks each owner's email as `sent` or `failed`. A request error, top-level GraphQL `errors` or an entry in the mutation's `errors` list counts as a failure, and the `reason` records what went wrong.
+9. **Send Failed?**: sends failed emails to **Log Failed Send**, which adds a `timestamp` to each one.
+10. **Collect Results**: waits until failed sends and skipped Interests have both been logged.
+11. **Any Send Failed?**: if any email failed, **Fail Run on Send Errors** stops the run with an error listing each owner Contact and reason, so the execution shows as failed.
 
 ## 🩺 Troubleshooting
 
@@ -94,7 +104,11 @@ The opening lines of the email are in the `body` field of **Build Owner Email**.
 - Check the Event had Interests before it was cancelled. Events with none end at **Group Interests by Owner**.
 - Look at **Log Skipped Interest**. If every Interest is there, the Opportunity owners aren't linked to Contacts.
 
-**`Send Notification` returns an error about the sending address:**
+**The execution fails at `Fail Run on Send Errors`:**
+- At least one owner email wasn't sent. Open **Log Failed Send** to see each owner Contact ID and the `reason`. Emails to the other owners were still sent.
+- Fix the cause, then contact the affected owners directly. Retrying the execution sends the email to every owner again, including those who already received it.
+
+**`Log Failed Send` shows an error about the sending address:**
 - Check `SENDING_ADDRESS_ID` is the ID of a verified sending address in this instance.
 
 **The links in the email don't open the right record:**
