@@ -14,10 +14,11 @@ This workflow adds a **Create Achievement Type** manual event to Course Template
 - Configurable validity period in years
 - Slack notification with a direct link to the instructor selection form
 - Creation errors are sent to Slack so nothing fails silently
-- Instructor list pages through all instructors (100 per page, up to 5,000)
+- Instructor list pages through all Contacts with the instructor Staff Role (100 per page, up to 5,000)
 - Select all and clear all shortcuts on the form
 - Confirmation page showing which awards succeeded and which failed
 - GraphQL variables are used throughout, so quotes and special characters in course titles are safe
+- Course and instructor values are HTML-escaped on the form and confirmation pages, and URL-encoded in the Slack link
 
 ## 🛠️ Setup Instructions
 
@@ -26,7 +27,7 @@ This workflow adds a **Create Achievement Type** manual event to Course Template
 - Access to Administrate Automator
 - Administrate OAuth2 credentials with permission to read Course Templates and Contacts, create Achievement Types and award Achievements
 - A Slack OAuth2 credential that can send direct messages
-- Instructors set up as Contacts in Administrate
+- Instructors set up as Contacts in Administrate with an instructor Staff Role
 
 ### Installation
 
@@ -60,6 +61,7 @@ Select your Slack credential on:
 | `formSubmitUrl` | Replace `https://YOUR-N8N-HOST` with your Automator host. It must match the production URL of the **Form Submission** webhook node. |
 | `validityPeriodYears` | How many years the Achievement stays valid. Defaults to `3`. |
 | `SLACK_USER_ID` | Replace `REPLACE_WITH_SLACK_USER_ID` with the Slack member ID to notify (for example `U01234ABCDE`). In Slack, open the person's profile, click ⋮ and choose "Copy member ID". |
+| `INSTRUCTOR_ROLE_NAME` | The name of the Staff Role that marks a Contact as an instructor. Defaults to `Instructor`. It must match the Staff Role name in Administrate exactly. |
 
 The easiest way to get the two form URLs is to open each webhook node after importing, switch to **Production URL** and copy it into Config.
 
@@ -89,8 +91,8 @@ The workflow has three entry points. Each one runs through **Config** and then *
 **Showing the form**
 
 1. **Form Display**: receives the browser request from the Slack link, with the Achievement Type ID, course code and title in the query string.
-2. **Get Instructors**: fetches every Contact marked as an instructor, 100 per page.
-3. **Build Instructor Form**: builds an HTML form with a checkbox per instructor.
+2. **Get Instructors**: fetches every Contact with the `INSTRUCTOR_ROLE_NAME` Staff Role, 100 per page, using the `staffRoleName` filter. This replaces the deprecated `isInstructor` field.
+3. **Build Instructor Form**: builds an HTML form with a checkbox per instructor. Every course and instructor value is HTML-escaped before it is added to the page.
 4. **Respond: Show Form**: returns the form to the browser.
 
 **Awarding the Achievement**
@@ -99,12 +101,14 @@ The workflow has three entry points. Each one runs through **Config** and then *
 2. **Parse Selections**: turns the ticked instructors into one item each, valid from today.
 3. **If No Selection**: returns a friendly page if nobody was ticked.
 4. **Award Achievement**: runs the `contact.awardAchievement` mutation for each instructor.
-5. **Format Status / Build Confirmation**: builds a results page listing each award.
+5. **Format Status / Build Confirmation**: builds a results page listing each award, with each name and message HTML-escaped.
 6. **Respond: Confirmation**: returns the results page to the browser.
 
 ## 🔒 Security
 
 The **Form Display** and **Form Submission** webhooks are unauthenticated. Anyone who has the URLs can open the form, see your instructor names and award Achievements. Keep the Slack message private and consider adding authentication to both webhook nodes (for example Header Auth or Basic Auth) or restricting access to your Automator host.
+
+Because the form page shows values taken from its query string, **Build Instructor Form** and **Build Confirmation** HTML-escape every value they add to the page. Keep that escaping in place if you change the HTML.
 
 ## 📝 Notes
 
@@ -127,7 +131,8 @@ This workflow creates the Achievement Type but does not link it to the Course Te
 - Check `formSubmitUrl` matches the **Production URL** of the **Form Submission** node.
 
 **The form says "No instructors found":**
-- Check your instructors are flagged as instructors on their Contact records.
+- Check `INSTRUCTOR_ROLE_NAME` matches the name of your instructor Staff Role exactly.
+- Check your instructors hold that Staff Role on their Contact records.
 - Check the Administrate credential can read Contacts.
 
 **An award shows a cross on the confirmation page:**

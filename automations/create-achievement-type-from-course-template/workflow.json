@@ -32,7 +32,7 @@
           "value": "={{ $('Config').first().json.SLACK_USER_ID }}",
           "mode": "id"
         },
-        "text": "=Achievement Type *{{ $('Set Course Details').item.json.courseCode }}* created — {{ $('Set Course Details').item.json.courseTitle }}\n\n<{{ $('Config').first().json.formDisplayUrl }}?achievementTypeId={{ $json.data.achievementType.create.achievementType.id }}&courseCode={{ $('Set Course Details').item.json.courseCode }}&courseTitle={{ encodeURIComponent($('Set Course Details').item.json.courseTitle) }}|Click here to assign to Instructors →>",
+        "text": "=Achievement Type *{{ $('Set Course Details').item.json.courseCode }}* created — {{ $('Set Course Details').item.json.courseTitle }}\n\n<{{ $('Config').first().json.formDisplayUrl }}?achievementTypeId={{ encodeURIComponent($json.data.achievementType.create.achievementType.id) }}&courseCode={{ encodeURIComponent($('Set Course Details').item.json.courseCode) }}&courseTitle={{ encodeURIComponent($('Set Course Details').item.json.courseTitle) }}|Click here to assign to Instructors →>",
         "otherOptions": {}
       },
       "type": "n8n-nodes-base.slack",
@@ -84,7 +84,7 @@
     },
     {
       "parameters": {
-        "content": "## ⚠️ Edit Config\n- `adminUrl`: your Administrate GraphQL endpoint\n- `formDisplayUrl`: production URL of **Form Display**\n- `formSubmitUrl`: production URL of **Form Submission**\n- `validityPeriodYears`: years the Achievement stays valid\n- `SLACK_USER_ID`: Slack member ID to notify",
+        "content": "## ⚠️ Edit Config\n- `adminUrl`: your Administrate GraphQL endpoint\n- `formDisplayUrl`: production URL of **Form Display**\n- `formSubmitUrl`: production URL of **Form Submission**\n- `validityPeriodYears`: years the Achievement stays valid\n- `SLACK_USER_ID`: Slack member ID to notify\n- `INSTRUCTOR_ROLE_NAME`: Staff Role that marks a Contact as an instructor",
         "height": 240,
         "width": 380,
         "color": 3
@@ -145,7 +145,7 @@
         "nodeCredentialType": "administrateOAuth2Api",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ query: \"query GetInstructors($first: Int!, $after: String) { contacts(first: $first, after: $after, filters: [{field: isInstructor, operation: eq, value: \\\"true\\\"}]) { pageInfo { hasNextPage endCursor } edges { node { id firstName lastName } } } }\", variables: { first: 100, after: null } }) }}",
+        "jsonBody": "={{ JSON.stringify({ query: \"query GetInstructors($first: Int!, $after: String, $roleName: String) { contacts(first: $first, after: $after, filters: [{field: staffRoleName, operation: eq, value: $roleName}]) { pageInfo { hasNextPage endCursor } edges { node { id firstName lastName } } } }\", variables: { first: 100, after: null, roleName: $('Config').first().json.INSTRUCTOR_ROLE_NAME } }) }}",
         "options": {
           "pagination": {
             "pagination": {
@@ -155,7 +155,7 @@
                   {
                     "type": "body",
                     "name": "variables",
-                    "value": "={{ { first: 100, after: $response.body?.data?.contacts?.pageInfo?.endCursor ?? null } }}"
+                    "value": "={{ { first: 100, after: $response.body?.data?.contacts?.pageInfo?.endCursor ?? null, roleName: $('Config').first().json.INSTRUCTOR_ROLE_NAME } }}"
                   }
                 ]
               },
@@ -185,7 +185,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const query = $('Form Display').first().json.query;\nconst achievementTypeId = query.achievementTypeId;\nconst courseCode = query.courseCode;\nconst courseTitle = decodeURIComponent(query.courseTitle || '');\nconst formSubmitUrl = $('Config').first().json.formSubmitUrl;\n// Get Instructors returns one item per page of 100 contacts\nconst instructors = $input.all().flatMap(page => (page.json.data?.contacts?.edges || []).map(e => e.node));\n\nconst rows = instructors.map(i =>\n  `<label class=\"row\"><input type=\"checkbox\" name=\"instructorId\" value=\"${i.id}\"><span>${i.firstName} ${i.lastName}</span></label>`\n).join('');\n\nconst html = `<!DOCTYPE html><html><head><meta charset=\"utf-8\"><title>Assign Achievement</title>\n<style>*{box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:560px;margin:48px auto;padding:0 24px;color:#111}h1{font-size:1.3em;margin-bottom:4px}.meta{color:#555;font-size:.9em;margin-bottom:20px}.controls{display:flex;gap:16px;margin-bottom:8px;font-size:.85em}.controls a{color:#0066cc;cursor:pointer;text-decoration:none}.list{border:1px solid #e0e0e0;border-radius:6px;overflow:hidden;margin-bottom:24px}.row{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid #f0f0f0;cursor:pointer}.row:last-child{border-bottom:none}.row:hover{background:#f7f9fc}input[type=checkbox]{width:16px;height:16px;cursor:pointer;accent-color:#0066cc}.btn{background:#0066cc;color:#fff;padding:11px 28px;border:none;border-radius:6px;cursor:pointer;font-size:.95em;font-weight:500}.btn:hover{background:#0052a3}.empty{padding:24px;color:#888;text-align:center}</style>\n</head><body>\n<h1>Assign Achievement Type</h1>\n<p class=\"meta\">Achievement: <strong>${courseCode}</strong> — ${courseTitle}</p>\n<p>Select instructors to award:</p>\n<form method=\"POST\" action=\"${formSubmitUrl}\">\n<input type=\"hidden\" name=\"achievementTypeId\" value=\"${achievementTypeId}\">\n<input type=\"hidden\" name=\"courseCode\" value=\"${courseCode}\">\n<div class=\"controls\">\n<a onclick=\"document.querySelectorAll('[name=instructorId]').forEach(c=>c.checked=true)\">Select all</a>\n<a onclick=\"document.querySelectorAll('[name=instructorId]').forEach(c=>c.checked=false)\">Clear all</a>\n</div>\n<div class=\"list\">${rows||'<p class=\"empty\">No instructors found.</p>'}</div>\n<button type=\"submit\" class=\"btn\">Award to Selected Instructors</button>\n</form></body></html>`;\nreturn [{ json: { html } }];"
+        "jsCode": "const escapeHtml = (value) => String(value ?? '')\n  .replace(/&/g, '&amp;')\n  .replace(/</g, '&lt;')\n  .replace(/>/g, '&gt;')\n  .replace(/\"/g, '&quot;')\n  .replace(/'/g, '&#39;');\n\nconst query = $('Form Display').first().json.query;\nconst achievementTypeId = query.achievementTypeId;\nconst courseCode = query.courseCode;\nconst courseTitle = decodeURIComponent(query.courseTitle || '');\nconst formSubmitUrl = $('Config').first().json.formSubmitUrl;\n// Get Instructors returns one item per page of 100 contacts\nconst instructors = $input.all().flatMap(page => (page.json.data?.contacts?.edges || []).map(e => e.node));\n\nconst rows = instructors.map(i =>\n  `<label class=\"row\"><input type=\"checkbox\" name=\"instructorId\" value=\"${escapeHtml(i.id)}\"><span>${escapeHtml(i.firstName)} ${escapeHtml(i.lastName)}</span></label>`\n).join('');\n\nconst html = `<!DOCTYPE html><html><head><meta charset=\"utf-8\"><title>Assign Achievement</title>\n<style>*{box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:560px;margin:48px auto;padding:0 24px;color:#111}h1{font-size:1.3em;margin-bottom:4px}.meta{color:#555;font-size:.9em;margin-bottom:20px}.controls{display:flex;gap:16px;margin-bottom:8px;font-size:.85em}.controls a{color:#0066cc;cursor:pointer;text-decoration:none}.list{border:1px solid #e0e0e0;border-radius:6px;overflow:hidden;margin-bottom:24px}.row{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid #f0f0f0;cursor:pointer}.row:last-child{border-bottom:none}.row:hover{background:#f7f9fc}input[type=checkbox]{width:16px;height:16px;cursor:pointer;accent-color:#0066cc}.btn{background:#0066cc;color:#fff;padding:11px 28px;border:none;border-radius:6px;cursor:pointer;font-size:.95em;font-weight:500}.btn:hover{background:#0052a3}.empty{padding:24px;color:#888;text-align:center}</style>\n</head><body>\n<h1>Assign Achievement Type</h1>\n<p class=\"meta\">Achievement: <strong>${escapeHtml(courseCode)}</strong> — ${escapeHtml(courseTitle)}</p>\n<p>Select instructors to award:</p>\n<form method=\"POST\" action=\"${escapeHtml(formSubmitUrl)}\">\n<input type=\"hidden\" name=\"achievementTypeId\" value=\"${escapeHtml(achievementTypeId)}\">\n<input type=\"hidden\" name=\"courseCode\" value=\"${escapeHtml(courseCode)}\">\n<div class=\"controls\">\n<a onclick=\"document.querySelectorAll('[name=instructorId]').forEach(c=>c.checked=true)\">Select all</a>\n<a onclick=\"document.querySelectorAll('[name=instructorId]').forEach(c=>c.checked=false)\">Clear all</a>\n</div>\n<div class=\"list\">${rows||'<p class=\"empty\">No instructors found.</p>'}</div>\n<button type=\"submit\" class=\"btn\">Award to Selected Instructors</button>\n</form></body></html>`;\nreturn [{ json: { html } }];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -228,6 +228,12 @@
               "id": "d4e61ccd-049b-4617-ac3d-1d918b1899bb",
               "name": "SLACK_USER_ID",
               "value": "REPLACE_WITH_SLACK_USER_ID",
+              "type": "string"
+            },
+            {
+              "id": "9b82f598-84b8-4c8a-9fd1-35920f81a291",
+              "name": "INSTRUCTOR_ROLE_NAME",
+              "value": "Instructor",
               "type": "string"
             }
           ]
@@ -486,7 +492,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const items = $input.all();\nconst courseCode = items[0]?.json.courseCode || '';\nconst rows = items.map(i => `<li class=\"${i.json.success ? 'ok' : 'err'}\">${i.json.statusMessage}</li>`).join('');\nconst html = `<!DOCTYPE html><html><head><meta charset=\"utf-8\"><title>Done</title>\n<style>body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:520px;margin:48px auto;padding:0 24px;color:#111}h1{font-size:1.3em}\nul{list-style:none;padding:0;border:1px solid #e0e0e0;border-radius:6px;overflow:hidden}\nli{padding:12px 16px;border-bottom:1px solid #f0f0f0}li:last-child{border-bottom:none}\nli.ok{color:#1a7a1a}li.err{color:#cc0000}\n.done{background:#f0f7ff;border:1px solid #b3d4f5;border-radius:6px;padding:12px 16px;margin-top:20px;font-size:.9em;color:#0055aa}\n</style></head><body>\n<h1>Achievement Awards Complete</h1>\n<p>Results for <strong>${courseCode}</strong>:</p>\n<ul>${rows||'<li>No instructors were processed.</li>'}</ul>\n<div class=\"done\">You can close this window.</div>\n</body></html>`;\nreturn [{ json: { html } }];"
+        "jsCode": "const escapeHtml = (value) => String(value ?? '')\n  .replace(/&/g, '&amp;')\n  .replace(/</g, '&lt;')\n  .replace(/>/g, '&gt;')\n  .replace(/\"/g, '&quot;')\n  .replace(/'/g, '&#39;');\n\nconst items = $input.all();\nconst courseCode = items[0]?.json.courseCode || '';\nconst rows = items.map(i => `<li class=\"${i.json.success ? 'ok' : 'err'}\">${escapeHtml(i.json.statusMessage)}</li>`).join('');\nconst html = `<!DOCTYPE html><html><head><meta charset=\"utf-8\"><title>Done</title>\n<style>body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:520px;margin:48px auto;padding:0 24px;color:#111}h1{font-size:1.3em}\nul{list-style:none;padding:0;border:1px solid #e0e0e0;border-radius:6px;overflow:hidden}\nli{padding:12px 16px;border-bottom:1px solid #f0f0f0}li:last-child{border-bottom:none}\nli.ok{color:#1a7a1a}li.err{color:#cc0000}\n.done{background:#f0f7ff;border:1px solid #b3d4f5;border-radius:6px;padding:12px 16px;margin-top:20px;font-size:.9em;color:#0055aa}\n</style></head><body>\n<h1>Achievement Awards Complete</h1>\n<p>Results for <strong>${escapeHtml(courseCode)}</strong>:</p>\n<ul>${rows||'<li>No instructors were processed.</li>'}</ul>\n<div class=\"done\">You can close this window.</div>\n</body></html>`;\nreturn [{ json: { html } }];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
