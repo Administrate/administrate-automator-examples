@@ -9,17 +9,17 @@ When an Event is full, learners go on a waitlist as Opportunities at a "Waitlist
 A set of five workflows runs the waitlist for you:
 
 - When a place frees up, the next waitlisted people (in queue order) are offered it. Their place is **reserved** and they get an email with a link to a response page.
-- The response page shows the offer with **Accept** and **Decline** buttons. Accepting registers the contact on the Event and moves the Opportunity to Won. Declining releases the hold and the place rolls straight on to the next person.
+- The response page shows the offer with **Accept** and **Decline** buttons. Accepting registers the contact on the Event and moves the Opportunity to Won. Declining releases the hold and the offer engine runs again straight away, so the place rolls on to the next person.
 - Offers that are not answered within the hold period (48 hours by default) expire automatically, and the place is offered to the next person.
 - Every outcome is written to the Event's External Integration Log, and unexpected failures are recorded by a shared error workflow.
 
 ## Features
 
-- Three ways a place is noticed: Event Updated, Learner Cancelled (opt-in per Event), and an hourly expiry sweep
-- Queue order by waitlist date, with capacity worked out from active (non-cancelled) learners and outstanding offers
+- Four ways a place is noticed: Event Updated and Learner Cancelled (both opt-in per Event), a declined offer and an hourly expiry sweep
+- Queue order by waitlist date, with capacity worked out from active (non-cancelled) learners and outstanding holds (open offers plus accepted offers whose booking failed)
 - Places are reserved for the offered person and the reservation is read back before any email is sent
 - Scanner-safe response flow: the email link opens a page that changes nothing (GET); answers are recorded only when a button is pressed (POST), so corporate mail scanners cannot accept or decline on someone's behalf
-- Concurrency-safe: offers and answers claim their Data Table row inside the write, so overlapping runs cannot double-offer or double-book
+- Concurrency-safe: offers and answers claim their Data Table row inside the write, so overlapping runs cannot double-offer or double-book. Existing rows are never rewritten by a later run, and a second submission of the same form gets a clear "no longer open" page
 - Reservation release is verified on both accept and decline
 - Branded HTML email and response pages, with all styling in Config
 - Audit logging to Administrate External Integration Logs, plus a shared error workflow that records failures to a Data Table and against the affected Event
@@ -33,7 +33,7 @@ A set of five workflows runs the waitlist for you:
 - An n8n API credential (for the error handler only; see Configuration step 6)
 - An Opportunity step for waitlisted people (default name `Waitlist`) and a Won step to move accepted Opportunities to
 - A verified Administrate sending email address
-- An Event checkbox custom field named `Waitlist On?` (used to opt Events in for the Learner Cancelled trigger)
+- An Event checkbox custom field named `Waitlist On?` (used to opt Events in to the waitlist automation)
 
 ### Installation
 
@@ -47,11 +47,11 @@ Create the two Data Tables first (see Configuration step 1), then import the wor
 | 4 | `workflows/40-waitlist-automation.json` | Waitlist Automation |
 | 5 | `workflows/50-learner-cancelled.json` | Waitlist 04 - Learner Cancelled |
 
-The error handler goes first so it can be selected as the Error Workflow on the others, and the core goes before Learner Cancelled because Learner Cancelled calls it by ID.
+The error handler goes first so it can be selected as the Error Workflow on the others. Waitlist 02 and Waitlist 04 both call Waitlist Automation by ID, so set `CORE_WORKFLOW_ID` in both once Waitlist Automation has been imported.
 
 ### Configuration
 
-Every value you need to change lives in the **Config** node at the start of each workflow (plus one trigger filter, see step 5). Placeholders are named `REPLACE_WITH_...`, and `YOUR-N8N-HOST` must be replaced with your n8n host name.
+Every value you need to change lives in the **Config** node at the start of each workflow (plus two trigger filters, see steps 4 and 5). Placeholders are named `REPLACE_WITH_...`, and `YOUR-N8N-HOST` must be replaced with your n8n host name.
 
 #### 1. Create the Data Tables
 
@@ -105,6 +105,7 @@ Waitlist 02:
 | `OFFERS_TABLE_ID` | `REPLACE_WITH_WAITLIST_OFFERS_TABLE_ID` -> ID of `waitlist_offers` |
 | `WON_STEP_ID` | `REPLACE_WITH_WON_OPPORTUNITY_STEP_ID` -> ID of the Opportunity step accepted Opportunities move to |
 | `BRAND_NAME` / `BRAND_CSS` | Same as Waitlist 01 |
+| `CORE_WORKFLOW_ID` | `REPLACE_WITH_ID_OF_WAITLIST_AUTOMATION` -> the ID of your imported Waitlist Automation workflow (from its URL, `/workflow/<id>`). After a decline, Waitlist 02 calls it so the place is offered to the next person straight away. Use the same value as in Waitlist 04 |
 
 `ACCEPT_ACTION` and `DECLINE_ACTION` must be identical in Waitlist 01 and Waitlist 02 (they are by default).
 
@@ -125,6 +126,8 @@ query { opportunitySteps { edges { node { id name } } } }
 | `OFFER_RESPONSE_TIMEOUT_HOURS` | Hold period in hours (default `48`; `0` = hold indefinitely) |
 | `BRAND_NAME` | Your organisation's name, shown in the email masthead |
 | `EMAIL_SUBJECT_TEMPLATE`, `EMAIL_PALETTE`, `EMAIL_BUTTON_LABEL` | Optional. Email wording and colours |
+
+The **Event Updated Trigger** node's `filterExpression` contains `REPLACE_WITH_WAITLIST_FLAG_DEFINITION_KEY`; replace it with the definition key of the `Waitlist On?` Event custom field (see step 5 for how to find it). Only Events with the box ticked wake the engine.
 
 To find the sending address ID:
 
@@ -176,23 +179,24 @@ query { webhooks { edges { node { id name url lifecycleState filterExpression } 
 
 1. Tick `Waitlist On?` on a test Event with a small capacity and fill it.
 2. Add a test contact as an Opportunity Interest on the Event at the `Waitlist` step.
-3. Cancel one learner. Within a few seconds Waitlist 04 runs and calls Waitlist Automation.
+3. Cancel one learner. Within a few seconds Waitlist 04 runs and calls Waitlist Automation. Repeat with `Waitlist On?` unticked on another Event and confirm nothing runs.
 4. Check the Event: `reserved` should go up by one, and the test contact should receive the offer email. Open it in a real mail client and confirm the button renders as a filled button.
 5. Click the link **in a browser** (the page returns 403 to non-browser clients) and press Accept.
 6. Confirm the contact is now a learner on the Event, the Opportunity is at the Won step, `reserved` has dropped back, and `remainingPlaces` dropped by exactly one.
 7. Check the Event's External Integration Logs for the offer and accept entries.
-8. Repeat with Decline and confirm the place is offered to the next person. To test expiry, set `OFFER_RESPONSE_TIMEOUT_HOURS` to `1` and wait for the hourly sweep.
+8. Open the same link in a second tab and press a button again: you should get a "This offer is no longer open" page, not a blank one.
+9. Repeat with Decline and confirm a Waitlist Automation execution starts within seconds and the place is offered to the next person. To test expiry, set `OFFER_RESPONSE_TIMEOUT_HOURS` to `1` and wait for the hourly sweep.
 
 ## How It Works
 
-1. **Waitlist Automation** starts from one of three entry points: Event Updated (trigger), Learner Cancelled (called by Waitlist 04), or the hourly sweep, which marks offers past their `expires_at` as `expired` and re-runs the engine for those Events.
+1. **Waitlist Automation** starts from one of three entry points: Event Updated (trigger, opted-in Events only), Learner Cancelled (called by Waitlist 04, and by Waitlist 02 after a decline), or the hourly sweep, which marks offers past their `expires_at` as `expired` and re-runs the engine for those Events.
 2. **Fetch Event Pages / Fetch Event** read the Event, its active learner count and every Interest (paging through all of them).
-3. **Plan Offers** works out free places (`maxPlaces` minus active learners minus outstanding offers), picks the longest-waiting candidates at the waitlist step who have no open or accepted offer, and builds the email.
-4. **Upsert Rows** records every candidate as `waiting`; **Claim Offer Rows** flips the chosen rows to `offered` only if they are still `waiting`, so overlapping runs cannot both offer the same place.
+3. **Plan Offers** works out free places (`maxPlaces` minus active learners minus outstanding holds, meaning rows at `offered` or `register_failed`), picks the longest-waiting candidates at the waitlist step who have no open or accepted offer, and builds the email.
+4. **Keep New Rows Only / Insert New Rows** add anybody not yet in the table as `waiting`, leaving existing rows untouched; **Claim Offer Rows** flips the chosen rows to `offered` only if they are still `waiting`, so overlapping runs cannot both offer the same place.
 5. **Reserve Place / Set Reservation Hold / Verify Reservation** reserve the place until the offer expires and read it back. If the hold did not take, the row goes back to `waiting` and no email is sent.
 6. **Send Offer Email** sends the offer from your sending address, with one link to the response page, and the outcome is logged against the Event.
 7. **Waitlist 01 - Response Page** (GET) looks up the offer by token and shows the Accept/Decline form, or an already-answered/expired/full page. It changes nothing.
-8. **Waitlist 02 - Response Handler** (POST) re-reads the row and the Event, re-checks capacity, claims the row, then either registers the contact, moves the Opportunity to Won and releases the hold (accept), or releases the hold so the place rolls on (decline). Each release is read back and the result logged.
+8. **Waitlist 02 - Response Handler** (POST) re-reads the row and the Event, re-checks capacity, claims the row, then either registers the contact, moves the Opportunity to Won and releases the hold (accept), or releases the hold and calls Waitlist Automation for the Event so the place rolls on (decline). Each release is read back and the result logged. A submission that loses the claim (a double click or second tab) gets a neutral "no longer open" page and changes nothing.
 9. **Waitlist 04 - Learner Cancelled** exists because cancelling a learner does not fire Event Updated. It resolves the learner to its Event, checks `Waitlist On?`, and hands the Event ID to Waitlist Automation.
 10. **Waitlist 03 - Error Handler** catches any run that throws, fetches the failed execution through the n8n API to find the Event ID, writes a row to `automation_failures`, and logs against the Event when it can.
 
@@ -200,7 +204,7 @@ query { webhooks { edges { node { id name url lifecycleState filterExpression } 
 
 **Nothing happens when a place opens:**
 - Check the webhook registrations are **active**, not just registered
-- For cancellations, confirm the Event has `Waitlist On?` ticked and the flag key is set in both Waitlist 04's Config and its trigger `filterExpression`
+- Confirm the Event has `Waitlist On?` ticked and the flag key is set in the Event Updated Trigger's `filterExpression` (Waitlist Automation), Waitlist 04's Config and Waitlist 04's trigger `filterExpression`
 - Confirm `WAITLIST_STEP_NAME` matches the Opportunity step name exactly (a mismatch finds nobody and logs nothing)
 - Keep `alwaysOutputData` switched on for `Load Offer Rows`, or an empty `waitlist_offers` table stops the engine silently
 
@@ -219,7 +223,11 @@ query { webhooks { edges { node { id name url lifecycleState filterExpression } 
 - `ACCEPT_ACTION` / `DECLINE_ACTION` differ between Waitlist 01 and Waitlist 02
 
 **Accepted but not booked (`register_failed`):**
-- Administrate refused the registration; the log entry on the Event explains why. The hold is kept for the person so an administrator can finish the booking by hand
+- Administrate refused the registration; the log entry on the Event explains why. The hold is kept for the person so an administrator can finish the booking by hand, and the place is not offered to anyone else meanwhile
+- Once the booking is finished by hand, set the row's `status` to `accepted` in `waitlist_offers`, or the seat is counted twice
+
+**A decline does not offer the place to the next person straight away:**
+- Check `CORE_WORKFLOW_ID` in Waitlist 02 points at your Waitlist Automation workflow, and look for a Waitlist Automation execution started just after the decline
 
 **Accepted Opportunity lands on the wrong step:**
 - Update `WON_STEP_ID` in Waitlist 02

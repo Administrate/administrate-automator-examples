@@ -22,7 +22,7 @@ A live reception dashboard shows who has arrived, a daily email reconciles the d
 - Mobile-friendly n8n check-in form with no app to install
 - Check-in window per session (opens before start, closes after), timezone-aware, including multi-day sessions
 - Existing contacts matched by email. Unknown learners on **private** events can self-register as walk-ins. Public events send them to reception.
-- Walk-in account matching by email domain or company name, falling back to an individual account
+- Walk-in account matching by email domain or company name, falling back to an individual account. Free-mail domains such as gmail.com never match by domain, so a walk-in is never filed under a stranger's account.
 - Attendance recorded with `learner.recordAttendance`; registration uses `event.registerNamedLearners`
 - Every scan, successful or refused, logged to a Data Table and to Administrate's External Integration Log
 - Clear result screens for every outcome (checked in, not open yet, closed, see reception, and so on)
@@ -103,7 +103,7 @@ Set the table ID as `CHECKIN_LOG_TABLE_ID` in the **Config** node of **3.0**, **
   - 2.0: `Fetch Event`
   - 3.0: the twelve HTTP Request nodes listed in its Credentials sticky
   - 4.0: `Send Report`
-  - 5.0: `Fetch Todays Events`
+  - 5.0: `Fetch Todays Events`, `Fetch More Learners`
 - **SMTP**: 4.0 `Send Report SMTP`, 6.0 `Send Alert Email`
 
 #### 3. Link the workflows (URLs)
@@ -147,6 +147,7 @@ After importing, open **Workflow Settings** on 1.0, 2.0, 3.0, 4.0 and 5.0 and se
 | `ATTENDED` | `true` | Leave as `true` (see the caveat in 4.0's sticky) |
 | `CHECKIN_WINDOW_OVERRIDE` | `off` | **Testing only.** `any` ignores the window. Must be `off` in production. |
 | `ORIGIN_IDENTIFIER` | `Automator - QR Check-in` | Label on External Integration Log entries |
+| `FREE_MAIL_DOMAINS` | `gmail.com,googlemail.com,outlook.com,...` | Comma separated public email domains (lower case, no @). A walk-in from one of these is never matched to an account by email domain, only by company name, otherwise an individual account. Add any other public domains your learners use. Empty = none. |
 
 If you change `OPEN_MINUTES_BEFORE` / `CLOSE_HOURS_AFTER`, make the same change in 5.0's Config. 5.0 uses them only for labels.
 
@@ -154,7 +155,7 @@ If you change `OPEN_MINUTES_BEFORE` / `CLOSE_HOURS_AFTER`, make the same change 
 
 - **2.0 Config**: `TITLE`, `HEADER`, `BODY`, `FOOTER`, `ALT_TEXT`, `LOGO` (optional `data:` image URL drawn in the centre of each code), `QR_MODE` (`session` or `event`), `TIME_24H`, `SAVE_LABEL`, `PRINT_LABEL`, `SHOW_SAVE_BUTTON`, `SHOW_PRINT_BUTTON`, `FILE_PREFIX` (PNG file name prefix). Colours and QR size are constants at the top of the `Build QR Page` Code node.
 - **4.0 Config**: `EMAIL_TRANSPORT` (`smtp`, or `administrate` to send via Administrate's bulk ad hoc email), `SEND_ENABLED` (`false` builds the report without sending), `LOOKBACK_HOURS`, `DUP_THRESHOLD`, `REPORT_TITLE`.
-- **5.0 Config**: `TIME_ZONE`, `REFRESH_SECONDS`, `PAGE_TITLE`.
+- **5.0 Config**: `TIME_ZONE`, `REFRESH_SECONDS`, `PAGE_TITLE`, `LEARNER_PAGE_SIZE` (delegates read per request, default and maximum `100`), `LEARNER_MAX_PAGES` (most pages of delegates read per event, default `5`, so up to 500).
 - **Timezone**: 1.0 to 5.0 have Workflow Settings timezone `Europe/London`, and 4.0 runs at 07:00 in that zone. Change it to yours.
 
 #### 8. Secure the dashboard
@@ -181,10 +182,10 @@ The 5.0 `Dashboard Page` webhook is **open by default** and lists learner names.
    - The form reads the email and hidden `eventId` / `sessionId`.
    - **Fetch Event** and **Resolve Session** pick the session whose check-in window is open. Nothing is written if none is open.
    - The contact is found by email. If they have no active learner on the event, they are registered on private events (`registerNamedLearners`) or sent to reception on public ones.
-   - Unknown emails on private events get a second page (name, email, company, mobile). A contact is created under an account matched by email domain or company name, otherwise under a new individual account.
+   - Unknown emails on private events get a second page (name, email, company, mobile). A contact is created under an account matched by email domain or company name, otherwise under a new individual account. Domains listed in `FREE_MAIL_DOMAINS` skip the email domain match.
    - `learner.recordAttendance` marks the session.
    - Every path ends in **Build Log Row**, which writes the Data Table row and an External Integration Log entry and shows the result screen.
-4. **Dashboard (5.0)**: Reads today's published events with sessions and learners from Administrate and the walk-ins from the log. Shows one card per session with Checked in / Expected / Walk-ins counts and drill-down name lists.
+4. **Dashboard (5.0)**: Reads today's published events with sessions and learners from Administrate and the walk-ins from the log. Shows one card per session with Checked in / Expected / Walk-ins counts and drill-down name lists. Events with more than 100 learners are read page by page (up to `LEARNER_MAX_PAGES`). If an event still has more, or a page fails, the dashboard names that event and warns that its numbers may be too low.
 5. **Daily report (4.0)**: At 07:00 reads the last `LOOKBACK_HOURS` of log rows and emails counts by status and result, every scan whose attendance was not recorded (with the reason), contacts needing review, and possible duplicate people.
 6. **Failure handler (6.0)**: When any other workflow fails in production, emails the workflow name, failing node, message, what it means in practice, and a link to the execution.
 
@@ -215,10 +216,17 @@ The 5.0 `Dashboard Page` webhook is **open by default** and lists learner names.
 - Commonly "Learners missing from session": the session was added after the learner was booked. Add the learner to the session in Administrate and mark attendance by hand.
 
 **Data Table errors:**
-- Check `CHECKIN_LOG_TABLE_ID` in 3.0, 4.0 and 5.0, and that the table has all 18 columns
+- Check `CHECKIN_LOG_TABLE_ID` in 3.0, 4.0 and 5.0, and that the table has all 18 columns. 3.0 stops with "missing Config" before writing anything if it is blank.
+
+**A walk-in was filed under the wrong account:**
+- If their email is on a public domain, add that domain to `FREE_MAIL_DOMAINS` in 3.0's Config
+
+**The dashboard says "Not every delegate could be read":**
+- The event has more learners than `LEARNER_MAX_PAGES` x `LEARNER_PAGE_SIZE`, or a page request failed. Raise `LEARNER_MAX_PAGES` or check 5.0's executions.
 
 **Saved PNGs are blank:**
 - Firefox with anti-fingerprinting enabled blocks canvas export. Use Chrome or Edge.
 
 **No failure alerts:**
 - The Error Workflow setting must be set on each workflow, and alerts fire only for production (not manual) runs. Use **Test Alert By Hand** to test the email path.
+- If the alert email itself cannot be sent, 6.0's run fails. Check 6.0's own executions list and its SMTP credential.

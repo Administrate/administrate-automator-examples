@@ -69,6 +69,12 @@
               "name": "BRAND_CSS",
               "type": "string",
               "value": ":root{--b:#1F2937;--a:#2563EB;--t:#EEF2FF;--ink:#1A1A1A;--muted:#5A6470;--line:#D4D9DE;--danger:#A3241F;--dangerbg:#FBEDEC}*,*::before,*::after{box-sizing:border-box}html{font-size:100%;-webkit-text-size-adjust:100%}body{margin:0;font-family:\"Segoe UI\",Roboto,\"Helvetica Neue\",Arial,sans-serif;font-size:clamp(1rem,0.95rem + 0.25vw,1.125rem);line-height:1.6;color:var(--ink);background:#FFF}.masthead{background:var(--b);border-bottom:3px solid var(--a);color:#FFF;padding:clamp(1rem,3vw,1.75rem) clamp(1rem,5vw,2.5rem)}.masthead p{margin:0;font-weight:600;letter-spacing:.14em;font-size:.8em}main{max-width:44rem;margin:0 auto;padding:clamp(1.25rem,5vw,2.5rem) clamp(1rem,5vw,2.5rem) 4rem}h1{font-size:clamp(1.4rem,1.1rem + 1.4vw,2rem);line-height:1.25;margin:0 0 .35em;color:var(--b)}.meta{margin:0 0 1.75rem;color:var(--muted)}.meta span{white-space:nowrap}.notice{border-left:4px solid var(--a);background:var(--t);padding:.9rem 1rem;margin:0 0 1.75rem}.error{border-left-color:var(--danger);background:var(--dangerbg)}p{margin:0 0 1rem}@media (prefers-contrast:more){body{color:#000}.meta{color:#333}}"
+            },
+            {
+              "id": "c09",
+              "name": "CORE_WORKFLOW_ID",
+              "value": "REPLACE_WITH_ID_OF_WAITLIST_AUTOMATION",
+              "type": "string"
             }
           ]
         },
@@ -173,7 +179,7 @@
     },
     {
       "parameters": {
-        "jsCode": "/*\tDecide - validates the submitted response against the stored row and the live event.\t*/\n/*\tNothing posted is trusted beyond the token: the row is re-read and the event re-queried.\t*/\n\nconst cfg_obj = $('Config').first().json;\nconst sub_obj = $('Extract Submission').first().json;\nconst api_obj = $input.first().json;\nconst now_str = $now.toISO();\n\nconst rows_ary = $('Load Row').all().map(function (i_obj) { return i_obj.json; }).filter(function (r_obj) { return r_obj && r_obj.token; });\nconst row_obj = rows_ary.find(function (r_obj) { return String(r_obj.token) === String(sub_obj.offerToken); }) || null;\n\nconst event_obj = ((((api_obj.data || {}).events || {}).edges || [])[0] || {}).node || null;\n\nconst esc_fn = function (v_any)\n{\n\treturn String(v_any === null || v_any === undefined ? '' : v_any)\n\t\t.split('&').join('&amp;').split('<').join('&lt;').split('>').join('&gt;').split('\"').join('&quot;');\n};\n\nconst pretty_fn = function (iso_str)\n{\n\tif (!iso_str) { return ''; }\n\tconst d_obj = new Date(String(iso_str).replace(' ', 'T'));\n\tif (isNaN(d_obj.getTime())) { return String(iso_str); }\n\tconst months_ary = ['January','February','March','April','May','June','July','August','September','October','November','December'];\n\treturn d_obj.getDate() + ' ' + months_ary[d_obj.getMonth()] + ' ' + d_obj.getFullYear();\n};\n\nconst page_fn = function (title_str, body_str)\n{\n\treturn '<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><title>' + esc_fn(title_str) + '</title><style>' + cfg_obj.BRAND_CSS + '</style></head><body><header class=\"masthead\"><p>' + esc_fn(cfg_obj.BRAND_NAME) + '</p></header><main>' + body_str + '</main></body></html>';\n};\n\n/*\tTwo shapes of non-form page. refuse is for something wrong, so it points at a human.\n\tcloseOff is for when everything is in order and there is simply nothing left to do\t*/\nconst refuse_fn = function (heading_str, message_str)\n{\n\treturn page_fn(heading_str, '<h1>' + esc_fn(heading_str) + '</h1><div class=\"notice error\"><p>' + esc_fn(message_str) + '</p></div><p>Please reply to the offer email and someone will help.</p>');\n};\n\nconst closeOff_fn = function (heading_str, message_str)\n{\n\treturn page_fn(heading_str, '<h1>' + esc_fn(heading_str) + '</h1><div class=\"notice\"><p>' + esc_fn(message_str) + '</p></div><p>You can close this page.</p>');\n};\n\nconst invalid_fn = function (heading_str, message_str, closed_bln)\n{\n\treturn [{ json: {\n\t\tvalid: false,\n\t\trowId: '',\n\t\tnewStatus: '',\n\t\toutcome: 'invalid',\n\t\tresultHtml: closed_bln ? closeOff_fn(heading_str, message_str) : refuse_fn(heading_str, message_str)\n\t} }];\n};\n\nif (!row_obj)\n{\n\treturn invalid_fn('This link is no longer valid', 'We could not find this offer. It may have been withdrawn, or the link may be incomplete.', false);\n}\n\nconst status_str = String(row_obj.status || '');\n\nif (status_str === 'accepted')\n{\n\treturn invalid_fn('You have already accepted', 'Your place on ' + String(row_obj.event_title || 'this event') + ' is confirmed. Nothing further is needed.', true);\n}\n\nif (status_str === 'declined')\n{\n\treturn invalid_fn('You have already declined', 'We recorded that you did not want this place, and it has been offered to somebody else. If that has changed, reply to the offer email and we will pick it up.', true);\n}\n\nif (status_str === 'expired')\n{\n\treturn invalid_fn('This offer has expired', 'The place was held for a limited time and has now passed to the next person on the waitlist.', true);\n}\n\nif (status_str !== 'offered')\n{\n\treturn invalid_fn('This link is no longer valid', 'This offer is not open for a response.', false);\n}\n\nif (row_obj.expires_at && DateTime.fromISO(String(row_obj.expires_at)) < DateTime.fromISO(now_str))\n{\n\treturn [{ json: {\n\t\tvalid: false,\n\t\trowId: row_obj.id,\n\t\tnewStatus: 'expired',\n\t\toutcome: 'invalid',\n\t\tresultHtml: closeOff_fn('This offer has expired', 'The place was held for a limited time and has now passed to the next person on the waitlist.')\n\t} }];\n}\n\nconst accept_bln = String(sub_obj.action) === String(cfg_obj.ACCEPT_ACTION);\nconst decline_bln = String(sub_obj.action) === String(cfg_obj.DECLINE_ACTION);\n\nif (!accept_bln && !decline_bln)\n{\n\treturn invalid_fn('We could not record that response', 'That answer was not one of the options offered.', false);\n}\n\n/*\tCapacity is re-checked at submit time, not at offer time. Somebody else may have\n\tbeen registered in between, and accepting into a full event would oversell it\t*/\nconst max_num = Number((event_obj || {}).maxPlaces || 0);\nconst reg_num = Number(((((event_obj || {}).learners || {}).pageInfo || {}).totalRecords) || 0);\n\nif (accept_bln && event_obj && max_num > 0 && reg_num >= max_num)\n{\n\treturn [{ json: {\n\t\tvalid: false,\n\t\trowId: row_obj.id,\n\t\tnewStatus: 'expired',\n\t\toutcome: 'invalid',\n\t\tresultHtml: closeOff_fn('This event is now full', 'Somebody else took the last place before we heard from you, so this offer can no longer be honoured. Thank you for considering it.')\n\t} }];\n}\n\nconst title_str = String(row_obj.event_title || (event_obj || {}).title || 'this event');\nconst when_str = pretty_fn((event_obj || {}).start);\nconst meta_str = when_str ? '<p class=\"meta\"><span>' + esc_fn(when_str) + '</span></p>' : '';\n\nconst acceptedHtml_str = page_fn('Your place is confirmed',\n\t'<h1>Your place is confirmed</h1>' + meta_str\n\t+ '<div class=\"notice\"><p>You are booked onto <strong>' + esc_fn(title_str) + '</strong>. Joining details will follow by email.</p></div>'\n\t+ '<p>You can close this page.</p>');\n\nconst declinedHtml_str = page_fn('Thank you for letting us know',\n\t'<h1>Thank you for letting us know</h1>' + meta_str\n\t+ '<div class=\"notice\"><p>We have released your place on <strong>' + esc_fn(title_str) + '</strong> and will offer it to the next person on the waitlist.</p></div>'\n\t+ '<p>You can close this page.</p>');\n\n/*\tNeutral rather than an error. The person did nothing wrong, their answer is recorded,\n\tand a human finishes it\t*/\nconst acceptProblemHtml_str = page_fn('Thank you, we have your answer',\n\t'<h1>Thank you, we have your answer</h1>' + meta_str\n\t+ '<div class=\"notice\"><p>We have recorded that you want the place on <strong>' + esc_fn(title_str) + '</strong>, but we could not confirm the booking automatically. Our team has been told and will finish it for you.</p></div>'\n\t+ '<p>You can close this page.</p>');\n\nreturn [{ json: {\n\tvalid: true,\n\toutcome: accept_bln ? 'accept' : 'decline',\n\trowId: row_obj.id,\n\tnewStatus: accept_bln ? 'accepted' : 'declined',\n\teventId: String(row_obj.event_id || ''),\n\teventTitle: title_str,\n\tcontactId: String(row_obj.contact_id || ''),\n\topportunityId: String(row_obj.opportunity_id || ''),\n\tnow: now_str,\n\tacceptedHtml: acceptedHtml_str,\n\tdeclinedHtml: declinedHtml_str,\n\tacceptProblemHtml: acceptProblemHtml_str\n} }];"
+        "jsCode": "/*\tDecide - validates the submitted response against the stored row and the live event.\t*/\n/*\tNothing posted is trusted beyond the token: the row is re-read and the event re-queried.\t*/\n\nconst cfg_obj = $('Config').first().json;\nconst sub_obj = $('Extract Submission').first().json;\nconst api_obj = $input.first().json;\nconst now_str = $now.toISO();\n\nconst rows_ary = $('Load Row').all().map(function (i_obj) { return i_obj.json; }).filter(function (r_obj) { return r_obj && r_obj.token; });\nconst row_obj = rows_ary.find(function (r_obj) { return String(r_obj.token) === String(sub_obj.offerToken); }) || null;\n\nconst event_obj = ((((api_obj.data || {}).events || {}).edges || [])[0] || {}).node || null;\n\nconst esc_fn = function (v_any)\n{\n\treturn String(v_any === null || v_any === undefined ? '' : v_any)\n\t\t.split('&').join('&amp;').split('<').join('&lt;').split('>').join('&gt;').split('\"').join('&quot;');\n};\n\nconst pretty_fn = function (iso_str)\n{\n\tif (!iso_str) { return ''; }\n\tconst d_obj = new Date(String(iso_str).replace(' ', 'T'));\n\tif (isNaN(d_obj.getTime())) { return String(iso_str); }\n\tconst months_ary = ['January','February','March','April','May','June','July','August','September','October','November','December'];\n\treturn d_obj.getDate() + ' ' + months_ary[d_obj.getMonth()] + ' ' + d_obj.getFullYear();\n};\n\nconst page_fn = function (title_str, body_str)\n{\n\treturn '<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><title>' + esc_fn(title_str) + '</title><style>' + cfg_obj.BRAND_CSS + '</style></head><body><header class=\"masthead\"><p>' + esc_fn(cfg_obj.BRAND_NAME) + '</p></header><main>' + body_str + '</main></body></html>';\n};\n\n/*\tTwo shapes of non-form page. refuse is for something wrong, so it points at a human.\n\tcloseOff is for when everything is in order and there is simply nothing left to do\t*/\nconst refuse_fn = function (heading_str, message_str)\n{\n\treturn page_fn(heading_str, '<h1>' + esc_fn(heading_str) + '</h1><div class=\"notice error\"><p>' + esc_fn(message_str) + '</p></div><p>Please reply to the offer email and someone will help.</p>');\n};\n\nconst closeOff_fn = function (heading_str, message_str)\n{\n\treturn page_fn(heading_str, '<h1>' + esc_fn(heading_str) + '</h1><div class=\"notice\"><p>' + esc_fn(message_str) + '</p></div><p>You can close this page.</p>');\n};\n\nconst invalid_fn = function (heading_str, message_str, closed_bln)\n{\n\treturn [{ json: {\n\t\tvalid: false,\n\t\trowId: '',\n\t\tnewStatus: '',\n\t\toutcome: 'invalid',\n\t\tresultHtml: closed_bln ? closeOff_fn(heading_str, message_str) : refuse_fn(heading_str, message_str)\n\t} }];\n};\n\nif (!row_obj)\n{\n\treturn invalid_fn('This link is no longer valid', 'We could not find this offer. It may have been withdrawn, or the link may be incomplete.', false);\n}\n\nconst status_str = String(row_obj.status || '');\n\nif (status_str === 'accepted')\n{\n\treturn invalid_fn('You have already accepted', 'Your place on ' + String(row_obj.event_title || 'this event') + ' is confirmed. Nothing further is needed.', true);\n}\n\nif (status_str === 'declined')\n{\n\treturn invalid_fn('You have already declined', 'We recorded that you did not want this place, and it has been offered to somebody else. If that has changed, reply to the offer email and we will pick it up.', true);\n}\n\nif (status_str === 'expired')\n{\n\treturn invalid_fn('This offer has expired', 'The place was held for a limited time and has now passed to the next person on the waitlist.', true);\n}\n\nif (status_str !== 'offered')\n{\n\treturn invalid_fn('This link is no longer valid', 'This offer is not open for a response.', false);\n}\n\nif (row_obj.expires_at && DateTime.fromISO(String(row_obj.expires_at)) < DateTime.fromISO(now_str))\n{\n\treturn [{ json: {\n\t\tvalid: false,\n\t\trowId: row_obj.id,\n\t\tnewStatus: 'expired',\n\t\toutcome: 'invalid',\n\t\tresultHtml: closeOff_fn('This offer has expired', 'The place was held for a limited time and has now passed to the next person on the waitlist.')\n\t} }];\n}\n\nconst accept_bln = String(sub_obj.action) === String(cfg_obj.ACCEPT_ACTION);\nconst decline_bln = String(sub_obj.action) === String(cfg_obj.DECLINE_ACTION);\n\nif (!accept_bln && !decline_bln)\n{\n\treturn invalid_fn('We could not record that response', 'That answer was not one of the options offered.', false);\n}\n\n/*\tCapacity is re-checked at submit time, not at offer time. Somebody else may have\n\tbeen registered in between, and accepting into a full event would oversell it\t*/\nconst max_num = Number((event_obj || {}).maxPlaces || 0);\nconst reg_num = Number(((((event_obj || {}).learners || {}).pageInfo || {}).totalRecords) || 0);\n\nif (accept_bln && event_obj && max_num > 0 && reg_num >= max_num)\n{\n\treturn [{ json: {\n\t\tvalid: false,\n\t\trowId: row_obj.id,\n\t\tnewStatus: 'expired',\n\t\toutcome: 'invalid',\n\t\tresultHtml: closeOff_fn('This event is now full', 'Somebody else took the last place before we heard from you, so this offer can no longer be honoured. Thank you for considering it.')\n\t} }];\n}\n\nconst title_str = String(row_obj.event_title || (event_obj || {}).title || 'this event');\nconst when_str = pretty_fn((event_obj || {}).start);\nconst meta_str = when_str ? '<p class=\"meta\"><span>' + esc_fn(when_str) + '</span></p>' : '';\n\nconst acceptedHtml_str = page_fn('Your place is confirmed',\n\t'<h1>Your place is confirmed</h1>' + meta_str\n\t+ '<div class=\"notice\"><p>You are booked onto <strong>' + esc_fn(title_str) + '</strong>. Joining details will follow by email.</p></div>'\n\t+ '<p>You can close this page.</p>');\n\nconst declinedHtml_str = page_fn('Thank you for letting us know',\n\t'<h1>Thank you for letting us know</h1>' + meta_str\n\t+ '<div class=\"notice\"><p>We have released your place on <strong>' + esc_fn(title_str) + '</strong> and will offer it to the next person on the waitlist.</p></div>'\n\t+ '<p>You can close this page.</p>');\n\n/*\tNeutral rather than an error. The person did nothing wrong, their answer is recorded,\n\tand a human finishes it\t*/\nconst acceptProblemHtml_str = page_fn('Thank you, we have your answer',\n\t'<h1>Thank you, we have your answer</h1>' + meta_str\n\t+ '<div class=\"notice\"><p>We have recorded that you want the place on <strong>' + esc_fn(title_str) + '</strong>, but we could not confirm the booking automatically. Our team has been told and will finish it for you.</p></div>'\n\t+ '<p>You can close this page.</p>');\n\n/*\tServed when Claim Row finds the row is no longer offered. Another submission for the\n\tsame offer got there first, usually a double click or a second tab, or the offer closed\n\tin the moment between reading the row and claiming it. Neutral, because nothing is wrong\t*/\nconst claimLostHtml_str = closeOff_fn('This offer is no longer open', 'We already have a response to this offer, or it has just closed, so there is nothing more to do here. If that is not what you expected, reply to the offer email and someone will help.');\n\nreturn [{ json: {\n\tvalid: true,\n\toutcome: accept_bln ? 'accept' : 'decline',\n\trowId: row_obj.id,\n\tnewStatus: accept_bln ? 'accepted' : 'declined',\n\teventId: String(row_obj.event_id || ''),\n\teventTitle: title_str,\n\tcontactId: String(row_obj.contact_id || ''),\n\topportunityId: String(row_obj.opportunity_id || ''),\n\tnow: now_str,\n\tacceptedHtml: acceptedHtml_str,\n\tdeclinedHtml: declinedHtml_str,\n\tacceptProblemHtml: acceptProblemHtml_str,\n\tclaimLostHtml: claimLostHtml_str\n} }];"
       },
       "id": "f610ac6f-83d9-4fc3-ae63-6cbe4e7278ce",
       "name": "Decide",
@@ -281,6 +287,7 @@
         },
         "options": {}
       },
+      "alwaysOutputData": true,
       "id": "3c7c46fd-2b4c-4b3b-9775-bfa2fbfd9acb",
       "name": "Claim Row",
       "type": "n8n-nodes-base.dataTable",
@@ -706,7 +713,7 @@
     {
       "parameters": {
         "respondWith": "text",
-        "responseBody": "={{ $json.resultHtml }}",
+        "responseBody": "={{ $json.resultHtml || $('Decide').first().json.claimLostHtml }}",
         "options": {
           "responseCode": 200,
           "responseHeaders": {
@@ -735,7 +742,7 @@
     {
       "parameters": {
         "color": 4,
-        "content": "## Waitlist 02 - Response Handler\n\nPOST only. This is where a waitlist answer is actually recorded. The page itself is a GET that writes nothing, so a mail scanner opening the offer link cannot answer on somebody's behalf.\n\n### What one submission does\n\n1. Re-reads the offer row from the Data Table by token\n2. Re-queries the event from Administrate - **nothing posted is trusted beyond the token**\n3. Re-checks capacity, because somebody else may have accepted since the offer went out\n4. **Claims** the row, then acts on the answer\n5. Accept registers the contact, progresses the opportunity to Won, **releases the offer hold, and reads the hold back to confirm the release happened**\n6. Decline releases the offer hold and reads it back the same way, so the place rolls to the next person\n7. Logs the verified outcome against the event either way\n\n### Both answers release the hold, and both verify the release\n\nThe hold taken at offer time is a **reservation on the opportunity's interest**, separate from the registration. `event.registerContacts` creates a learner that is not linked to the opportunity, so registering somebody does not consume their reservation.\n\nAn accept that does not release leaves **two things holding one seat**: the learner and the live reservation. `remainingPlaces` is understated, and the next person on the waitlist is not offered a place that is actually free. The hold lapses on its own later, so the problem also hides itself.\n\nRelease is `opportunities.extendReservations` with `reservationsValidUntil` set to now, which voids the hold. There is no dedicated release mutation.\n\n`extendReservations` can return `errors: []` when it silently does nothing, so `Verify Accept Release` and `Verify Decline Release` read the hold back, and the log node reports what was actually read. If the hold survived, the log entry says so and gives the recovery step.\n\nBoth run `continueRegularOutput`, so a verification problem still lets the reader see their confirmation page.\n\n### The claim is the concurrency fix\n\n**Claim Row** matches on `id` **and** `status = offered`, so the status check is part of the write rather than a JavaScript test before it. Two simultaneous submissions cannot both act: the second update finds nothing to match.\n\n### Registration can be refused inside an HTTP 200\n\nAdministrate returns a refusal in the response body, not as an error status. **IF Registered OK?** tests both the top-level `errors` array and the mutation's nested one.\n\nWhen it fails, the row is set to `register_failed`, the failure is logged against the event with recovery steps, and the reader gets a neutral page rather than a false confirmation. `register_failed` also stops **Plan Offers** re-offering the place.\n\nThe failed branch deliberately does **not** release the hold: the person accepted, a human has to finish the booking, so the seat stays held for them.\n\n### Log expressions\n\nThe two log bodies are written as multi-line expressions inside an IIFE. That avoids operator-precedence mistakes (`'text' + cond ? a : b` does not do what it looks like), which would otherwise fail silently behind a green run.\n\n### Setup\n\n1. Attach the Administrate OAuth2 credential to every HTTP Request node. **There are ten**: Re-read Event, Register Contact, Progress Opportunity to Won, Release Hold on Accept, Verify Accept Release, Log Accepted, Log Register Failed, Release Reservation, Verify Decline Release, Log Declined.\n2. Confirm ACCEPT_ACTION and DECLINE_ACTION match Waitlist 01's Config exactly.\n3. Publish so the webhook is live, and copy its production URL into SUBMIT_URL in Waitlist 01.\n\n### Testing\n\nSubmit a real accept and read the **event record**, not the execution list. Check `remainingPlaces` as well as the learner list: it should drop by exactly one. If it drops by two, the hold was not released.\n\nThen open the same link again. You should get the already-accepted page, not a second registration. Test a decline the same way and confirm `reserved` drops.\n\n### No email from here\n\nThe result page confirms the outcome. If a confirmation email is wanted on accept, add it on that branch along with a SENDING_ADDRESS_ID in Config.\n",
+        "content": "## Waitlist 02 - Response Handler\n\nPOST only. This is where a waitlist answer is actually recorded. The page itself is a GET that writes nothing, so a mail scanner opening the offer link cannot answer on somebody's behalf.\n\n### What one submission does\n\n1. Re-reads the offer row from the Data Table by token\n2. Re-queries the event from Administrate - **nothing posted is trusted beyond the token**\n3. Re-checks capacity, because somebody else may have accepted since the offer went out\n4. **Claims** the row, then acts on the answer. A losing claim gets the no-longer-open page and does nothing else\n5. Accept registers the contact, progresses the opportunity to Won, **releases the offer hold, and reads the hold back to confirm the release happened**\n6. Decline releases the offer hold and reads it back the same way, serves the page, then **wakes Waitlist Automation** for the event so the place rolls to the next person straight away\n7. Logs the verified outcome against the event either way\n\n### Both answers release the hold, and both verify the release\n\nThe hold taken at offer time is a **reservation on the opportunity's interest**, separate from the registration. `event.registerContacts` creates a learner that is not linked to the opportunity, so registering somebody does not consume their reservation.\n\nAn accept that does not release leaves **two things holding one seat**: the learner and the live reservation. `remainingPlaces` is understated, and the next person on the waitlist is not offered a place that is actually free. The hold lapses on its own later, so the problem also hides itself.\n\nRelease is `opportunities.extendReservations` with `reservationsValidUntil` set to now, which voids the hold. There is no dedicated release mutation.\n\n`extendReservations` can return `errors: []` when it silently does nothing, so `Verify Accept Release` and `Verify Decline Release` read the hold back, and the log node reports what was actually read. If the hold survived, the log entry says so and gives the recovery step.\n\nBoth run `continueRegularOutput`, so a verification problem still lets the reader see their confirmation page.\n\n### The claim is the concurrency fix\n\n**Claim Row** matches on `id` **and** `status = offered`, so the status check is part of the write rather than a JavaScript test before it. Two simultaneous submissions cannot both act: the second update finds nothing to match.\n\n**Claim Row has `alwaysOutputData` on, and `Claimed?` gates everything after it.** A losing claim updates nothing, so without the gate the branch would end and the webhook would answer with an empty body (a blank page). The loser's empty item carries no row `id`, fails `Claimed?` and goes to **Serve Rejection**, which serves Decide's `claimLostHtml`, a neutral \"This offer is no longer open\" page. Only a claim that returned a row reaches `Route by Outcome`, so the loser still cannot register, release or log anything.\n\n### A decline wakes the offer engine\n\nAfter **Serve Declined**, **Call Waitlist Core** hands the event id to Waitlist Automation's `Learner Cancelled Entry`, exactly as Waitlist 04 does: same entry, one `eventId` input, `waitForSubWorkflow` off. Without it the freed place would sit until the next save of the event or an unrelated cancellation. It runs after the page is served, so the reader never waits on it, and Waitlist Automation's own logging and error workflow cover what happens next. Its execution shows the source as `learnerCancelled`, because the two callers share that entry. Accept does not call it: an accept fills the place rather than freeing one.\n\n### Registration can be refused inside an HTTP 200\n\nAdministrate returns a refusal in the response body, not as an error status. **IF Registered OK?** tests both the top-level `errors` array and the mutation's nested one.\n\nWhen it fails, the row is set to `register_failed`, the failure is logged against the event with recovery steps, and the reader gets a neutral page rather than a false confirmation. `register_failed` also stops **Plan Offers** re-offering the place.\n\nThe failed branch deliberately does **not** release the hold: the person accepted, a human has to finish the booking, so the seat stays held for them.\n\n### Log expressions\n\nThe two log bodies are written as multi-line expressions inside an IIFE. That avoids operator-precedence mistakes (`'text' + cond ? a : b` does not do what it looks like), which would otherwise fail silently behind a green run.\n\n### Setup\n\n1. Attach the Administrate OAuth2 credential to every HTTP Request node. **There are ten**: Re-read Event, Register Contact, Progress Opportunity to Won, Release Hold on Accept, Verify Accept Release, Log Accepted, Log Register Failed, Release Reservation, Verify Decline Release, Log Declined.\n2. Confirm ACCEPT_ACTION and DECLINE_ACTION match Waitlist 01's Config exactly.\n3. Set CORE_WORKFLOW_ID in Config to your copy of Waitlist Automation (import it first).\n4. Publish so the webhook is live, and copy its production URL into SUBMIT_URL in Waitlist 01.\n\n### Testing\n\nSubmit a real accept and read the **event record**, not the execution list. Check `remainingPlaces` as well as the learner list: it should drop by exactly one. If it drops by two, the hold was not released.\n\nThen open the same link again. You should get the already-accepted page, not a second registration. Test a decline the same way and confirm `reserved` drops, and that a Waitlist Automation execution for the event starts seconds later. Submitting the same form from two tabs should show the no-longer-open page on the second, not a blank one.\n\n### No email from here\n\nThe result page confirms the outcome. If a confirmation email is wanted on accept, add it on that branch along with a SENDING_ADDRESS_ID in Config.\n",
         "height": 1620,
         "width": 776
       },
@@ -751,7 +758,7 @@
     {
       "parameters": {
         "color": 6,
-        "content": "## Config Explained\n\n**GRAPHQL_URL** - the Administrate API endpoint. The same for every instance.\n\n**ORIGIN_IDENTIFIER** - the name entries appear under in the Administrate event log. **Should be identical across all five waitlist workflows.** Log entries cannot be deleted, so choose it once.\n\n**OFFERS_TABLE_ID** - the id of your `waitlist_offers` Data Table. **Load Row**, **Claim Row** and **Mark Register Failed** read this value through an expression, so changing it here is the whole change. Do **not** re-select the table in those nodes.\n\n**WON_STEP_ID** - the id of the opportunity step an acceptance progresses to. Find it with:\n\n`query { opportunitySteps { edges { node { id name } } } }`\n\n**ACCEPT_ACTION** and **DECLINE_ACTION** - the values the buttons post. They must match Waitlist 01's Config exactly. A mismatch does not error; it rejects every answer as unrecognized.\n\n**BRAND_NAME** - the wordmark on every result page. Set it to your organisation's name.\n\n**BRAND_CSS** - styling for the result pages. Keep it in step with Waitlist 01's BRAND_CSS. It **cannot** be reused in the offer email, which needs table layout and inline styles.\n\n### Statuses this workflow writes\n\n`accepted` - registered on the event and progressed to Won.\n\n`declined` - reservation released, place rolls on.\n\n`register_failed` - they accepted, Administrate refused the registration. They are **not** on the event and a human has to finish it. Plan Offers skips these rows.\n\n`expired` is written by the hourly sweep in **Waitlist Automation**, not here. `Decide` can also return an `expired` outcome for display on a row whose `expires_at` has passed but which the sweep has not caught yet; that path does not write.\n",
+        "content": "## Config Explained\n\n**GRAPHQL_URL** - the Administrate API endpoint. The same for every instance.\n\n**ORIGIN_IDENTIFIER** - the name entries appear under in the Administrate event log. **Should be identical across all five waitlist workflows.** Log entries cannot be deleted, so choose it once.\n\n**OFFERS_TABLE_ID** - the id of your `waitlist_offers` Data Table. **Load Row**, **Claim Row** and **Mark Register Failed** read this value through an expression, so changing it here is the whole change. Do **not** re-select the table in those nodes.\n\n**WON_STEP_ID** - the id of the opportunity step an acceptance progresses to. Find it with:\n\n`query { opportunitySteps { edges { node { id name } } } }`\n\n**ACCEPT_ACTION** and **DECLINE_ACTION** - the values the buttons post. They must match Waitlist 01's Config exactly. A mismatch does not error; it rejects every answer as unrecognized.\n\n**BRAND_NAME** - the wordmark on every result page. Set it to your organisation's name.\n\n**BRAND_CSS** - styling for the result pages. Keep it in step with Waitlist 01's BRAND_CSS. It **cannot** be reused in the offer email, which needs table layout and inline styles.\n\n**CORE_WORKFLOW_ID** - the id of your imported **Waitlist Automation** workflow (from its URL: `/workflow/<id>`). After a decline, **Call Waitlist Core** hands it the event id so the freed place is offered to the next person straight away. It must match `CORE_WORKFLOW_ID` in Waitlist 04, which calls the same entry.\n\n### Statuses this workflow writes\n\n`accepted` - registered on the event and progressed to Won.\n\n`declined` - reservation released, place rolls on.\n\n`register_failed` - they accepted, Administrate refused the registration. They are **not** on the event and a human has to finish it. Plan Offers skips these rows and counts each one as a held place, so the seat is not quietly re-offered. Once the booking is finished by hand, set the row to `accepted`.\n\n`expired` is written by the hourly sweep in **Waitlist Automation**, not here. `Decide` can also return an `expired` outcome for display on a row whose `expires_at` has passed but which the sweep has not caught yet; that path does not write.\n",
         "height": 1328,
         "width": 620
       },
@@ -853,6 +860,85 @@
       },
       "notes": "Reads the release back. On a decline the whole point is to free the place, so a hold that survives means the next person on the waitlist is never offered a seat that is genuinely free.",
       "onError": "continueRegularOutput"
+    },
+    {
+      "id": "75a7aa16-8a0d-44aa-8d37-338e1d90b0f1",
+      "name": "Claimed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1680,
+        288
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "cl1",
+              "leftValue": "={{ String($json.id ?? '') }}",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              },
+              "rightValue": ""
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "notes": "Claim Row has alwaysOutputData on, so a losing claim arrives here as an empty item with no row id and goes to Serve Rejection, which serves Decide's claimLostHtml. Without this gate the loser got a blank page."
+    },
+    {
+      "id": "c2d43ea4-9457-4ed4-8ca1-b611fdaf1ca8",
+      "name": "Call Waitlist Core",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        2688,
+        384
+      ],
+      "parameters": {
+        "mode": "once",
+        "options": {
+          "waitForSubWorkflow": false
+        },
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "cachedResultName": "Waitlist Automation",
+          "mode": "id",
+          "value": "={{ $('Config').first().json.CORE_WORKFLOW_ID }}"
+        },
+        "workflowInputs": {
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true,
+          "mappingMode": "defineBelow",
+          "matchingColumns": [],
+          "schema": [
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "eventId",
+              "id": "eventId",
+              "required": false,
+              "type": "string"
+            }
+          ],
+          "value": {
+            "eventId": "={{ $('Decide').first().json.eventId }}"
+          }
+        }
+      },
+      "notes": "Wakes Waitlist Automation for this event so the declined place is offered to the next person now. Same entry and inputs as Waitlist 04. Runs after the page is served, and waitForSubWorkflow is off, so the reader never waits on it; the core carries its own logging and error workflow."
     }
   ],
   "pinData": {},
@@ -945,7 +1031,7 @@
       "main": [
         [
           {
-            "node": "Route by Outcome",
+            "node": "Claimed?",
             "type": "main",
             "index": 0
           }
@@ -1092,6 +1178,35 @@
         [
           {
             "node": "Log Declined",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claimed?": {
+      "main": [
+        [
+          {
+            "node": "Route by Outcome",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Serve Rejection",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Serve Declined": {
+      "main": [
+        [
+          {
+            "node": "Call Waitlist Core",
             "type": "main",
             "index": 0
           }
