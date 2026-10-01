@@ -1,0 +1,590 @@
+{
+  "name": "Delayed Email After Registration",
+  "nodes": [
+    {
+      "parameters": {
+        "events": "V2ViaG9va1R5cGU6bGVhcm5lcl9jcmVhdGVk",
+        "name": "Delayed Email After Registration",
+        "query": "query webhookQuery($objectid: ID!){ node(id: $objectid) { id ... on Learner { event { id customFieldValues { value definition { key } } } } } }",
+        "filterExpression": "(node.event.customFieldValues[?definition.key == 'REPLACE_WITH_EVENT_TEMPLATE_FIELD_KEY'].value | @[0] != null) && (node.event.customFieldValues[?definition.key == 'REPLACE_WITH_EVENT_DELAY_FIELD_KEY'].value | @[0] != null)"
+      },
+      "type": "CUSTOM.administrateTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "dbc80b9c-0f52-4726-a76e-69698d9e8421",
+      "name": "Filtered Learner Created Webhook",
+      "webhookId": "51c3c3e5-9220-42dc-8b80-e5c140fee8c2",
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "75cdc226-ff1e-463b-9f25-0a5931916a53",
+              "name": "TEMPLATE_FIELD_KEY",
+              "value": "REPLACE_WITH_EVENT_TEMPLATE_FIELD_KEY",
+              "type": "string"
+            },
+            {
+              "id": "ba74a18d-d0e5-4f25-b904-3d3ff51b202f",
+              "name": "DELAY_FIELD_KEY",
+              "value": "REPLACE_WITH_EVENT_DELAY_FIELD_KEY",
+              "type": "string"
+            },
+            {
+              "id": "569ffed2-a72b-4c78-9729-c8e953765dfe",
+              "name": "SCHEDULED_TIME_FIELD_KEY",
+              "value": "REPLACE_WITH_LEARNER_SCHEDULED_TIME_FIELD_KEY",
+              "type": "string"
+            },
+            {
+              "id": "d071b779-08a5-4d05-a9ca-b75075b7ad1d",
+              "name": "EMAIL_SENT_FIELD_KEY",
+              "value": "REPLACE_WITH_LEARNER_EMAIL_SENT_FIELD_KEY",
+              "type": "string"
+            },
+            {
+              "id": "aecff111-b73c-4771-9c22-9caae3aade3b",
+              "name": "SENDING_ADDRESS_ID",
+              "value": "REPLACE_WITH_SENDING_ADDRESS_ID",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "9df40583-6557-44e6-abdf-3e54ef906b1e",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        208,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "payload.node.event.customFieldValues",
+        "include": "selectedOtherFields",
+        "fieldsToInclude": "={{ $json.payload.node.id }}, {{ $json.payload.node.event.id }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        416,
+        0
+      ],
+      "id": "8fafa098-cb4d-4a5c-8812-fd72a18223af",
+      "name": "Split Custom Fields",
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "2b96d99c-3f2b-4701-8046-af14ad9a547d",
+              "leftValue": "={{ $json['payload.node.event.customFieldValues'].definition.key }}",
+              "rightValue": "={{ $('Config').first().json.TEMPLATE_FIELD_KEY }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.3,
+      "position": [
+        624,
+        0
+      ],
+      "id": "3d808359-9203-43cf-a782-f96c9c76ad6e",
+      "name": "Isolate Template Custom Field"
+    },
+    {
+      "parameters": {
+        "query": "query GetCommTemplates($name: String) {\n  communicationTemplates(filters: {field: name, operation: eq, value: $name}) {\n    edges {\n      node {\n        id\n      }\n    }\n  }\n}\n",
+        "variables": "={{ { name: $json['payload.node.event.customFieldValues'].value } }}",
+        "options": {}
+      },
+      "type": "CUSTOM.administrate",
+      "typeVersion": 1,
+      "position": [
+        832,
+        0
+      ],
+      "id": "f18589c6-941a-4be5-b8ad-e6e3b0270318",
+      "name": "Get Template ID",
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "73fd1a28-c66e-420e-8db4-6031091bab71",
+              "leftValue": "={{ $json.communicationTemplates?.edges?.[0]?.node?.id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "f15aeb31-0ef4-4aaa-adbb-6c26d97c3217",
+      "name": "Template Found?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1040,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "errorMessage": "=No communication template named \"{{ $('Isolate Template Custom Field').first().json['payload.node.event.customFieldValues'].value }}\" was found. Check the template name in the Event custom field."
+      },
+      "id": "b3344425-424d-4f38-a0e8-d5d29cf54024",
+      "name": "Template Not Found",
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        1248,
+        176
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "7d226aad-0f88-47dc-94e4-c424377cb3fa",
+              "name": "TemplateID",
+              "value": "={{ $json.communicationTemplates.edges[0].node.id }}",
+              "type": "string"
+            },
+            {
+              "id": "e26c0fa2-6fc8-4310-9902-292b34956a80",
+              "name": "learnerID",
+              "value": "={{ $('Filtered Learner Created Webhook').first().json.payload.node.id }}",
+              "type": "string"
+            },
+            {
+              "id": "21aaee68-1219-44c2-ab87-418aa69af7ec",
+              "name": "eventID",
+              "value": "={{ $('Filtered Learner Created Webhook').first().json.payload.node.event.id }}",
+              "type": "string"
+            },
+            {
+              "id": "c2372746-96c3-4911-8c43-263c40104928",
+              "name": "delayMinutes",
+              "value": "={{ Number($('Filtered Learner Created Webhook').first().json.payload.node.event.customFieldValues.find((field) => field.definition.key === $('Config').first().json.DELAY_FIELD_KEY)?.value) }}",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1248,
+        0
+      ],
+      "id": "8f40a2e0-669a-4dd5-98e6-91d6d6bd6310",
+      "name": "Collect Email Details"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "cbaaa1ad-0664-459f-83e5-7d859b048805",
+              "name": "=scheduledTime",
+              "value": "={{ $now.plus({ minutes: $json.delayMinutes }).toUTC().toFormat(\"yyyy-MM-dd'T'HH:mm:ss\") }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1456,
+        0
+      ],
+      "id": "3fd12260-ac16-4af7-af3a-ca2b39c8eebd",
+      "name": "Set Scheduled Time"
+    },
+    {
+      "parameters": {
+        "query": "mutation UpdateCustomField($learnerId: ID!, $definitionKey: ID!, $value: String) {\n  learner {\n    update(input: {learnerId: $learnerId, customFieldValues: [{definitionKey: $definitionKey, value: $value}]}) {\n      learner {\n        customFieldValues {\n          value\n          definitionKey\n        }\n      }\n      errors {\n        label\n        value\n        message\n      }\n    }\n  }\n}",
+        "variables": "={{ { learnerId: $json.learnerID, definitionKey: $('Config').first().json.SCHEDULED_TIME_FIELD_KEY, value: $json.scheduledTime } }}",
+        "options": {}
+      },
+      "type": "CUSTOM.administrate",
+      "typeVersion": 1,
+      "position": [
+        1680,
+        -160
+      ],
+      "id": "34cddf31-5aa3-4362-92d9-3cb0cfae7c96",
+      "name": "Store Scheduled Time",
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": "={{ $('Set Scheduled Time').item.json.delayMinutes }}",
+        "unit": "minutes"
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1680,
+        16
+      ],
+      "id": "bebd6f70-8aa6-47e0-8b52-7e82b090ab2b",
+      "name": "Wait",
+      "webhookId": "116a8e62-21a3-44d0-974a-69f3475f8b1b"
+    },
+    {
+      "parameters": {
+        "query": "mutation SendAdHocEmail($templateId: ID, $learnerIds: [String], $eventId: String!, $sendingAddressId: ID) {\n  bulkAdhocEmails {\n    sendBulkLearnerAdhocEmail(input: {\n      templateId: $templateId\n      learnerIds: $learnerIds\n      eventId: $eventId\n      sendingAddressId: $sendingAddressId\n    }) {\n      errors {\n        label\n        message\n        value\n      }\n    }\n  }\n}",
+        "variables": "={{ { templateId: $('Set Scheduled Time').item.json.TemplateID, learnerIds: [$('Set Scheduled Time').item.json.learnerID], eventId: $('Set Scheduled Time').item.json.eventID, sendingAddressId: $('Config').first().json.SENDING_ADDRESS_ID } }}",
+        "options": {}
+      },
+      "type": "CUSTOM.administrate",
+      "typeVersion": 1,
+      "position": [
+        1888,
+        16
+      ],
+      "id": "9537cfd8-911a-45cf-a31a-65de6c8939c8",
+      "name": "Send Email",
+      "executeOnce": false,
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "bae28979-e6f6-4890-83a0-6c29fae5c582",
+              "leftValue": "={{ $json.bulkAdhocEmails.sendBulkLearnerAdhocEmail.errors }}",
+              "rightValue": "",
+              "operator": {
+                "type": "array",
+                "operation": "empty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        2096,
+        16
+      ],
+      "id": "798a3b8b-46bb-48fc-83fb-d60fa80c8948",
+      "name": "Email Sent Without Errors?"
+    },
+    {
+      "parameters": {
+        "query": "mutation UpdateCustomField($learnerId: ID!, $definitionKey: ID!, $value: String) {\n  learner {\n    update(input: {learnerId: $learnerId, customFieldValues: [{definitionKey: $definitionKey, value: $value}]}) {\n      learner {\n        customFieldValues {\n          value\n          definitionKey\n        }\n      }\n      errors {\n        label\n        value\n        message\n      }\n    }\n  }\n}",
+        "variables": "={{ { learnerId: $('Set Scheduled Time').item.json.learnerID, definitionKey: $('Config').first().json.EMAIL_SENT_FIELD_KEY, value: 'true' } }}",
+        "options": {}
+      },
+      "type": "CUSTOM.administrate",
+      "typeVersion": 1,
+      "position": [
+        2320,
+        -64
+      ],
+      "id": "bf816529-7136-4468-995c-ce2bddb595e4",
+      "name": "Mark Email Sent",
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "query": "mutation UpdateCustomField($learnerId: ID!, $definitionKey: ID!, $value: String) {\n  learner {\n    update(input: {learnerId: $learnerId, customFieldValues: [{definitionKey: $definitionKey, value: $value}]}) {\n      learner {\n        customFieldValues {\n          value\n          definitionKey\n        }\n      }\n      errors {\n        label\n        value\n        message\n      }\n    }\n  }\n}",
+        "variables": "={{ { learnerId: $('Set Scheduled Time').item.json.learnerID, definitionKey: $('Config').first().json.EMAIL_SENT_FIELD_KEY, value: 'false' } }}",
+        "options": {}
+      },
+      "type": "CUSTOM.administrate",
+      "typeVersion": 1,
+      "position": [
+        2320,
+        96
+      ],
+      "id": "9948befa-a112-4640-b972-f2d73ae36b57",
+      "name": "Mark Email Failed",
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## Trigger filter\nRuns when a Learner is created on an Event that has **both** the template name and delay custom fields filled in.\n\nThe filter runs in Administrate and cannot read **Config**, so replace `REPLACE_WITH_EVENT_TEMPLATE_FIELD_KEY` and `REPLACE_WITH_EVENT_DELAY_FIELD_KEY` in the filter expression with the same keys you put in Config.",
+        "height": 280,
+        "width": 420
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -80,
+        -320
+      ],
+      "typeVersion": 1,
+      "id": "be89e8ae-d51a-48d9-b921-6a38be890e6c",
+      "name": "Trigger Filter Note"
+    },
+    {
+      "parameters": {
+        "content": "## Config\n- `TEMPLATE_FIELD_KEY`: Event field holding the communication template **name**\n- `DELAY_FIELD_KEY`: Event field holding the delay in **minutes**\n- `SCHEDULED_TIME_FIELD_KEY`: Learner field that stores the planned send time (UTC)\n- `EMAIL_SENT_FIELD_KEY`: Learner field set to `true` or `false` after sending\n- `SENDING_ADDRESS_ID`: the ID of an Administrate sending address",
+        "height": 280,
+        "width": 460
+      },
+      "id": "85a74078-d3aa-4298-8d65-ee08640e5ff9",
+      "name": "Config Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        360,
+        -320
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Long waits\nThe **Wait** node holds the execution open for the full delay. Long delays keep many executions waiting and can be lost if they are cleared. See the README for a schedule-based alternative that uses the stored scheduled time.",
+        "height": 220,
+        "width": 400,
+        "color": 3
+      },
+      "id": "dddde743-1860-48b8-9bc7-68cc9142dc47",
+      "name": "Wait Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1620,
+        220
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Filtered Learner Created Webhook": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Split Custom Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Custom Fields": {
+      "main": [
+        [
+          {
+            "node": "Isolate Template Custom Field",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Isolate Template Custom Field": {
+      "main": [
+        [
+          {
+            "node": "Get Template ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Template ID": {
+      "main": [
+        [
+          {
+            "node": "Template Found?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Template Found?": {
+      "main": [
+        [
+          {
+            "node": "Collect Email Details",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Template Not Found",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collect Email Details": {
+      "main": [
+        [
+          {
+            "node": "Set Scheduled Time",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Scheduled Time": {
+      "main": [
+        [
+          {
+            "node": "Store Scheduled Time",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Send Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Email": {
+      "main": [
+        [
+          {
+            "node": "Email Sent Without Errors?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email Sent Without Errors?": {
+      "main": [
+        [
+          {
+            "node": "Mark Email Sent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mark Email Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "tags": []
+}

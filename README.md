@@ -39,6 +39,7 @@ Examples with several workflows have a `workflows/` subdirectory. Download the r
 | [Create Achievement Type from Course Template](automations/create-achievement-type-from-course-template/) | Create an achievement type from a course template and award it to qualified instructors |
 | [Create Booking from Event](automations/create-booking-from-event/) | Create a booking directly from an event with the event automatically added as an interest |
 | [Daily Event Resourcing Gaps Digest](automations/event-resourcing-digest/) | Daily email listing upcoming events that are missing instructors, rooms or other resources |
+| [Delayed Email After Registration](automations/delayed-post-registration-email/) | Send a per-event follow-up email a set time after a learner registers |
 | [Import Learners from a Spreadsheet](automations/import-learners-from-spreadsheet/) | Upload an Excel or CSV file to bulk-register learners onto an event, creating contacts and accounts as needed |
 | [Instructor and Resource Utilisation Dashboards](automations/utilization-dashboards/) | Password-protected dashboards showing instructor and resource utilisation from Administrate data |
 | [Instructor Jump Ball](automations/instructor-jump-ball/) | Send RSVP requests to instructors and manage responses for event assignments |
