@@ -1,0 +1,776 @@
+{
+  "name": "Auto-Finalise Invoices Before Event Start",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Auto-Finalise Invoices Before Event Start\n\n### What this workflow does\nRuns daily against all Opportunities in the source step (`SOURCE_STEP_ID`).\n\nFor each Opportunity whose soonest Event starts within `DAYS_WINDOW` days and has a **Draft** invoice:\n1. Updates the invoice with values from the Opportunity (comments and PO reference)\n2. Finalises the invoice\n3. Progresses the Opportunity to the target step (`TARGET_STEP_ID`)\n\nNon-Draft invoices (Final, Void) are skipped. A Slack summary lists what was moved, skipped or failed.\n\n### All settings live in the Config node.",
+        "height": 460,
+        "width": 480,
+        "color": 5
+      },
+      "id": "903686a0-f3e8-46ac-92a5-ee8c36cd46ca",
+      "name": "Workflow Overview",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -560,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Config node\n\n| Field | Description |\n|---|---|\n| `SOURCE_STEP_ID` | Opportunity step ID to query from |\n| `TARGET_STEP_ID` | Step ID to progress Opportunities to after finalising |\n| `COMMENTS_ATTRIBUTE_KEY` | `definitionKey` of the Opportunity attribute written to invoice Comments |\n| `PO_REFERENCE_ATTRIBUTE_KEY` | `definitionKey` of the Opportunity attribute written to invoice PO Reference |\n| `DAYS_WINDOW` | Days ahead to look before finalising (default 10) |\n| `PAGE_SIZE` | Opportunities fetched per page (default 100) |\n| `SLACK_CHANNEL` | Slack channel ID for the summary |\n| `DRY_RUN` | `true` (default) makes no changes |\n\nTo find attribute `definitionKey` values, run the Opportunity query and inspect the `attributes` array.",
+        "height": 380,
+        "width": 560,
+        "color": 6
+      },
+      "id": "49e33fec-3a35-4083-9b94-57600c400c43",
+      "name": "Config Reference",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -48,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Dry run\n`DRY_RUN` in Config is `true` by default. While it's on, **no mutations run**: nothing is updated, finalised or moved. The Slack summary lists the invoices that WOULD be finalised and moved.\n\nSet it to `false` once the summary looks right.",
+        "height": 220,
+        "width": 380,
+        "color": 3
+      },
+      "id": "8039bae1-abdb-43c5-bfcf-3917b4704177",
+      "name": "Dry Run Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        960,
+        360
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "cfg-1",
+              "name": "SOURCE_STEP_ID",
+              "value": "REPLACE_WITH_SOURCE_STEP_ID",
+              "type": "string"
+            },
+            {
+              "id": "cfg-2",
+              "name": "TARGET_STEP_ID",
+              "value": "REPLACE_WITH_TARGET_STEP_ID",
+              "type": "string"
+            },
+            {
+              "id": "cfg-3",
+              "name": "COMMENTS_ATTRIBUTE_KEY",
+              "value": "REPLACE_WITH_COMMENTS_ATTRIBUTE_KEY",
+              "type": "string"
+            },
+            {
+              "id": "cfg-4",
+              "name": "PO_REFERENCE_ATTRIBUTE_KEY",
+              "value": "REPLACE_WITH_PO_REFERENCE_ATTRIBUTE_KEY",
+              "type": "string"
+            },
+            {
+              "id": "cfg-5",
+              "name": "DAYS_WINDOW",
+              "value": 10,
+              "type": "number"
+            },
+            {
+              "id": "cfg-6",
+              "name": "PAGE_SIZE",
+              "value": 100,
+              "type": "number"
+            },
+            {
+              "id": "cfg-7",
+              "name": "SLACK_CHANNEL",
+              "value": "REPLACE_WITH_SLACK_CHANNEL_ID",
+              "type": "string"
+            },
+            {
+              "id": "cfg-8",
+              "name": "DRY_RUN",
+              "value": true,
+              "type": "boolean"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -336,
+        768
+      ],
+      "id": "7ea5e370-ff06-40e4-829d-9a55002113d0",
+      "name": "Config"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {}
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -560,
+        768
+      ],
+      "id": "dface4aa-76ce-4cb9-8129-9a87201b9f77",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "query": "query GetOpportunitiesForFinalisation($stepId: String!, $first: Int, $offset: Int) {\n  opportunities(\n    filters: [{ field: stepId, operation: eq, value: $stepId }]\n    first: $first\n    offset: $offset\n  ) {\n    pageInfo {\n      hasNextPage\n    }\n    edges {\n      node {\n        id\n        name\n        activeInvoiceId\n        salesDocument {\n          ... on Invoice {\n            id\n            lifecycleState\n          }\n        }\n        attributes {\n          definitionKey\n          value\n        }\n        interests {\n          edges {\n            node {\n              item {\n                __typename\n                ... on Event {\n                  title\n                  startDate\n                }\n              }\n            }\n          }\n        }\n      }\n    }\n  }\n}",
+        "variables": "={{ JSON.stringify({ stepId: $('Config').first().json.SOURCE_STEP_ID, first: Number($('Config').first().json.PAGE_SIZE), offset: 0 }) }}",
+        "options": {
+          "pagination": {
+            "pagination": {
+              "paginationMode": "paginate",
+              "dataPath": "data.opportunities.edges",
+              "completeExpression": "{{ $response.body.data.opportunities.pageInfo.hasNextPage }}",
+              "offsetVariablePath": "offset"
+            }
+          }
+        }
+      },
+      "type": "CUSTOM.administrate",
+      "typeVersion": 1,
+      "position": [
+        -128,
+        768
+      ],
+      "id": "5a38930f-f4af-45ee-b7a8-96456ca3bf33",
+      "name": "Get Opportunities",
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const config = $('Config').first().json;\nconst now = new Date();\nconst cutoff = new Date(now.getTime() + Number(config.DAYS_WINDOW) * 24 * 60 * 60 * 1000);\n\nconst commentsKey = config.COMMENTS_ATTRIBUTE_KEY;\nconst poKey = config.PO_REFERENCE_ATTRIBUTE_KEY;\n\n// With pagination on, Get Opportunities returns one item per opportunity edge.\nconst edges = $input.all().map(item => item.json).filter(edge => edge && edge.node);\n\nreturn edges\n  .filter(({ node }) => {\n    const events = (node.interests?.edges || [])\n      .filter(e => e.node?.item?.__typename === 'Event')\n      .map(e => new Date(e.node.item.startDate))\n      .filter(d => !isNaN(d))\n      .sort((a, b) => a - b);\n    const soonestEvent = events[0];\n    return soonestEvent && soonestEvent >= now && soonestEvent <= cutoff;\n  })\n  .map(({ node }) => {\n    const attrs = node.attributes || [];\n\n    const commentsValue = attrs.find(a => a.definitionKey === commentsKey)?.value ?? '';\n    const poReferenceValue = attrs.find(a => a.definitionKey === poKey)?.value ?? '';\n\n    return {\n      json: {\n        id: node.id,\n        name: node.name,\n        invoiceId: node.activeInvoiceId,\n        invoiceState: node.salesDocument?.lifecycleState ?? 'Unknown',\n        commentsValue,\n        poReferenceValue\n      }\n    };\n  });"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        112,
+        768
+      ],
+      "id": "8e407487-ab47-4b77-be99-39a74ab916a5",
+      "name": "Prepare Items"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        320,
+        768
+      ],
+      "id": "176db7de-d47e-4b63-afb1-fdadd8038743",
+      "name": "Loop Over Items"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "pi-1",
+              "name": "opportunityId",
+              "value": "={{ $json.id }}",
+              "type": "string"
+            },
+            {
+              "id": "pi-2",
+              "name": "opportunityName",
+              "value": "={{ $json.name }}",
+              "type": "string"
+            },
+            {
+              "id": "pi-3",
+              "name": "invoiceId",
+              "value": "={{ $json.invoiceId }}",
+              "type": "string"
+            },
+            {
+              "id": "pi-4",
+              "name": "invoiceState",
+              "value": "={{ $json.invoiceState }}",
+              "type": "string"
+            },
+            {
+              "id": "pi-6",
+              "name": "commentsValue",
+              "value": "={{ $json.commentsValue }}",
+              "type": "string"
+            },
+            {
+              "id": "pi-7",
+              "name": "poReferenceValue",
+              "value": "={{ $json.poReferenceValue }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        544,
+        896
+      ],
+      "id": "c666eb5d-f0b5-40ce-a3f1-b0a6d290256b",
+      "name": "Prepare Item"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "check-draft",
+              "leftValue": "={{ $json.invoiceState }}",
+              "rightValue": "Draft",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        768,
+        896
+      ],
+      "id": "9fee6a86-44a4-46f4-b494-9a52cb5a1b40",
+      "name": "Is Draft?"
+    },
+    {
+      "parameters": {
+        "query": "mutation UpdateInvoice($invoiceId: ID!, $comments: String, $purchaseOrderRef: String) {\n  invoices {\n    update(input: {\n      invoiceId: $invoiceId\n      comments: $comments\n      purchaseOrderRef: $purchaseOrderRef\n    }) {\n      errors { label message value }\n      invoice {\n        id\n        comments\n        purchaseOrderReference\n      }\n    }\n  }\n}",
+        "variables": "={{ JSON.stringify({ invoiceId: $('Prepare Item').item.json.invoiceId, comments: $('Prepare Item').item.json.commentsValue, purchaseOrderRef: $('Prepare Item').item.json.poReferenceValue }) }}",
+        "options": {}
+      },
+      "type": "CUSTOM.administrate",
+      "typeVersion": 1,
+      "position": [
+        1216,
+        880
+      ],
+      "id": "41e887bf-65ea-4d69-ab4c-af22a14c0297",
+      "name": "Update Invoice",
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      },
+      "onError": "continueRegularOutput",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "query": "mutation FinaliseInvoice($invoiceId: ID!) {\n  invoices {\n    finalise(input: { invoiceId: $invoiceId }) {\n      errors { label message value }\n      invoice {\n        id\n        lifecycleState\n        finalisedAt\n      }\n    }\n  }\n}",
+        "variables": "={{ JSON.stringify({ invoiceId: $('Prepare Item').item.json.invoiceId }) }}",
+        "options": {}
+      },
+      "type": "CUSTOM.administrate",
+      "typeVersion": 1,
+      "position": [
+        1664,
+        800
+      ],
+      "id": "7a0c9850-cf57-47cf-8f72-5760671157a1",
+      "name": "Finalise Invoice",
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      },
+      "onError": "continueRegularOutput",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "query": "mutation ProgressOpportunityToStep($opportunityId: ID!, $stepId: ID!) {\n  opportunities {\n    progress(input: {\n      opportunityId: $opportunityId\n      stepId: $stepId\n    }) {\n      errors { label message value }\n      opportunity {\n        id\n        name\n        step { id name }\n      }\n    }\n  }\n}",
+        "variables": "={{ JSON.stringify({ opportunityId: $('Prepare Item').item.json.opportunityId, stepId: $('Config').first().json.TARGET_STEP_ID }) }}",
+        "options": {}
+      },
+      "type": "CUSTOM.administrate",
+      "typeVersion": 1,
+      "position": [
+        2112,
+        720
+      ],
+      "id": "031a4e22-e32c-4038-ab6e-0cae2f648055",
+      "name": "Progress Opportunity",
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      },
+      "onError": "continueRegularOutput",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst dryRun = $('Config').first().json.DRY_RUN === true;\n\nconst moved = items.filter(i => i.json.status === 'moved');\nconst wouldMove = items.filter(i => i.json.status === 'dryRun');\nconst errors = items.filter(i => i.json.status === 'error');\nconst skipped = items.filter(i => i.json.status === 'skipped');\n\nconst plural = (count, one, many) => `${count} ${count === 1 ? one : many}`;\nconst list = (group, withReason) => group\n  .map(i => `• *${i.json.name}*${withReason ? ` (${i.json.reason})` : ''}`)\n  .join('\\n');\n\nconst parts = [];\n\nif (dryRun) {\n  parts.push('🧪 *Dry run:* no invoices or Opportunities were changed. Set `DRY_RUN` to `false` in Config to apply changes.');\n}\n\nif (wouldMove.length > 0) {\n  parts.push(`📝 *${plural(wouldMove.length, 'invoice', 'invoices')} WOULD be updated, finalised and moved:*\\n` + list(wouldMove, false));\n}\n\nif (moved.length > 0) {\n  parts.push(`✅ *${plural(moved.length, 'invoice', 'invoices')} updated, finalised and moved:*\\n` + list(moved, false));\n}\n\nif (errors.length > 0) {\n  parts.push(`❌ *${plural(errors.length, 'opportunity', 'opportunities')} failed and need attention:*\\n` + list(errors, true));\n}\n\nif (skipped.length > 0) {\n  parts.push(`⚠️ *${plural(skipped.length, 'opportunity', 'opportunities')} skipped, invoice not in Draft state:*\\n` + list(skipped, true));\n}\n\nif (items.length === 0) {\n  parts.push('No opportunities matched the criteria today.');\n}\n\nconst message = parts.join('\\n\\n');\n\nreturn [{ json: { message, movedCount: moved.length, wouldMoveCount: wouldMove.length, errorCount: errors.length, skippedCount: skipped.length } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        544,
+        624
+      ],
+      "id": "4ea047d1-7ca3-44b4-8e81-dd85d77109b4",
+      "name": "Format Slack Summary"
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "={{ $('Config').first().json.SLACK_CHANNEL }}",
+          "mode": "id"
+        },
+        "text": "={{ $json.message }}",
+        "otherOptions": {}
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        768,
+        624
+      ],
+      "id": "88253979-64a7-4f09-a411-9602a82532fd",
+      "name": "Send Slack Summary",
+      "webhookId": "297f3347-2005-410e-8d79-2f2135bf5562",
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "",
+          "name": "Slack OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "abaafc20-b115-4b1f-8f49-307075b1c898",
+              "leftValue": "={{ $('Config').first().json.DRY_RUN }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "b4855dde-1eb0-4f21-9978-baeb9640790a",
+      "name": "Is Dry Run?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        992,
+        800
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "f4358030-dc58-4580-b2dd-e83904241b9b",
+              "leftValue": "={{ !!$json.invoices?.update && ($json.invoices.update.errors ?? []).length === 0 }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "7b5a68b0-57d0-4bc3-98e0-cd9bea5fd088",
+      "name": "Update Succeeded?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1440,
+        880
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "8aea75dc-7267-4abb-a7e5-43f0f2e8fbb3",
+              "leftValue": "={{ !!$json.invoices?.finalise && ($json.invoices.finalise.errors ?? []).length === 0 }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "da01ad54-354c-45b8-b84c-ccffe7936d2d",
+      "name": "Finalise Succeeded?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1888,
+        800
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $('Prepare Item').first().json;\n\nreturn [{ json: {\n  id: item.opportunityId,\n  name: item.opportunityName,\n  status: 'skipped',\n  reason: `Invoice is ${item.invoiceState}, not Draft`\n} }];"
+      },
+      "id": "037ab144-8b4f-44a2-9299-b597add64b12",
+      "name": "Tag Skipped",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        992,
+        1072
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $('Prepare Item').first().json;\n\nreturn [{ json: {\n  id: item.opportunityId,\n  name: item.opportunityName,\n  status: 'dryRun',\n  reason: 'Would update and finalise the invoice, then move the Opportunity to the target step'\n} }];"
+      },
+      "id": "ecc93483-d224-4caf-9ead-2280b0ae7485",
+      "name": "Tag Dry Run",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1216,
+        640
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Administrate returns HTTP 200 even when a mutation is rejected, so each nested\n// errors array is checked explicitly. A request that fails outright arrives as an\n// empty item (the mutation nodes continue on error and always output data).\nconst item = $('Prepare Item').first().json;\nconst response = $input.first().json || {};\nconst source = $prevNode.name;\n\nconst describe = (errors) => (errors || []).map(e => e.message || e.label).filter(Boolean).join('; ');\n\nlet stage = 'Moving the Opportunity';\nlet result = response.opportunities?.progress;\nif (source === 'Update Succeeded?') {\n  stage = 'Updating the invoice';\n  result = response.invoices?.update;\n} else if (source === 'Finalise Succeeded?') {\n  stage = 'Finalising the invoice';\n  result = response.invoices?.finalise;\n}\n\nlet status = 'moved';\nlet reason = `Invoice finalised and moved to ${result?.opportunity?.step?.name ?? 'the target step'}`;\n\nif (!result) {\n  status = 'error';\n  reason = `${stage} failed: no response returned (see the execution log)`;\n} else if ((result.errors || []).length > 0) {\n  status = 'error';\n  reason = `${stage} failed: ${describe(result.errors)}`;\n}\n\nreturn [{ json: { id: item.opportunityId, name: item.opportunityName, status, reason } }];"
+      },
+      "id": "d346ae1e-a015-4932-ae4e-d5216f82c2fb",
+      "name": "Tag Mutation Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2336,
+        896
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Error handling\nAdministrate returns HTTP 200 even when a mutation is rejected, so each mutation's `errors` array is checked. If the invoice update fails, it isn't finalised; if finalising fails, the Opportunity isn't moved.\n\n**Tag Mutation Result** records the failing stage and message, and the Slack summary lists it under failures.",
+        "height": 240,
+        "width": 420,
+        "color": 3
+      },
+      "id": "120f3e86-5934-43bc-95f9-887cee336b9c",
+      "name": "Error Handling Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1520,
+        400
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Get Opportunities",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Opportunities": {
+      "main": [
+        [
+          {
+            "node": "Prepare Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Items": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [
+          {
+            "node": "Format Slack Summary",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare Item",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Item": {
+      "main": [
+        [
+          {
+            "node": "Is Draft?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Draft?": {
+      "main": [
+        [
+          {
+            "node": "Is Dry Run?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Tag Skipped",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Invoice": {
+      "main": [
+        [
+          {
+            "node": "Update Succeeded?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Finalise Invoice": {
+      "main": [
+        [
+          {
+            "node": "Finalise Succeeded?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Progress Opportunity": {
+      "main": [
+        [
+          {
+            "node": "Tag Mutation Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Slack Summary": {
+      "main": [
+        [
+          {
+            "node": "Send Slack Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Dry Run?": {
+      "main": [
+        [
+          {
+            "node": "Tag Dry Run",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Update Invoice",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Succeeded?": {
+      "main": [
+        [
+          {
+            "node": "Finalise Invoice",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Tag Mutation Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Finalise Succeeded?": {
+      "main": [
+        [
+          {
+            "node": "Progress Opportunity",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Tag Mutation Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tag Mutation Result": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tag Skipped": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tag Dry Run": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true
+  },
+  "tags": []
+}

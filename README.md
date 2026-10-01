@@ -28,15 +28,21 @@ Examples with several workflows have a `workflows/` subdirectory. Download the r
 | Workflow | Description |
 |----------|-------------|
 | [Administrate MCP Server](automations/administrate-mcp-server/) | Expose Administrate search and update tools to AI agents such as Claude over the Model Context Protocol |
+| [Alert Opportunity Owners When a Reserved Event Is Cancelled](automations/cancelled-event-reservation-alert/) | Email each opportunity owner once when an event with their reservations is cancelled |
 | [Auto Assign Instructors to Event](automations/auto-assign-instructors-to-event/) | Automatically assign available approved instructors to new events based on availability and workplace location |
 | [Auto Assign Tasks](automations/auto-assign-tasks/) | Redistribute tasks by task type to the account owner, booking owner, instructor and administrator |
+| [Auto-Finalise Invoices Before Event Start](automations/auto-finalise-invoices/) | Finalise draft invoices and move bookings on as events approach, with a dry-run mode and a Slack summary |
+| [Bulk Complete LMS Content](automations/bulk-complete-lms-content/) | Mark SCORM LMS content as complete in bulk for flagged learners on an event |
 | [Bulk Register Delegates and Record Attendance](automations/bulk-register-delegates-record-attendance/) | A web form to register delegates onto an event and record their attendance and results in one go |
 | [Bulk Resource Removal](automations/bulk-resource-removal/) | Remove all resources from an event in bulk |
 | [Certificate Renewal Reminders](automations/certificate-renewal-reminders/) | Remind learners before their certificates or achievements expire, with dry-run mode, a send cap and a deduplication log |
+| [Create Achievement Type from Course Template](automations/create-achievement-type-from-course-template/) | Create an achievement type from a course template and award it to qualified instructors |
 | [Create Booking from Event](automations/create-booking-from-event/) | Create a booking directly from an event with the event automatically added as an interest |
 | [Daily Event Resourcing Gaps Digest](automations/event-resourcing-digest/) | Daily email listing upcoming events that are missing instructors, rooms or other resources |
+| [Delayed Email After Registration](automations/delayed-post-registration-email/) | Send a per-event follow-up email a set time after a learner registers |
 | [Import Learners from a Spreadsheet](automations/import-learners-from-spreadsheet/) | Upload an Excel or CSV file to bulk-register learners onto an event, creating contacts and accounts as needed |
 | [Instructor and Resource Utilisation Dashboards](automations/utilization-dashboards/) | Password-protected dashboards showing instructor and resource utilisation from Administrate data |
+| [Instructor and Staff Invitations](automations/instructor-invitations/) | Invite instructors and staff to an event with secure personal links, chase non-responders and publish once staffing is complete |
 | [Instructor Jump Ball](automations/instructor-jump-ball/) | Send RSVP requests to instructors and manage responses for event assignments |
 | [Log Automation Failures to Administrate](automations/error-logging-to-administrate/) | Shared error workflow, logging sub-workflow and daily digest for recording automation failures in Administrate |
 | [Logging vILT Attendance](automations/logging-vilt-attendance/) | Automatically record Zoom attendance in Administrate by matching email addresses |
@@ -48,7 +54,10 @@ Examples with several workflows have a `workflows/` subdirectory. Download the r
 | [Review and Cancel Under-Subscribed Events](automations/cancel-under-subscribed-events/) | Flag low-fill events for human approval, re-check them, then cancel and notify instructors and learners |
 | [Scheduler - Bulk Event Activation](automations/scheduler-bulk-event-activation/) | Activate hundreds or thousands of draft events created by Scheduler in bulk |
 | [Sync Event Total Session Hours](automations/event-total-session-hours/) | Keep an event custom field equal to the total hours of its published sessions |
+| [Tag an Entity](automations/tag-an-entity/) | Reusable sub-workflow that adds tags to a course template or learning path, creating missing tags |
+| [Teams Virtual Classroom Auto Setup](automations/teams-virtual-classroom-auto-setup/) | Set up a Microsoft Teams virtual classroom automatically when a virtual event is created |
 | [Updating Billing & Shipping Addresses](automations/updating-billing-shipping-addresses/) | Automatically copy the default address to billing and shipping fields when missing |
+| [Upload Event Content](automations/upload-event-content/) | Reusable sub-workflow that creates LMS content on an event, uploading files from Smartsheet attachments |
 | [Waitlist: Timed Offers with Accept/Decline](automations/waitlist-offer-accept/) | Offer freed places to waitlisted learners in turn, hold the place for a set time and record their accept/decline response |
 
 ## 💬 Help

@@ -1,0 +1,293 @@
+{
+  "name": "Instructor Invitations - Error Handler",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "3ba6c84b-c812-45ab-a734-27b0c2a0ce4d",
+      "name": "Workflow Failed",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        -688
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c1",
+              "name": "GRAPHQL_URL",
+              "type": "string",
+              "value": "https://api.getadministrate.com/graphql"
+            },
+            {
+              "id": "c2",
+              "name": "ORIGIN_IDENTIFIER",
+              "type": "string",
+              "value": "Automator - Instructor Invitations"
+            },
+            {
+              "id": "c3",
+              "name": "TRANSIENT_MARKERS",
+              "type": "string",
+              "value": "ETIMEDOUT,ECONNRESET,ENOTFOUND,EAI_AGAIN,socket hang up,429,502,503,504"
+            },
+            {
+              "id": "c4",
+              "name": "N8N_API_URL",
+              "type": "string",
+              "value": "https://YOUR-N8N-HOST/api/v1"
+            },
+            {
+              "id": "c5",
+              "name": "EVENT_ID_NODES",
+              "type": "string",
+              "value": "Extract submission,Extract link,Who Needs Chasing,Decide,Called With"
+            },
+            {
+              "id": "c6",
+              "name": "EVENT_ID_FIELDS",
+              "type": "string",
+              "value": "eventId,event_id"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "00081f7a-1c91-487f-b9cf-6c76148842ce",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        224,
+        -688
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "/*\tTurn an n8n failure into something a human can act on, and work out whether it can\n\tbe attached to a record in Administrate\t*/\n\nconst cfg = $('Config').first().json;\nconst err = $('Workflow Failed').first().json || {};\n\nconst wf = err.workflow || {};\nconst ex = err.execution || {};\nconst lastNode = String(ex.lastNodeExecuted || 'unknown');\nconst message = String((ex.error || {}).message || (ex.error || {}).description || 'No message supplied');\n\n/*\tTransient failures resolve on a retry. Everything else needs a person\t*/\nconst transientMarkers = String(cfg.TRANSIENT_MARKERS).split(',');\nlet transient = false;\n\nfor (const marker of transientMarkers) {\n\tif (marker.trim() !== '' && message.indexOf(marker.trim()) !== -1) { transient = true; }\n}\n\n/*\tThe error trigger payload never carries the failing workflow's data, so the event id\n\tis recovered from the fetched execution instead. Look through the nodes most likely\n\tto hold it, in order, and take the first plausible value\t*/\nconst fetched = $input.first().json || {};\nconst runData = ((((fetched.data || {}).resultData) || {}).runData) || {};\n\nconst nodeNames = String(cfg.EVENT_ID_NODES).split(',').map(n => n.trim()).filter(n => n !== '');\nconst fieldNames = String(cfg.EVENT_ID_FIELDS).split(',').map(n => n.trim()).filter(n => n !== '');\n\nlet eventId = '';\n\nfor (const nodeName of nodeNames) {\n\tif (eventId !== '') { break; }\n\tconst runs = runData[nodeName];\n\tif (!Array.isArray(runs) || runs.length === 0) { continue; }\n\tconst items = ((((runs[0].data || {}).main) || [])[0]) || [];\n\tfor (const item of items) {\n\t\tif (eventId !== '') { break; }\n\t\tfor (const field of fieldNames) {\n\t\t\tconst candidate = String(((item || {}).json || {})[field] || '');\n\t\t\t/*\tAdministrate ids are base64 and decode to Course:N - a malformed one is\n\t\t\t\tno use as a log target, so require it to look like an id\t*/\n\t\t\tif (candidate !== '' && /^[A-Za-z0-9+/=]+$/.test(candidate)) { eventId = candidate; break; }\n\t\t}\n\t}\n}\n\n/*\tThis entry lands on the event, where a coordinator reads it, not in a developer's\n\tconsole. It opens with what it means for them and whether anything is expected of\n\tthem, then carries the technical detail afterwards for whoever has to fix it\t*/\nconst plain = transient\n\t? 'A temporary problem interrupted the automation for this event. These usually clear on their own, so no action is needed unless it keeps happening.'\n\t: 'The automation could not finish something for this event and needs somebody to look at it. Nothing on the event has been changed.';\n\nconst summary = plain + ' Detail: ' + String(wf.name || 'unknown workflow') + ' failed at ' + lastNode + '. ' + message;\n\nreturn [{ json: {\n\thasEvent: eventId !== '',\n\teventId: eventId,\n\ttransient: transient,\n\tsummary: summary,\n\tpayload: JSON.stringify({ workflowId: wf.id || null, workflowName: wf.name || null, executionId: ex.id || null, lastNode: lastNode, transient: transient, message: message })\n} }];"
+      },
+      "id": "f6b5d514-0e67-40f9-a9b3-573570b88e8a",
+      "name": "Classify Failure",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        672,
+        -688
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "h1",
+              "leftValue": "={{ $json.hasEvent }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              },
+              "rightValue": ""
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "546d4bff-9896-40d6-8459-eb03bd59167b",
+      "name": "IF Has Event?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        896,
+        -688
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').item.json.GRAPHQL_URL }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ query: 'mutation Log($originIdentifier: String!, $nodeId: ID!, $message: String!, $status: ExternalLogTypeStatus!, $payload: String){ externalLog{ createExternalIntegrationLog(input:{ originIdentifier:$originIdentifier, nodeId:$nodeId, message:$message, status:$status, payload:$payload }){ errors{ label message value } } } }', variables: { originIdentifier: $('Config').item.json.ORIGIN_IDENTIFIER, nodeId: $json.eventId, message: $json.summary, status: 'failed', payload: $json.payload } }) }}",
+        "options": {}
+      },
+      "id": "d7747a72-58c8-459d-89d4-1ed25c787547",
+      "name": "Log Failure",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1120,
+        -784
+      ],
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {},
+      "id": "272ef829-6164-40bc-bd70-407c58b09cc6",
+      "name": "Done",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1120,
+        -592
+      ],
+      "notes": "Nothing to attach the failure to. It stays in the n8n execution list, which is the only record available."
+    },
+    {
+      "parameters": {
+        "content": "## 10 Error Handler (shared)\n\nCatches failures from the other workflows and writes them onto the affected Event as an External Integration Log entry, so the coordinator sees failures where they already see responses.\n\n### How it finds the event\nThe error trigger payload never carries the failing workflow's data, so **Fetch Failed Execution** reads the execution through the n8n API and looks for an event ID in the nodes listed in `EVENT_ID_NODES`.\n\n### Setup\n1. Administrate OAuth2 credential on **Log Failure**.\n2. n8n API credential on **Fetch Failed Execution** (same project as this workflow).\n3. Set this as the **Error Workflow** in the settings of 30, 40, 50, 60 and 70.\n4. Activate.\n\nError workflows fire on production runs only, never on manual runs.",
+        "height": 432,
+        "width": 460,
+        "color": 4
+      },
+      "id": "bd5cb592-41a6-42a2-b91a-523a2f51593a",
+      "name": "Sticky Note - 10 Error Handler (shared)",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -544,
+        -1104
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Config\n\n**ORIGIN_IDENTIFIER** - label for log entries. Keep it identical in every workflow.\n\n**TRANSIENT_MARKERS** - comma separated text that marks a failure as temporary.\n\n**N8N_API_URL** - `https://YOUR-N8N-HOST/api/v1`.\n\n**EVENT_ID_NODES** / **EVENT_ID_FIELDS** - where to look for the event ID in the failed run. Update if you rename those nodes.",
+        "height": 312,
+        "width": 444,
+        "color": 6
+      },
+      "id": "21ab0a10-bcd4-41f9-9ca8-cbbc1dd08c38",
+      "name": "Sticky Note - Config",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        48,
+        -1488
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $('Config').first().json.N8N_API_URL }}/executions/{{ $('Workflow Failed').first().json.execution.id }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "n8nApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "includeData",
+              "value": "true"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "b687ef94-b309-4af8-bd56-03aca8b958ca",
+      "name": "Fetch Failed Execution",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        448,
+        -688
+      ],
+      "credentials": {
+        "n8nApi": {
+          "id": "",
+          "name": "n8n API"
+        }
+      },
+      "notes": "Needs a credential. Choose an n8n API credential that belongs to the same n8n project as this workflow. Without it this node fails harmlessly, the handler takes the Done branch and the failure stays in the n8n execution list.\n\nWhy this node exists: the error trigger payload never carries the failing workflow's data. The failed execution does, so it is fetched here to recover the event ID."
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Workflow Failed": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Classify Failure": {
+      "main": [
+        [
+          {
+            "node": "IF Has Event?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Has Event?": {
+      "main": [
+        [
+          {
+            "node": "Log Failure",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Done",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Fetch Failed Execution",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Failed Execution": {
+      "main": [
+        [
+          {
+            "node": "Classify Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true,
+    "binaryMode": "separate"
+  },
+  "tags": []
+}
