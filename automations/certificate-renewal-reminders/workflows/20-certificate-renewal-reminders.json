@@ -560,7 +560,7 @@
         "nodeCredentialType": "administrateOAuth2Api",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ query: \"mutation Log($originIdentifier: String!, $nodeId: ID!, $message: String!, $status: ExternalLogTypeStatus!) { externalLog { createExternalIntegrationLog(input: { originIdentifier: $originIdentifier, nodeId: $nodeId, message: $message, status: $status }) { errors { label message value } } } }\", variables: { originIdentifier: $(\"Config\").first().json.ORIGIN_IDENTIFIER, nodeId: $(\"Send Loop\").first().json.eventId, message: \"Certificate renewal reminder sent\", status: \"success\" } }) }}",
+        "jsonBody": "={{ JSON.stringify({ query: \"mutation Log($originIdentifier: String!, $nodeId: ID!, $message: String!, $status: ExternalLogTypeStatus!) { externalLog { createExternalIntegrationLog(input: { originIdentifier: $originIdentifier, nodeId: $nodeId, message: $message, status: $status }) { errors { label message value } } } }\", variables: { originIdentifier: $(\"Config\").first().json.ORIGIN_IDENTIFIER, nodeId: $(\"Send Loop\").first().json.eventId, message: \"Certificate renewal reminder sent to \" + Number($(\"Send Loop\").first().json.learnerCount || 0) + (Number($(\"Send Loop\").first().json.learnerCount || 0) === 1 ? \" learner\" : \" learners\"), status: \"success\" } }) }}",
         "options": {}
       },
       "credentials": {
@@ -569,7 +569,7 @@
           "name": "Administrate OAuth2"
         }
       },
-      "executeOnce": false
+      "executeOnce": true
     },
     {
       "id": "17dc4eef-6e57-4ca0-a192-2fdca5702d04",
@@ -593,9 +593,41 @@
       ],
       "parameters": {
         "width": 480,
-        "height": 520,
+        "height": 620,
         "color": 4,
-        "content": "## Config Explained\n\nEvery value lives in the **Config** node. Leave **DRY_RUN** set to true until a dry run report looks right.\n\n**RENEWABLE_ACHIEVEMENT_TYPE_IDS** Comma-separated achievement type IDs this reminder acts on. Anything not listed is ignored, even if it has a validity period. The IDs differ per instance, so look them up by name in your own instance. Do not copy them from another instance.\n\n**NOTICE_PERIOD_MONTHS** How far ahead of expiry the reminder goes. Default 6.\n\n**FLOOR_DATE** No reminder for any event that ended before this date.\n\nA floor is **not interval neutral**. A five year certificate comes due 54 months after the event and a three year one at 30. A floor chosen for the three year group can exclude the five year group entirely. The workflow reports which intervals it excluded. If it excluded all of them, it stops with an explanation instead of running quietly.\n\n**WINDOW_DAYS** Width of the due window, looking back from today's due date. 7 is a good production value because a missed run is picked up by the next one. Use a wider window while testing.\n\n**DRY_RUN** True writes a report and sends nothing.\n\n**MAX_PER_RUN** Throttle. It caps learners, not events, and applies before grouping, so a busy day can split one event across two runs. Anything held back turns the run red and is named in the run summary.\n\n**ABORT_ABOVE** Safety net. A throttle limits how much is sent, but it still sends whatever fits even if the selection has gone wrong. ABORT_ABOVE refuses the whole run and sends nothing when the number of due learners is implausible.\n\n**SENDING_ADDRESS_ID** The sending email address ID from your instance.\n\n**TEMPLATE_ID** The communication template ID for the reminder email. The workflow refuses to send while this or the sending address is empty.\n\n**SEND_AUDIENCE** `passed`. Sent alongside the learner list. The two intersect, so it can only narrow the recipients, never widen them.\n\n**CATCHUP_FROM and CATCHUP_TO** An explicit event end date range that overrides the rolling window, for a one-time catch-up. Clear them afterwards. FLOOR_DATE still applies.\n\n**TIMEZONE** Timezone the due window is calculated in. The Schedule Trigger uses the workflow timezone setting, not this value. Set both to the same zone, or 07:00 fires at the wrong hour.\n\n**PAGE_SIZE** 100, the most Administrate returns per page.\n\n---\n\n**There is no list of courses.** This is deliberate. Add or remove courses on each course's Achievements tab in Administrate. The workflow does not need to change.\n\n**Test instances.** A test instance may accept and log email without delivering it. A run there with DRY_RUN false tests the mutation, logging and deduplication, but not delivery."
+        "content": "## Config Explained\n\nEvery value lives in the **Config** node. Leave **DRY_RUN** set to true until a dry run report looks right.\n\n**GRAPHQL_URL** Administrate API endpoint. Leave as it is.\n\n**RENEWABLE_ACHIEVEMENT_TYPE_IDS** Comma-separated achievement type IDs this reminder acts on. Anything not listed is ignored, even if it has a validity period. The IDs differ per instance, so look them up by name in your own instance. Do not copy them from another instance.\n\n**NOTICE_PERIOD_MONTHS** How far ahead of expiry the reminder goes. Default 6.\n\n**FLOOR_DATE** No reminder for any event that ended before this date.\n\nA floor is **not interval neutral**. A five year certificate comes due 54 months after the event and a three year one at 30. A floor chosen for the three year group can exclude the five year group entirely. The workflow reports which intervals it excluded. If it excluded all of them, it stops with an explanation instead of running quietly.\n\n**WINDOW_DAYS** Width of the due window, looking back from today's due date. 7 is a good production value because a missed run is picked up by the next one. Use a wider window while testing.\n\n**DRY_RUN** True writes a report and sends nothing.\n\n**MAX_PER_RUN** Throttle. It caps learners, not events, and applies before grouping, so a busy day can split one event across two runs. Anything held back turns the run red and is named in the run summary.\n\n**ABORT_ABOVE** Safety net. A throttle limits how much is sent, but it still sends whatever fits even if the selection has gone wrong. ABORT_ABOVE refuses the whole run and sends nothing when the number of due learners is implausible.\n\n**SENDING_ADDRESS_ID** The sending email address ID from your instance.\n\n**TEMPLATE_ID** The communication template ID for the reminder email. The workflow refuses to send while this or the sending address is empty.\n\n**SEND_AUDIENCE** `passed`. Sent alongside the learner list. The two intersect, so it can only narrow the recipients, never widen them.\n\n**ORIGIN_IDENTIFIER** Set it once. Changing it after go live splits the log history in Administrate.\n\n**CATCHUP_FROM and CATCHUP_TO** An explicit event end date range that overrides the rolling window, for a one-time catch-up. Clear them afterwards. FLOOR_DATE still applies.\n\n**TIMEZONE** Timezone the due window is calculated in. The Schedule Trigger uses the workflow timezone setting, not this value. Set both to the same zone, or 07:00 fires at the wrong hour.\n\n**PAGE_SIZE** 100, the most Administrate returns per page.\n\n---\n\n**There is no list of courses.** This is deliberate. Add or remove courses on each course's Achievements tab in Administrate. The workflow does not need to change.\n\n**Test instances.** A test instance may accept and log email without delivering it. A run there with DRY_RUN false tests the mutation, logging and deduplication, but not delivery."
+      }
+    },
+    {
+      "id": "cb7c323d-04c7-4025-a406-47d58a62ad82",
+      "name": "Setup and Verify",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1220,
+        220
+      ],
+      "parameters": {
+        "width": 520,
+        "height": 860,
+        "color": 3,
+        "content": "## SETUP\n\n1. **Credentials.** Select your Administrate OAuth2 credential on all seven HTTP Request nodes.\n2. **Sent log Data Table.** Both Data Table nodes reference the table by internal ID. After creating or recreating it, select it in BOTH `Read Sent Log` and `Record Sent`.\n3. **TEMPLATE_ID** must be set to the reminder communication template in your instance.\n4. **SENDING_ADDRESS_ID** must be set to a verified sending address in your instance.\n5. **Error handler.** Import `Certificate Renewal Reminders - Error Handler` and set it as this workflow's Error Workflow (Workflow Settings > Error Workflow). Keep it published or it cannot fire.\n\nThe workflow refuses to send while either of items 3 and 4 is empty.\n\n## VERIFY ON FIRST RUN\n\n- **Check the result, not the status.** Open a learner in Administrate and confirm the communication is in their history. A green execution proves nothing on its own.\n- **Re-run immediately** and confirm the deduplication stops a second send.\n- **Read the run summary** for `suppressedByCap` and `droppedGroups`. Either being non-zero means work was left undone.\n- **Check the event's External Integration Log.** Expect one success entry per event email, stating how many learners it went to. `Log Success` is set to Execute Once for this: `Record Sent` passes on one item per learner, and without that setting it logs once per learner.\n\n## Behaviour confirmed by testing\n\n- **`audience` and `learnerIds` intersect**, they do not union. `SEND_AUDIENCE` is `passed`, so it can only narrow the recipient list, never widen it.\n- **The send branch is a batch of one loop**, so `Record Sent` runs per event. If one event fails, later events still send, sent log rows are written only for the events that sent and the execution goes red. A partial run cannot leave sent mail with no sent log record.\n- **Attaching or detaching an achievement type awards nobody** and does not create a course template version.\n- **Administrate renders the template**, including `date_format()`, which produces long form dates such as 23 February 2022.\n\n## Looking up IDs in your instance\n\nAchievement types: query { achievementTypes(first: 50) { edges { node { id name validityPeriod { unit value } } } } }\n\nTemplates: query { communicationTemplates(first: 60, filters: [{ field: name, operation: like, value: \"%ertificate%\" }]) { edges { node { id name } } } }"
+      }
+    },
+    {
+      "id": "67796fdb-bc49-42ee-a3de-740451cdab92",
+      "name": "Why the pagination looks like this",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1780,
+        220
+      ],
+      "parameters": {
+        "width": 460,
+        "height": 360,
+        "color": 5,
+        "content": "## Why the register read is paged\n\nAdministrate caps every connection at 100 rows a page and returns them oldest first. Asking for `first: 200` returns 100 rows with no error, so a single unpaged read would cover only the oldest course templates and still report success. Most renewable courses can sit outside that first page.\n\nCursors decode to Cursor colon row index, so pages are enumerated as a fan out rather than walked in a loop. n8n built in pagination cannot drive a GraphQL body, so this is done in a Code node.\n\nThe due learner read is paged the same way. A catch up window can hold thousands, and without paging the run would keep re-reading the same first hundred and stall."
       }
     },
     {

@@ -1,0 +1,98 @@
+{
+  "name": "Certificate Renewal Reminders - Error Handler",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "087f105b-eba8-4f71-a8cc-1e2d8d289643",
+      "name": "On Workflow Error",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "/*\tThe error trigger payload carries workflow and execution metadata only,\t*/\n/*\tnever the failing run's own data, so there is no event id here to anchor\t*/\n/*\tan Administrate external log against. nodeId on createExternalIntegrationLog\t*/\n/*\tis ID! and record scoped, which is why this writes to a Data Table instead\t*/\n/*\tof back into Administrate.\t*/\n\n/*\texecution.url on the payload can resolve to http://localhost:5678 when the\t*/\n/*\tinstance has no editor base URL configured, so the link would be dead.\t*/\n/*\tBuild it from your real n8n host instead. Change this line to match it.\t*/\nconst instanceBase_str = 'https://YOUR-N8N-HOST';\n\nconst payload_obj = $json || {};\nconst workflow_obj = payload_obj.workflow || {};\nconst execution_obj = payload_obj.execution || {};\nconst error_obj = execution_obj.error || {};\n\nlet message_str = String(error_obj.message || '').trim();\n\nif (message_str === '')\n{\n\tmessage_str = 'The trigger payload carried no error message';\n}\n\nconst workflowId_str = String(workflow_obj.id || '');\nconst executionId_str = String(execution_obj.id || '');\nlet url_str = '';\n\nif (workflowId_str !== '' && executionId_str !== '')\n{\n\turl_str = instanceBase_str + '/workflow/' + workflowId_str + '/executions/' + executionId_str;\n}\n\nreturn [{ json: {\n\tfailed_at: DateTime.now().toISO(),\n\tworkflow_name: String(workflow_obj.name || ''),\n\tworkflow_id: workflowId_str,\n\texecution_id: executionId_str,\n\texecution_url: url_str,\n\texecution_mode: String(execution_obj.mode || ''),\n\tlast_node: String(execution_obj.lastNodeExecuted || ''),\n\terror_message: message_str.slice(0, 2000)\n} }];"
+      },
+      "id": "ec75b661-e329-465c-9c77-e7649db482e9",
+      "name": "Shape Failure Row",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "dataTableId": {
+          "__rl": true,
+          "value": "REPLACE_WITH_FAILURES_DATA_TABLE_ID",
+          "mode": "id"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {}
+        }
+      },
+      "id": "75ab7dd4-1ab7-415c-a729-21602916b19e",
+      "name": "Record Failure",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        448,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "color": 5,
+        "content": "## What this is\n\nError handler for the `Certificate Renewal Reminders` workflow. Set it as that workflow's Error Workflow (Workflow Settings > Error Workflow).\n\nKeep it **published**. Some n8n instances refuse an unpublished workflow as an error workflow, and only say so when you try to attach it.\n\n## What it does\n\nWhen a scheduled run fails outright, this records the failure in the failures Data Table: when it happened, which workflow and node, the error message and a link to the execution.\n\nFailures are reviewed in that table. There is deliberately no alert. Add an email or chat node after `Record Failure` once you have agreed a sending route.\n\n## Why it does not write to Administrate\n\nThe main workflow logs to Administrate through `externalLog.createExternalIntegrationLog`. This deliberately does not.\n\n`nodeId` on that mutation is `ID!` and anchors the entry to a record. The error trigger payload carries workflow and execution metadata only, never the failing run's own data, so no event ID is available here. For the most likely failures, a configuration guard refusing or a register read failing, no event has even been identified yet, so there is nothing to anchor an entry to.\n\nHandled per-event failures still log to Administrate from inside the main workflow, where the event ID is in hand.\n\n## Testing it\n\nAn error workflow fires on production executions only, never on manual ones, so a manual run of the main workflow will not reach this however it fails. To test it, publish a throwaway workflow that throws deliberately, set this as its Error Workflow and confirm a row appears.\n\n## The execution link\n\n`execution.url` on the trigger payload can resolve to `http://localhost:5678` when no editor base URL is configured. The link is therefore built from `instanceBase_str` in `Shape Failure Row`. Set it to your n8n host.",
+        "height": 700,
+        "width": 520
+      },
+      "id": "27482076-b990-41d8-a1f4-fd6de5d5377c",
+      "name": "Why this logs and does not alert",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        240
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "On Workflow Error": {
+      "main": [
+        [
+          {
+            "node": "Shape Failure Row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Shape Failure Row": {
+      "main": [
+        [
+          {
+            "node": "Record Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": []
+}
