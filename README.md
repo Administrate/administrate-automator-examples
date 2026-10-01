@@ -28,6 +28,7 @@ Examples with several workflows have a `workflows/` subdirectory. Download the r
 | Workflow | Description |
 |----------|-------------|
 | [Administrate MCP Server](automations/administrate-mcp-server/) | Expose Administrate search and update tools to AI agents such as Claude over the Model Context Protocol |
+| [Alert Opportunity Owners When a Reserved Event Is Cancelled](automations/cancelled-event-reservation-alert/) | Email each opportunity owner once when an event with their reservations is cancelled |
 | [Auto Assign Instructors to Event](automations/auto-assign-instructors-to-event/) | Automatically assign available approved instructors to new events based on availability and workplace location |
 | [Auto Assign Tasks](automations/auto-assign-tasks/) | Redistribute tasks by task type to the account owner, booking owner, instructor and administrator |
 | [Auto-Finalise Invoices Before Event Start](automations/auto-finalise-invoices/) | Finalise draft invoices and move bookings on as events approach, with a dry-run mode and a Slack summary |

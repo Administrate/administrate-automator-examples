@@ -1,0 +1,392 @@
+{
+  "name": "Alert Opportunity Owners When a Reserved Event Is Cancelled",
+  "nodes": [
+    {
+      "parameters": {
+        "events": "V2ViaG9va1R5cGU6ZXZlbnRfY2FuY2VsbGVk",
+        "name": "Event Cancelled"
+      },
+      "type": "CUSTOM.administrateTrigger",
+      "typeVersion": 1,
+      "position": [
+        -480,
+        96
+      ],
+      "id": "82f67982-3e9f-4e91-905b-5d7f88434ee2",
+      "name": "Event Cancelled",
+      "webhookId": "bf5c1f4c-689f-4025-a02c-565c536356ab",
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "4ae91be7-a532-496d-ab54-a35f1a194d42",
+              "name": "INSTANCE_SUBDOMAIN",
+              "value": "YOUR-INSTANCE",
+              "type": "string"
+            },
+            {
+              "id": "e2881599-267c-444a-9041-a7ab3170d895",
+              "name": "SENDING_ADDRESS_ID",
+              "value": "REPLACE_WITH_SENDING_ADDRESS_ID",
+              "type": "string"
+            },
+            {
+              "id": "ee81e5a7-80e6-469f-a685-f8c9eef5b0aa",
+              "name": "CC_EMAILS",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "b5e0c616-a05e-495b-b460-1961a7d0f284",
+              "name": "EMAIL_SUBJECT",
+              "value": "Your client reservation is at risk: event cancelled",
+              "type": "string"
+            },
+            {
+              "id": "a99ae39c-cac9-4c7e-ba2c-0f52453f1547",
+              "name": "SIGN_OFF",
+              "value": "Many thanks<br><br>Your Organisation",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "4260f534-d979-4a0a-9895-ca78e8907d1e",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -256,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.getadministrate.com/graphql",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ ({ query: \"query EventInterests($eventId: String!, $first: Int, $after: String) { events(filters: [{field: id, operation: eq, value: $eventId}]) { edges { node { id legacyId title start interests(first: $first, after: $after) { pageInfo { hasNextPage endCursor } edges { node { id opportunity { id name legacyId owner { id firstName contact { id } } account { id name } } } } } } } } }\", variables: { eventId: $('Event Cancelled').first().json.payload.node.id, first: 100, after: null } }) }}",
+        "options": {
+          "pagination": {
+            "pagination": {
+              "paginationMode": "updateAParameterInEachRequest",
+              "parameters": {
+                "parameters": [
+                  {
+                    "type": "body",
+                    "name": "variables",
+                    "value": "={{ { eventId: $('Event Cancelled').first().json.payload.node.id, first: 100, after: ($response?.body?.data?.events?.edges?.[0]?.node?.interests?.pageInfo?.endCursor ?? null) } }}"
+                  }
+                ]
+              },
+              "paginationCompleteWhen": "other",
+              "completeExpression": "={{ !$response.body?.data?.events?.edges?.[0]?.node?.interests?.pageInfo?.hasNextPage }}",
+              "limitPagesFetched": true,
+              "maxRequests": 50
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -32,
+        96
+      ],
+      "id": "7cf408c2-9180-4aba-b9b9-724f8d1e9e6b",
+      "name": "Find Event Interests",
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const config = $('Config').first().json;\nconst baseUrl = `https://${config.INSTANCE_SUBDOMAIN}.administrateapp.com/beta#`;\n\nconst escapeHtml = (value) => String(value ?? '')\n  .replace(/&/g, '&amp;')\n  .replace(/</g, '&lt;')\n  .replace(/>/g, '&gt;')\n  .replace(/\"/g, '&quot;');\n\n// Each input item is one page of the Event's Interests.\nlet event = null;\nconst interests = [];\nfor (const page of $input.all()) {\n  const body = page.json;\n  if (Array.isArray(body.errors) && body.errors.length > 0) {\n    throw new Error(`Administrate returned errors: ${body.errors.map((error) => error.message).join('; ')}`);\n  }\n  const eventNode = body.data?.events?.edges?.[0]?.node;\n  if (!eventNode) {\n    continue;\n  }\n  if (!event) {\n    event = eventNode;\n  }\n  for (const edge of eventNode.interests?.edges ?? []) {\n    interests.push(edge.node);\n  }\n}\n\n// No reservations or interests on the cancelled Event: nothing to send.\nif (!event || interests.length === 0) {\n  return [];\n}\n\nconst eventDetails = {\n  eventId: event.id,\n  eventTitle: event.title,\n  eventStart: event.start ? DateTime.fromISO(event.start).toFormat('dd/MM/yy HH:mm') : '',\n  eventUrl: `${baseUrl}/events/events/${event.legacyId}`,\n};\n\nconst owners = new Map();\nconst skipped = [];\n\nfor (const interest of interests) {\n  const opportunity = interest.opportunity;\n  const ownerContactId = opportunity?.owner?.contact?.id;\n\n  if (!ownerContactId) {\n    let reason = 'Opportunity owner has no linked Contact';\n    if (!opportunity) {\n      reason = 'Interest has no Opportunity';\n    } else if (!opportunity.owner) {\n      reason = 'Opportunity has no owner';\n    }\n    skipped.push({\n      json: {\n        status: 'skipped',\n        reason,\n        interestId: interest.id,\n        opportunityId: opportunity?.id ?? null,\n        opportunityName: opportunity?.name ?? null,\n        accountName: opportunity?.account?.name ?? null,\n        ...eventDetails,\n      },\n    });\n    continue;\n  }\n\n  if (!owners.has(ownerContactId)) {\n    owners.set(ownerContactId, {\n      ownerContactId,\n      ownerFirstName: opportunity.owner.firstName ?? '',\n      opportunities: new Map(),\n    });\n  }\n\n  const ownerGroup = owners.get(ownerContactId);\n  if (!ownerGroup.opportunities.has(opportunity.id)) {\n    ownerGroup.opportunities.set(opportunity.id, {\n      opportunityId: opportunity.id,\n      opportunityName: opportunity.name ?? '',\n      accountName: opportunity.account?.name ?? '',\n      opportunityUrl: `${baseUrl}/crm/opportunities/${opportunity.legacyId}`,\n      interestCount: 0,\n    });\n  }\n  ownerGroup.opportunities.get(opportunity.id).interestCount += 1;\n}\n\nconst eventHtml = [\n  `Cancelled Event: ${escapeHtml(eventDetails.eventTitle)}`,\n  `Cancelled Event Start: ${escapeHtml(eventDetails.eventStart)}`,\n  `Cancelled Event URL: ${escapeHtml(eventDetails.eventUrl)}`,\n].join('<br>');\n\nconst notifications = [...owners.values()].map((ownerGroup) => {\n  const opportunities = [...ownerGroup.opportunities.values()];\n  const opportunityListHtml = opportunities.map((opportunity) => [\n    `<li>Account: ${escapeHtml(opportunity.accountName)}`,\n    `Opportunity: ${escapeHtml(opportunity.opportunityName)}`,\n    `Opportunity URL: ${escapeHtml(opportunity.opportunityUrl)}</li>`,\n  ].join('<br>')).join('');\n\n  return {\n    json: {\n      status: 'notify',\n      ownerContactId: ownerGroup.ownerContactId,\n      ownerFirstNameHtml: escapeHtml(ownerGroup.ownerFirstName),\n      opportunityCount: opportunities.length,\n      opportunities,\n      detailsHtml: `${eventHtml}<br><br>Affected Opportunities:<ul>${opportunityListHtml}</ul>`,\n      ...eventDetails,\n    },\n  };\n});\n\nreturn [...notifications, ...skipped];"
+      },
+      "id": "0307aba5-419c-4ee4-a5e0-21ac7a182d10",
+      "name": "Group Interests by Owner",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        192,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "a3e8eed0-2549-4992-9165-0006fd3b7d14",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "notify",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "9aa8b895-292d-465e-9416-0a73c4ae00f1",
+      "name": "Owner Contact Found?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        416,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "80b88c1d-b352-4c58-b868-b84e982fd1b9",
+              "name": "contactId",
+              "value": "={{ $json.ownerContactId }}",
+              "type": "string"
+            },
+            {
+              "id": "7e8ac08a-71fb-4351-b55b-4220e3833d4c",
+              "name": "subject",
+              "value": "={{ $('Config').first().json.EMAIL_SUBJECT }}",
+              "type": "string"
+            },
+            {
+              "id": "99b4b8f9-c6d1-4782-bb57-45ae23812a9a",
+              "name": "body",
+              "value": "=Dear {{ $json.ownerFirstNameHtml }}<br><br>An Event has been cancelled which you have active Reservations or Interests against.<br><br>Please review the Opportunities below in Administrate and either move each Reservation or Interest to an alternative Event, or remove it entirely.<br><br>{{ $json.detailsHtml }}<br>{{ $('Config').first().json.SIGN_OFF }}",
+              "type": "string"
+            },
+            {
+              "id": "74103943-0e45-4482-928c-07fd11a1242b",
+              "name": "sendingAddressId",
+              "value": "={{ $('Config').first().json.SENDING_ADDRESS_ID }}",
+              "type": "string"
+            },
+            {
+              "id": "7f6225c2-d531-4a62-88da-6b3cac2c9a22",
+              "name": "ccList",
+              "value": "={{ String($('Config').first().json.CC_EMAILS ?? '').split(',').map((email) => email.trim()).filter(Boolean) }}",
+              "type": "array"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        640,
+        0
+      ],
+      "id": "d933631b-9092-4869-98c2-9800a62589fe",
+      "name": "Build Owner Email"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.getadministrate.com/graphql",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ ({ query: \"mutation SendOwnerEmail($input: ContactAdhocEmailInput!) { contactAdhocEmails { sendContactAdhocEmail(input: $input) { errors { label message value } } } }\", variables: { input: { contactId: $json.contactId, subject: $json.subject, body: $json.body, sendingAddressId: $json.sendingAddressId, ccList: $json.ccList } } }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        864,
+        0
+      ],
+      "id": "f0e287fb-9f19-403b-8eae-6b2d8fdf97dc",
+      "name": "Send Notification",
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e1666c58-aeef-4b23-ba94-a636e88f941f",
+              "name": "timestamp",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "4ed55e36-177a-4615-9241-64cd7b06b0fa",
+      "name": "Log Skipped Interest",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        640,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Setup\n1. Select your Administrate OAuth2 credential on **Event Cancelled**, **Find Event Interests** and **Send Notification**.\n2. Fill in **Config**:\n- `INSTANCE_SUBDOMAIN`: the part before `.administrateapp.com`, used for links\n- `SENDING_ADDRESS_ID`: the ID of an Administrate sending address\n- `CC_EMAILS`: optional, comma-separated\n- `EMAIL_SUBJECT` and `SIGN_OFF`: the email wording",
+        "height": 340,
+        "width": 420
+      },
+      "id": "02dd7cb1-9d41-4a60-acef-cea841c0fc0e",
+      "name": "Setup Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -540,
+        -300
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## One email per owner\nInterests are fetched 100 per page. **Group Interests by Owner** groups them by the Opportunity owner's Contact, so each owner gets a single email listing every affected Opportunity.\n\nInterests with no Opportunity, no owner or an owner without a linked Contact are sent to **Log Skipped Interest** instead.",
+        "height": 340,
+        "width": 440
+      },
+      "id": "17d2a4b4-2b65-4388-91f5-adb7873c9262",
+      "name": "Grouping Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -60,
+        -300
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Skipped interests\nEach item explains why no email was sent (`reason`). Connect a Slack, Sheets or Administrate log node here to keep a record.",
+        "height": 180,
+        "width": 340,
+        "color": 3
+      },
+      "id": "5ac8ab86-cc9d-480a-9dd1-46a58613a1e9",
+      "name": "Skipped Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        580,
+        380
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Event Cancelled": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Find Event Interests",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Event Interests": {
+      "main": [
+        [
+          {
+            "node": "Group Interests by Owner",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Group Interests by Owner": {
+      "main": [
+        [
+          {
+            "node": "Owner Contact Found?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Owner Contact Found?": {
+      "main": [
+        [
+          {
+            "node": "Build Owner Email",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Skipped Interest",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Owner Email": {
+      "main": [
+        [
+          {
+            "node": "Send Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "timezone": "Europe/London",
+    "availableInMCP": false
+  },
+  "tags": []
+}
