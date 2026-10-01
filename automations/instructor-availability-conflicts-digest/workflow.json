@@ -1,0 +1,519 @@
+{
+  "name": "Instructor Availability Conflicts Digest",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 7 * * 1-5"
+            }
+          ]
+        }
+      },
+      "id": "5e335320-3859-5493-be49-dad5ba190dd4",
+      "name": "Every Morning",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "59ae9881-d24f-5d1f-9c9e-f2ca07e41d60",
+      "name": "Run Now",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c01",
+              "name": "WINDOW_DAYS",
+              "value": 30,
+              "type": "number"
+            },
+            {
+              "id": "c02",
+              "name": "INCLUDE_UNCONFIRMED",
+              "value": true,
+              "type": "boolean"
+            },
+            {
+              "id": "c03",
+              "name": "RECIPIENT_EMAILS",
+              "value": "REPLACE_WITH_RECIPIENT_EMAIL",
+              "type": "string"
+            },
+            {
+              "id": "c04",
+              "name": "SENDING_ADDRESS_ID",
+              "value": "REPLACE_WITH_SENDING_ADDRESS_ID",
+              "type": "string"
+            },
+            {
+              "id": "c05",
+              "name": "EVENT_URL_TEMPLATE",
+              "value": "https://YOUR-INSTANCE.administrateapp.com/beta#/events/events/{id}",
+              "type": "string"
+            },
+            {
+              "id": "c06",
+              "name": "EMAIL_SUBJECT_PREFIX",
+              "value": "Instructor availability conflicts",
+              "type": "string"
+            },
+            {
+              "id": "c07",
+              "name": "BRAND_NAME",
+              "value": "Your Organisation",
+              "type": "string"
+            },
+            {
+              "id": "c08",
+              "name": "BRAND_COLOUR",
+              "value": "#1F3A5F",
+              "type": "string"
+            },
+            {
+              "id": "c09",
+              "name": "DRY_RUN",
+              "value": false,
+              "type": "boolean"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "7a42e784-b0a3-575e-bb11-1338445d3e01",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        240,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// Asks Administrate for every contact with a conflict between today and today + WINDOW_DAYS.\n// Administrate works the conflicts out itself: sessions that overlap and sessions during an absence.\nconst cfg_obj = $('Config').first().json;\nconst days_num = Math.max(1, Number(cfg_obj.WINDOW_DAYS) || 30);\nconst from_str = $now.toISODate();\nconst to_str = $now.plus({ days: days_num }).toISODate();\nconst query_str = 'query ReadConflicts($from: Date!, $to: Date!) { contactConflicts(rangeStartDate: $from, rangeEndDate: $to) { conflictCount contact { id emailAddress personalName { firstName lastName } } sessions { id code title start end eventId conflicts { bookingType title start end unconfirmed } } } }';\nreturn [{ json: { from: from_str, to: to_str, body: { query: query_str, variables: { from: from_str, to: to_str } } } }];"
+      },
+      "id": "1d0cec50-2eef-508d-843e-eddf8a037b67",
+      "name": "Build Query",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.getadministrate.com/graphql",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.body) }}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "411802e1-e656-5d5b-af57-c72e3e2d841b",
+      "name": "Read Conflicts",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        720,
+        100
+      ],
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// Groups the conflicts by instructor and by date and builds one HTML email.\n// Returns nothing when there is no conflict, so no email is sent.\nconst cfg_obj = $('Config').first().json;\nconst range_obj = $('Build Query').first().json;\nconst res_obj = $input.first().json || {};\nif (res_obj.errors || !res_obj.data || !Array.isArray(res_obj.data.contactConflicts)) {\n  throw new Error('Reading conflicts failed: ' + JSON.stringify(res_obj.errors || res_obj).slice(0, 500));\n}\nconst esc_fn = function (v_any) { return String(v_any === null || v_any === undefined ? '' : v_any).split('&').join('&amp;').split('<').join('&lt;').split('>').join('&gt;').split('\"').join('&quot;'); };\nconst when_fn = function (s_str) { const d_obj = DateTime.fromISO(String(s_str || ''), { setZone: true }); return d_obj.isValid ? d_obj : null; };\n// Shows the full date, or only the times when it falls on the same day as ref_str.\nconst span_fn = function (a_str, b_str, ref_str) {\n  const a_obj = when_fn(a_str); const b_obj = when_fn(b_str); const r_obj = ref_str ? when_fn(ref_str) : null;\n  if (!a_obj) { return esc_fn(a_str); }\n  const end_str = b_obj ? (b_obj.hasSame(a_obj, 'day') ? b_obj.toFormat('HH:mm') : b_obj.toFormat('ccc d LLL HH:mm')) : '';\n  const start_str = r_obj && r_obj.hasSame(a_obj, 'day') ? a_obj.toFormat('HH:mm') : a_obj.toFormat('ccc d LLL yyyy, HH:mm');\n  return start_str + (end_str ? ' to ' + end_str : '');\n};\nconst includeUnconfirmed_bool = cfg_obj.INCLUDE_UNCONFIRMED !== false;\nconst urlTemplate_str = String(cfg_obj.EVENT_URL_TEMPLATE || '');\nconst people_ary = [];\nlet total_num = 0;\nfor (const c_obj of res_obj.data.contactConflicts) {\n  const name_obj = (c_obj.contact || {}).personalName || {};\n  const name_str = ((name_obj.firstName || '') + ' ' + (name_obj.lastName || '')).trim() || ((c_obj.contact || {}).emailAddress || 'Unknown contact');\n  const rows_ary = [];\n  for (const s_obj of (c_obj.sessions || [])) {\n    const seen_obj = {};\n    const with_ary = [];\n    for (const k_obj of (s_obj.conflicts || [])) {\n      if (k_obj.unconfirmed && !includeUnconfirmed_bool) { continue; }\n      const key_str = [k_obj.bookingType, k_obj.title, k_obj.start, k_obj.end].join('|');\n      if (seen_obj[key_str]) { continue; }\n      seen_obj[key_str] = true;\n      with_ary.push(k_obj);\n    }\n    if (with_ary.length === 0) { continue; }\n    rows_ary.push({ session: s_obj, conflicts: with_ary, sortKey: String(s_obj.start || '') });\n  }\n  if (rows_ary.length === 0) { continue; }\n  rows_ary.sort(function (a_obj, b_obj) { return a_obj.sortKey < b_obj.sortKey ? -1 : (a_obj.sortKey > b_obj.sortKey ? 1 : 0); });\n  total_num += rows_ary.length;\n  people_ary.push({ name: name_str, rows: rows_ary, first: rows_ary[0].sortKey });\n}\nif (people_ary.length === 0) { return []; }\npeople_ary.sort(function (a_obj, b_obj) { return a_obj.first < b_obj.first ? -1 : (a_obj.first > b_obj.first ? 1 : 0); });\nconst block_ary = people_ary.map(function (p_obj) {\n  const trs_str = p_obj.rows.map(function (r_obj) {\n    const s_obj = r_obj.session;\n    const link_str = urlTemplate_str && urlTemplate_str.indexOf('YOUR-INSTANCE') < 0 ? urlTemplate_str.split('{id}').join(encodeURIComponent(s_obj.eventId)) : '';\n    const label_str = esc_fn(s_obj.code) + ' &middot; ' + esc_fn(s_obj.title);\n    const what_str = r_obj.conflicts.map(function (k_obj) {\n      const kind_str = k_obj.bookingType === 'absence' ? 'Absence' : (k_obj.bookingType === 'session' ? 'Another session' : esc_fn(k_obj.bookingType));\n      return '<div style=\"margin:2px 0;\">' + kind_str + ': <strong>' + esc_fn(k_obj.title || 'untitled') + '</strong> (' + span_fn(k_obj.start, k_obj.end, s_obj.start) + ')' + (k_obj.unconfirmed ? ' <span style=\"color:#8A5A00;\">unconfirmed</span>' : '') + '</div>';\n    }).join('');\n    return '<tr><td style=\"padding:10px 12px;border-top:1px solid #E6EAF0;vertical-align:top;white-space:nowrap;font-size:13px;color:#16202B;\">' + span_fn(s_obj.start, s_obj.end) + '</td><td style=\"padding:10px 12px;border-top:1px solid #E6EAF0;vertical-align:top;font-size:13px;color:#16202B;\">' + (link_str ? '<a href=\"' + esc_fn(link_str) + '\" style=\"color:' + esc_fn(cfg_obj.BRAND_COLOUR) + ';\">' + label_str + '</a>' : label_str) + '<div style=\"margin-top:4px;color:#5A6472;\">' + what_str + '</div></td></tr>';\n  }).join('');\n  return '<h3 style=\"margin:24px 0 6px;font-size:15px;color:#16202B;\">' + esc_fn(p_obj.name) + ' <span style=\"font-weight:normal;color:#5A6472;\">(' + p_obj.rows.length + ' session' + (p_obj.rows.length > 1 ? 's' : '') + ')</span></h3><table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"border-collapse:collapse;\">' + trs_str + '</table>';\n}).join('');\nconst from_label = DateTime.fromISO(range_obj.from).toFormat('d LLL yyyy');\nconst to_label = DateTime.fromISO(range_obj.to).toFormat('d LLL yyyy');\nconst html_str = '<div style=\"font-family:Arial,Helvetica,sans-serif;background:#F4F6F8;padding:24px;\"><table width=\"680\" cellpadding=\"0\" cellspacing=\"0\" style=\"background:#FFFFFF;border-radius:8px;\"><tr><td style=\"background:' + esc_fn(cfg_obj.BRAND_COLOUR) + ';padding:18px 24px;color:#FFFFFF;font-size:18px;font-weight:bold;\">' + esc_fn(cfg_obj.BRAND_NAME) + '</td></tr><tr><td style=\"padding:24px;\"><p style=\"margin:0 0 4px;font-size:16px;color:#16202B;\"><strong>' + total_num + ' session' + (total_num > 1 ? 's' : '') + ' with an instructor conflict</strong> across ' + people_ary.length + ' instructor' + (people_ary.length > 1 ? 's' : '') + '</p><p style=\"margin:0;font-size:13px;color:#5A6472;\">From ' + from_label + ' to ' + to_label + '. Each line is a session the instructor is booked on while also booked elsewhere or recorded as absent.</p>' + block_ary + '</td></tr></table></div>';\nconst subject_str = (cfg_obj.EMAIL_SUBJECT_PREFIX || 'Instructor availability conflicts') + ': ' + total_num + ' session' + (total_num > 1 ? 's' : '') + ', ' + people_ary.length + ' instructor' + (people_ary.length > 1 ? 's' : '');\nreturn [{ json: { subject: subject_str, html: html_str, sessions: total_num, instructors: people_ary.map(function (p_obj) { return p_obj.name; }) } }];"
+      },
+      "id": "8bfec30f-1b44-556f-beaf-deb6c087f184",
+      "name": "Build Digest",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        960,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $('Config').first().json.DRY_RUN }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "bb947f60-3994-5029-8efd-34380e28becc",
+      "name": "Dry Run?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1200,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "d1",
+              "name": "subject",
+              "value": "={{ $json.subject }}",
+              "type": "string"
+            },
+            {
+              "id": "d2",
+              "name": "sessions",
+              "value": "={{ $json.sessions }}",
+              "type": "number"
+            },
+            {
+              "id": "d3",
+              "name": "instructors",
+              "value": "={{ $json.instructors.join(', ') }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "4b87f315-ddee-5f08-98af-be298b61fca3",
+      "name": "Dry Run Report",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1440,
+        -100
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// The email goes through Administrate, so each recipient must be an Administrate contact.\nconst cfg_obj = $('Config').first().json;\nconst emails_ary = String(cfg_obj.RECIPIENT_EMAILS || '').split(',').map(function (e_str) { return e_str.trim().toLowerCase(); }).filter(Boolean);\nif (emails_ary.length === 0) { throw new Error('RECIPIENT_EMAILS is empty in the Config node.'); }\nconst parts_ary = emails_ary.map(function (e_str, i_num) { return 'r' + i_num + ': contacts(first: 2, filters: [{ field: emailAddress, operation: eq, value: ' + JSON.stringify(e_str) + ' }]) { edges { node { id emailAddress } } }'; });\nreturn [{ json: { emails: emails_ary, body: { query: 'query FindRecipients { ' + parts_ary.join(' ') + ' }' } } }];"
+      },
+      "id": "b1932551-7ec4-514b-a1db-70b01cf00c7c",
+      "name": "Build Recipient Query",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1440,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.getadministrate.com/graphql",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.body) }}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "8a5dbbd7-d0b3-5807-a248-182351f9c1b1",
+      "name": "Find Recipients",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1680,
+        200
+      ],
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// One item per recipient contact. Stops with a clear message if an address is not a contact.\nconst emails_ary = $('Build Recipient Query').first().json.emails;\nconst digest_obj = $('Build Digest').first().json;\nconst res_obj = $input.first().json || {};\nif (res_obj.errors || !res_obj.data) { throw new Error('Looking up recipients failed: ' + JSON.stringify(res_obj.errors || res_obj).slice(0, 300)); }\nconst missing_ary = [];\nconst out_ary = [];\nemails_ary.forEach(function (e_str, i_num) {\n  const edges_ary = ((res_obj.data['r' + i_num] || {}).edges) || [];\n  if (edges_ary.length === 0) { missing_ary.push(e_str); return; }\n  out_ary.push({ json: { contactId: edges_ary[0].node.id, email: e_str, subject: digest_obj.subject, html: digest_obj.html } });\n});\nif (missing_ary.length > 0) { throw new Error('No Administrate contact found for: ' + missing_ary.join(', ') + '. Each recipient needs a contact record.'); }\nreturn out_ary;"
+      },
+      "id": "8a187906-5ae9-5f92-a486-f58be2f98936",
+      "name": "Resolve Recipients",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1920,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.getadministrate.com/graphql",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ query: 'mutation SendDigest($subject: String!, $body: String!) { contactAdhocEmails { sendContactAdhocEmail(input: { contactId: ' + JSON.stringify($json.contactId) + ', subject: $subject, body: $body, sendingAddressId: ' + JSON.stringify($('Config').first().json.SENDING_ADDRESS_ID) + ' }) { errors { label message value } } } }', variables: { subject: $json.subject, body: $json.html } }) }}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "5b0b0200-a7d5-5276-9811-9c581f48e5a0",
+      "name": "Send Digest",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2160,
+        200
+      ],
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "language": "javaScript",
+        "jsCode": "const rec_obj = $('Resolve Recipients').item.json;\nconst res_obj = $json || {};\nconst send_obj = ((res_obj.data || {}).contactAdhocEmails || {}).sendContactAdhocEmail;\nconst errs_ary = (res_obj.errors || []).concat((send_obj && send_obj.errors) || []);\nif (!send_obj || errs_ary.length > 0) {\n  throw new Error('The digest could not be sent to ' + rec_obj.email + ': ' + (errs_ary.map(function (e_obj) { return e_obj.message; }).join('; ') || 'missing response'));\n}\nreturn { json: { sentTo: rec_obj.email } };"
+      },
+      "id": "08b4b59f-2ca0-55f3-a338-268f59a96eee",
+      "name": "Check Send",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2400,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Instructor Availability Conflicts Digest\n\nEvery weekday morning, emails the sessions where an instructor is booked while also booked on another session or recorded as absent, over the next `WINDOW_DAYS`.\n\n1. **Read Conflicts** asks Administrate for its own conflict check (`contactConflicts`): nothing is guessed from text.\n2. **Build Digest** groups the conflicts by instructor and date and removes duplicates.\n3. No conflict means no email.\n4. The email is sent through Administrate to the contacts in `RECIPIENT_EMAILS`.\n\nRead only: the workflow never changes events, sessions or bookings.",
+        "height": 380,
+        "width": 520,
+        "color": 7
+      },
+      "id": "981dc0f5-5b7d-55b2-a24c-eaefee34c289",
+      "name": "Sticky - Overview",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -460
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Config\n\n- `WINDOW_DAYS`: how many days ahead to check\n- `INCLUDE_UNCONFIRMED`: also list conflicts with unconfirmed bookings\n- `RECIPIENT_EMAILS`: comma-separated; each must be an Administrate contact\n- `SENDING_ADDRESS_ID`: a verified sending address\n- `EVENT_URL_TEMPLATE`: link to an event, `{id}` is replaced (leave the placeholder to show no links)\n- `EMAIL_SUBJECT_PREFIX`, `BRAND_NAME`, `BRAND_COLOUR`: the email\n- `DRY_RUN`: build the digest without sending it",
+        "height": 340,
+        "width": 520,
+        "color": 5
+      },
+      "id": "b8a2520c-e10c-5f1b-9d3e-9346ab09b6bc",
+      "name": "Sticky - Config Explained",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        520,
+        -460
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Every Morning": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run Now": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Build Query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Query": {
+      "main": [
+        [
+          {
+            "node": "Read Conflicts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Conflicts": {
+      "main": [
+        [
+          {
+            "node": "Build Digest",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Digest": {
+      "main": [
+        [
+          {
+            "node": "Dry Run?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Dry Run?": {
+      "main": [
+        [
+          {
+            "node": "Dry Run Report",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Recipient Query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Recipient Query": {
+      "main": [
+        [
+          {
+            "node": "Find Recipients",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Recipients": {
+      "main": [
+        [
+          {
+            "node": "Resolve Recipients",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resolve Recipients": {
+      "main": [
+        [
+          {
+            "node": "Send Digest",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Digest": {
+      "main": [
+        [
+          {
+            "node": "Check Send",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": []
+}
