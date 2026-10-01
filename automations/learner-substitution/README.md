@@ -1,14 +1,14 @@
-# Learner Substitution
+# 🔄 Learner Substitution
 
-## Problem
+## 🧩 Problem
 
 A learner often cannot attend and their organisation wants to send a colleague in their place. Done by hand, the administrator cancels one registration and creates another. In between, the place is briefly free and can be taken from a waitlist, and in reporting the swap looks like a withdrawal plus a new booking. Nobody can tell afterwards who replaced whom or why.
 
-## Automator Solution
+## 🤖 Automator Solution
 
 The administrator requests the substitution on the learner record itself, by setting a custom field and entering the colleague's email. On its next run this workflow checks the request, **registers the substitute first** and only then releases the original place, so the place is never exposed in between. Both registrations are tagged as a substitution, notes are added to both and a success entry is logged on the event once the release is verified. A request that cannot be applied is marked as refused, with the reason in the learner notes.
 
-## Features
+## ✨ Features
 
 - Requested from inside Administrate: no form or external page to open
 - Substitute registered before the original place is released, so the place cannot be lost to a waitlist
@@ -23,9 +23,9 @@ The administrator requests the substitution on the learner record itself, by set
 - Optional confirmation email to the substitute, styled from the Config node
 - Dry-run mode that reports decisions without writing anything
 
-## Setup Instructions
+## 🚀 Setup Instructions
 
-### Prerequisites
+### 📋 Prerequisites
 
 - Access to Administrate Automator (n8n)
 - An Administrate OAuth2 credential with permission to read and update learners, register learners on events and write External Integration Logs
@@ -39,19 +39,19 @@ The administrator requests the substitution on the learner record itself, by set
 
 The option values must match the `VALUE_*` keys in the Config node exactly. You can rename them in both places if your organisation prefers other wording.
 
-### Installation
+### 📥 Installation
 
 1. Download `workflow.json` from this folder.
 2. In Automator, create a workflow, open the menu (⋮) and select **Import from File**.
 3. Follow the configuration steps below.
 
-### Configuration
+### ⚙️ Configuration
 
-#### 1. Set OAuth credentials
+#### 🔑 1. Set OAuth credentials
 
 Attach your Administrate OAuth2 credential to the eight HTTP Request nodes: `Scan Registrations`, `Read Replacement and Event`, `Check Existing Registration`, `Register Substitute`, `Release Place`, `Log Success`, `Send Email` and `Mark Refused and Log`.
 
-#### 2. Fill in the Config node
+#### 📝 2. Fill in the Config node
 
 | Key | Set to |
 |---|---|
@@ -78,11 +78,11 @@ To find the sending address ID:
 query { sendingEmailAddresses { edges { node { id name address verified } } } }
 ```
 
-#### 3. Optional: set an error workflow
+#### 🚨 3. Optional: set an error workflow
 
 If you use a shared error workflow, such as [Log Automation Failures to Administrate](../error-logging-to-administrate/), select it under **Workflow settings > Error workflow**. The workflow stops with a clear error whenever Administrate returns an unexpected response, for example if the substitute was registered but releasing the original place failed. The error names the learners and the event so an administrator can finish by hand.
 
-### Testing
+### 🧪 Testing
 
 1. Set `DRY_RUN` to `true`.
 2. Register a test contact on an upcoming event with free places. On that registration, set Registration Change Type to `Substitution requested` and Substitute Email to the email of a second test contact.
@@ -97,7 +97,7 @@ If you use a shared error workflow, such as [Log Automation Failures to Administ
 7. Optional: put two requests on the same event with one free place left, and check that both succeed.
 8. Activate the workflow when you are happy with the results.
 
-## How It Works
+## 🔍 How It Works
 
 1. **Every 5 Minutes** (or **Run Now**) reads the Config node.
 2. **Build Scan Query** and **Scan Registrations** read every active registration on an upcoming event that changed within `LOOKBACK_MINUTES`, paging through the results `SCAN_PAGE_SIZE` at a time (up to 50 pages per run).
@@ -110,15 +110,15 @@ If you use a shared error workflow, such as [Log Automation Failures to Administ
 9. **Build Email**, **Send Email** and **Check Email** send and verify the confirmation to the substitute when `SEND_EMAIL` is on.
 10. **Prepare Refusal**, **Mark Refused and Log** and **Check Refusal** set refused requests to `VALUE_REFUSED`, add the reason to the learner notes, write a failed entry on the event and verify both.
 
-### Scan volume
+### 📊 Scan volume
 
 The Administrate API cannot yet filter learners by a custom field value, so each run reads every upcoming registration changed within `LOOKBACK_MINUTES` and keeps the substitution requests in the workflow. On busy instances, keep `LOOKBACK_MINUTES` as short as your schedule allows.
 
-### Overlapping runs
+### ⏱️ Overlapping runs
 
 The workflow assumes one run at a time. With the default 5 minute schedule a run normally finishes well before the next one starts. If you run it by hand while a scheduled run is in progress, or schedule it more often, set **Workflow settings > Timeout** below the schedule interval so two runs never work on the same request.
 
-## Troubleshooting
+## 🛠️ Troubleshooting
 
 **The run stops with "Scan stopped at the page limit":**
 - More registrations changed within `LOOKBACK_MINUTES` than 50 pages can hold. Shorten `LOOKBACK_MINUTES` or raise `SCAN_PAGE_SIZE` (100 at most), then run again
