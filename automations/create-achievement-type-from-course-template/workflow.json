@@ -1,0 +1,859 @@
+{
+  "name": "Create Achievement Type from Course Template",
+  "nodes": [
+    {
+      "parameters": {
+        "events": "V2ViaG9va1R5cGU6bWFudWFsX2NvdXJzZV90ZW1wbGF0ZQ==",
+        "name": "Create Achievement Type",
+        "query": "query webhookQuery($objectid: ID!) { node(id: $objectid) { id __typename } }"
+      },
+      "type": "CUSTOM.administrateTrigger",
+      "typeVersion": 1,
+      "position": [
+        1008,
+        -656
+      ],
+      "id": "7df03761-7f65-4804-bf35-f7303beea05c",
+      "name": "Course Template Webhook",
+      "webhookId": "6f2de7da-3c1b-4cee-8ba1-83ae8852a38d",
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "user",
+        "user": {
+          "__rl": true,
+          "value": "={{ $('Config').first().json.SLACK_USER_ID }}",
+          "mode": "id"
+        },
+        "text": "=Achievement Type *{{ $('Set Course Details').item.json.courseCode }}* created — {{ $('Set Course Details').item.json.courseTitle }}\n\n<{{ $('Config').first().json.formDisplayUrl }}?achievementTypeId={{ $json.data.achievementType.create.achievementType.id }}&courseCode={{ $('Set Course Details').item.json.courseCode }}&courseTitle={{ encodeURIComponent($('Set Course Details').item.json.courseTitle) }}|Click here to assign to Instructors →>",
+        "otherOptions": {}
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.4,
+      "position": [
+        2944,
+        -528
+      ],
+      "id": "3b9ea9e4-edf8-4dc8-aba3-fc03e567fcef",
+      "name": "Slack: Achievement Type Created",
+      "webhookId": "f68432cd-5669-4df6-ba29-f53bbc9060ee",
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "",
+          "name": "Slack OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "path": "8c53d141-53e5-4503-ae64-d46585d0e9ea",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        1008,
+        -240
+      ],
+      "id": "f237c047-a84d-4dd4-b586-3a0547216dfb",
+      "name": "Form Display",
+      "webhookId": "4685d483-6114-4c95-a595-cec60c785cbe"
+    },
+    {
+      "parameters": {
+        "content": "## Create Achievement Type from Course Template\n\n**Flow**\n1. The *Create Achievement Type* manual event on a Course Template creates a matching Achievement Type\n2. Slack sends you a link to the instructor selection form (or the creation error)\n3. Open the link, tick the instructors and submit\n4. The Achievement is awarded to each selected instructor\n\n**Setup**\n- Fill in the **Config** node\n- Set the Administrate credential on the trigger and every HTTP node\n- Set the Slack credential on both Slack nodes\n- Activate, then copy the production URLs of **Form Display** and **Form Submission** into Config\n\nAll three entry points run through **Config**, then **Route by Entry Point** sends each one down its own path.",
+        "height": 300,
+        "width": 640
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        656,
+        -1072
+      ],
+      "id": "a27e1eb2-d4dd-4129-a49b-54f157f13473",
+      "name": "Note: Overview"
+    },
+    {
+      "parameters": {
+        "content": "## ⚠️ Edit Config\n- `adminUrl`: your Administrate GraphQL endpoint\n- `formDisplayUrl`: production URL of **Form Display**\n- `formSubmitUrl`: production URL of **Form Submission**\n- `validityPeriodYears`: years the Achievement stays valid\n- `SLACK_USER_ID`: Slack member ID to notify",
+        "height": 240,
+        "width": 380,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1168,
+        -512
+      ],
+      "id": "d41433cc-f849-47c7-b230-a83223b8b547",
+      "name": "Note: Config"
+    },
+    {
+      "parameters": {
+        "content": "## Form Submission Path\nReceives the instructor selection form. Its production URL goes in the Config node's `formSubmitUrl` field.\n\nThese form webhooks are unauthenticated, so anyone with the URL can open or post the form.",
+        "width": 400,
+        "height": 200
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1600,
+        416
+      ],
+      "id": "ef52be8a-409c-47ab-a248-516d1db83532",
+      "name": "Note: Form Submission Path"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.html }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/html; charset=utf-8"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        2624,
+        -240
+      ],
+      "id": "08b66adf-a6d2-46a7-b4c7-c112236a6d5e",
+      "name": "Respond: Show Form"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').first().json.adminUrl }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ query: \"query GetInstructors($first: Int!, $after: String) { contacts(first: $first, after: $after, filters: [{field: isInstructor, operation: eq, value: \\\"true\\\"}]) { pageInfo { hasNextPage endCursor } edges { node { id firstName lastName } } } }\", variables: { first: 100, after: null } }) }}",
+        "options": {
+          "pagination": {
+            "pagination": {
+              "paginationMode": "updateAParameterInEachRequest",
+              "parameters": {
+                "parameters": [
+                  {
+                    "type": "body",
+                    "name": "variables",
+                    "value": "={{ { first: 100, after: $response.body?.data?.contacts?.pageInfo?.endCursor ?? null } }}"
+                  }
+                ]
+              },
+              "paginationCompleteWhen": "other",
+              "completeExpression": "={{ !$response.body?.data?.contacts?.pageInfo?.hasNextPage }}",
+              "limitPagesFetched": true,
+              "maxRequests": 50,
+              "requestInterval": 0
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        2144,
+        -240
+      ],
+      "id": "10a096cc-39f0-4146-bb4d-fd2d9f366bd3",
+      "name": "Get Instructors",
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const query = $('Form Display').first().json.query;\nconst achievementTypeId = query.achievementTypeId;\nconst courseCode = query.courseCode;\nconst courseTitle = decodeURIComponent(query.courseTitle || '');\nconst formSubmitUrl = $('Config').first().json.formSubmitUrl;\n// Get Instructors returns one item per page of 100 contacts\nconst instructors = $input.all().flatMap(page => (page.json.data?.contacts?.edges || []).map(e => e.node));\n\nconst rows = instructors.map(i =>\n  `<label class=\"row\"><input type=\"checkbox\" name=\"instructorId\" value=\"${i.id}\"><span>${i.firstName} ${i.lastName}</span></label>`\n).join('');\n\nconst html = `<!DOCTYPE html><html><head><meta charset=\"utf-8\"><title>Assign Achievement</title>\n<style>*{box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:560px;margin:48px auto;padding:0 24px;color:#111}h1{font-size:1.3em;margin-bottom:4px}.meta{color:#555;font-size:.9em;margin-bottom:20px}.controls{display:flex;gap:16px;margin-bottom:8px;font-size:.85em}.controls a{color:#0066cc;cursor:pointer;text-decoration:none}.list{border:1px solid #e0e0e0;border-radius:6px;overflow:hidden;margin-bottom:24px}.row{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid #f0f0f0;cursor:pointer}.row:last-child{border-bottom:none}.row:hover{background:#f7f9fc}input[type=checkbox]{width:16px;height:16px;cursor:pointer;accent-color:#0066cc}.btn{background:#0066cc;color:#fff;padding:11px 28px;border:none;border-radius:6px;cursor:pointer;font-size:.95em;font-weight:500}.btn:hover{background:#0052a3}.empty{padding:24px;color:#888;text-align:center}</style>\n</head><body>\n<h1>Assign Achievement Type</h1>\n<p class=\"meta\">Achievement: <strong>${courseCode}</strong> — ${courseTitle}</p>\n<p>Select instructors to award:</p>\n<form method=\"POST\" action=\"${formSubmitUrl}\">\n<input type=\"hidden\" name=\"achievementTypeId\" value=\"${achievementTypeId}\">\n<input type=\"hidden\" name=\"courseCode\" value=\"${courseCode}\">\n<div class=\"controls\">\n<a onclick=\"document.querySelectorAll('[name=instructorId]').forEach(c=>c.checked=true)\">Select all</a>\n<a onclick=\"document.querySelectorAll('[name=instructorId]').forEach(c=>c.checked=false)\">Clear all</a>\n</div>\n<div class=\"list\">${rows||'<p class=\"empty\">No instructors found.</p>'}</div>\n<button type=\"submit\" class=\"btn\">Award to Selected Instructors</button>\n</form></body></html>`;\nreturn [{ json: { html } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2384,
+        -240
+      ],
+      "id": "ad77798c-e559-420e-bf6b-a66961b1854b",
+      "name": "Build Instructor Form"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "3b2a304e-1c0b-417a-a5e8-ef508a5cf848",
+              "name": "adminUrl",
+              "value": "https://YOUR-INSTANCE.administrateapp.com/graphql",
+              "type": "string"
+            },
+            {
+              "id": "f39f31c0-add0-4112-a3c3-7687aed116c0",
+              "name": "formDisplayUrl",
+              "value": "https://YOUR-N8N-HOST/webhook/8c53d141-53e5-4503-ae64-d46585d0e9ea",
+              "type": "string"
+            },
+            {
+              "id": "64fb59eb-6b8c-4aeb-8569-708879e275f5",
+              "name": "formSubmitUrl",
+              "value": "https://YOUR-N8N-HOST/webhook/acebfe7c-82ce-4721-99b3-348b3412e2ab",
+              "type": "string"
+            },
+            {
+              "id": "31927d31-1963-444d-835e-3cd79c4eaae5",
+              "name": "validityPeriodYears",
+              "value": 3,
+              "type": "number"
+            },
+            {
+              "id": "d4e61ccd-049b-4617-ac3d-1d918b1899bb",
+              "name": "SLACK_USER_ID",
+              "value": "REPLACE_WITH_SLACK_USER_ID",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1248,
+        -240
+      ],
+      "id": "1b5f7ca1-422b-4912-a4c1-e4a8be014224",
+      "name": "Config"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').item.json.adminUrl }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ query: \"query GetCourseTemplate($id: String!) { courseTemplates(filters: [{field: id, operation: eq, value: $id}]) { edges { node { id code title } } } }\", variables: { id: $('Course Template Webhook').first().json.payload.node.id } }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1648,
+        -656
+      ],
+      "id": "1ae5db0c-cc69-4b07-9cfe-707f4c946af2",
+      "name": "Get Course Template",
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "20f3d91b-ee41-432e-91e5-017b9d29dd54",
+              "name": "courseCode",
+              "value": "={{ $json.data.courseTemplates.edges[0].node.code }}",
+              "type": "string"
+            },
+            {
+              "id": "b5cba987-54d2-445d-81ea-f5da7dbe1411",
+              "name": "courseTitle",
+              "value": "={{ $json.data.courseTemplates.edges[0].node.title }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1888,
+        -656
+      ],
+      "id": "ef35ce1a-b2f2-43ff-a730-0fabc8f1ce81",
+      "name": "Set Course Details"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').item.json.adminUrl }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ query: \"mutation CreateAchievementType($input: AchievementTypeCreateInput!) { achievementType { create(input: $input) { achievementType { id name description } errors { label message value } } } }\", variables: { input: { name: $json.courseCode, description: $json.courseTitle, validityPeriod: { unit: 'years', value: Number($('Config').first().json.validityPeriodYears) } } } }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        2128,
+        -656
+      ],
+      "id": "bd572d8f-e427-4cae-96bb-367460594431",
+      "name": "Create Achievement Type",
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "00a338df-ff8a-48b5-a216-1f12252e19c8",
+              "leftValue": "={{ $json.data.achievementType.create.errors }}",
+              "rightValue": "",
+              "operator": {
+                "type": "array",
+                "operation": "empty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        2368,
+        -656
+      ],
+      "id": "dcf4c305-2241-40ef-b67c-dc2f1ced251e",
+      "name": "If Achievement Created"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "acebfe7c-82ce-4721-99b3-348b3412e2ab",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        1008,
+        256
+      ],
+      "id": "3c927ff4-dfa1-42db-90de-645d99e6a921",
+      "name": "Form Submission",
+      "webhookId": "3e83fa8a-d4a9-4434-b862-41c86e0ce906"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $('Form Submission').first().json.body;\nlet ids = body.instructorId;\nif (!ids) return [{ json: { noSelection: true, achievementTypeId: body.achievementTypeId, courseCode: body.courseCode } }];\nif (!Array.isArray(ids)) ids = [ids];\nconst year = new Date().getFullYear();\nconst today = new Date().toISOString().split('T')[0];\nreturn ids.map(contactId => ({\n  json: {\n    contactId,\n    achievementTypeId: body.achievementTypeId,\n    courseCode: body.courseCode,\n    validFrom: today\n  }\n}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1600,
+        256
+      ],
+      "id": "694aaa58-885e-4209-b1b4-3c6997908c7c",
+      "name": "Parse Selections"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "5f807265-2a56-47f7-8b14-398ff36be2e1",
+              "leftValue": "={{ $json.noSelection }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1840,
+        256
+      ],
+      "id": "7decd52b-3723-4a58-8942-9f6cde86be96",
+      "name": "If No Selection"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "<!DOCTYPE html><html><head><meta charset='utf-8'><title>No Selection</title><style>body{font-family:sans-serif;max-width:480px;margin:48px auto;padding:0 24px}.msg{background:#fffbea;border:1px solid #f0c040;border-radius:6px;padding:16px}</style></head><body><h2>No instructors selected</h2><div class='msg'>Please go back and select at least one instructor.</div></body></html>",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/html; charset=utf-8"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        2080,
+        96
+      ],
+      "id": "e4585f2b-fe90-4870-a32d-1771e16ad1e0",
+      "name": "Respond: No Selection"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').first().json.adminUrl }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ query: \"mutation AwardAchievement($input: ContactAwardAchievementInput!) { contact { awardAchievement(input: $input) { contact { id firstName lastName } errors { label message value } } } }\", variables: { input: { contactId: $json.contactId, achievementTypeId: $json.achievementTypeId, validFrom: $json.validFrom } } }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        2080,
+        256
+      ],
+      "id": "7b86c57a-0700-4751-832e-8e117e39b44e",
+      "name": "Award Achievement",
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const result = $json.data.contact.awardAchievement;\nconst courseCode = $('Parse Selections').item.json.courseCode;\nif (result.errors && result.errors.length > 0) {\n  return [{ json: { statusMessage: `✗ ${$('Parse Selections').item.json.contactId}: ${result.errors[0].message}`, success: false, courseCode } }];\n}\nreturn [{ json: { statusMessage: `✓ ${result.contact.firstName} ${result.contact.lastName}`, success: true, courseCode } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2320,
+        256
+      ],
+      "id": "95533f0c-15f6-44e9-9b09-77f04b9c4fc3",
+      "name": "Format Status"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst courseCode = items[0]?.json.courseCode || '';\nconst rows = items.map(i => `<li class=\"${i.json.success ? 'ok' : 'err'}\">${i.json.statusMessage}</li>`).join('');\nconst html = `<!DOCTYPE html><html><head><meta charset=\"utf-8\"><title>Done</title>\n<style>body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:520px;margin:48px auto;padding:0 24px;color:#111}h1{font-size:1.3em}\nul{list-style:none;padding:0;border:1px solid #e0e0e0;border-radius:6px;overflow:hidden}\nli{padding:12px 16px;border-bottom:1px solid #f0f0f0}li:last-child{border-bottom:none}\nli.ok{color:#1a7a1a}li.err{color:#cc0000}\n.done{background:#f0f7ff;border:1px solid #b3d4f5;border-radius:6px;padding:12px 16px;margin-top:20px;font-size:.9em;color:#0055aa}\n</style></head><body>\n<h1>Achievement Awards Complete</h1>\n<p>Results for <strong>${courseCode}</strong>:</p>\n<ul>${rows||'<li>No instructors were processed.</li>'}</ul>\n<div class=\"done\">You can close this window.</div>\n</body></html>`;\nreturn [{ json: { html } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2560,
+        256
+      ],
+      "id": "baaade7f-d805-430f-bfe9-cb603753ce59",
+      "name": "Build Confirmation"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.html }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/html; charset=utf-8"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        2800,
+        256
+      ],
+      "id": "46597faa-9861-41f8-b29d-b4af5a12e441",
+      "name": "Respond: Confirmation"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "c8f5cf4e-4f02-4d7b-ba4e-8ba9309493d9",
+                    "leftValue": "={{ $('Course Template Webhook').isExecuted }}",
+                    "rightValue": true,
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Course Template"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "53fd23c8-6a8e-4056-ad52-bff60aa4ce84",
+                    "leftValue": "={{ $('Form Display').isExecuted }}",
+                    "rightValue": true,
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Show Form"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "dbee1335-be6a-4eb2-a8f5-09e3b4056820",
+                    "leftValue": "={{ $('Form Submission').isExecuted }}",
+                    "rightValue": true,
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Form Submitted"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "14d652cf-8a77-45c4-b581-6f143df4219a",
+      "name": "Route by Entry Point",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        1440,
+        -240
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "user",
+        "user": {
+          "__rl": true,
+          "value": "={{ $('Config').first().json.SLACK_USER_ID }}",
+          "mode": "id"
+        },
+        "text": "=Could not create Achievement Type *{{ $('Set Course Details').item.json.courseCode }}* for Course Template {{ $('Course Template Webhook').first().json.payload.node.id }}\n\n{{ ($json.data?.achievementType?.create?.errors || []).map(e => (e.label ? e.label + ': ' : '') + e.message).join('\\n') }}",
+        "otherOptions": {}
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.4,
+      "position": [
+        2608,
+        -448
+      ],
+      "id": "f5070614-0559-4668-b57a-9d472e0bf763",
+      "name": "Slack: Creation Error",
+      "webhookId": "208df1c5-a489-45e6-9b8a-f2b681a07934",
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "",
+          "name": "Slack OAuth2"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Course Template Webhook": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Form Display": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Instructors": {
+      "main": [
+        [
+          {
+            "node": "Build Instructor Form",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Instructor Form": {
+      "main": [
+        [
+          {
+            "node": "Respond: Show Form",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Route by Entry Point",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Course Template": {
+      "main": [
+        [
+          {
+            "node": "Set Course Details",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Course Details": {
+      "main": [
+        [
+          {
+            "node": "Create Achievement Type",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Achievement Type": {
+      "main": [
+        [
+          {
+            "node": "If Achievement Created",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If Achievement Created": {
+      "main": [
+        [
+          {
+            "node": "Slack: Achievement Type Created",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Slack: Creation Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Form Submission": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Selections": {
+      "main": [
+        [
+          {
+            "node": "If No Selection",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If No Selection": {
+      "main": [
+        [
+          {
+            "node": "Respond: No Selection",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Award Achievement",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Award Achievement": {
+      "main": [
+        [
+          {
+            "node": "Format Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Status": {
+      "main": [
+        [
+          {
+            "node": "Build Confirmation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Confirmation": {
+      "main": [
+        [
+          {
+            "node": "Respond: Confirmation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route by Entry Point": {
+      "main": [
+        [
+          {
+            "node": "Get Course Template",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Get Instructors",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Parse Selections",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true
+  },
+  "tags": []
+}

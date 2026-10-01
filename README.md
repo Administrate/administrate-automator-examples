@@ -36,6 +36,7 @@ Examples with several workflows have a `workflows/` subdirectory. Download the r
 | [Bulk Register Delegates and Record Attendance](automations/bulk-register-delegates-record-attendance/) | A web form to register delegates onto an event and record their attendance and results in one go |
 | [Bulk Resource Removal](automations/bulk-resource-removal/) | Remove all resources from an event in bulk |
 | [Certificate Renewal Reminders](automations/certificate-renewal-reminders/) | Remind learners before their certificates or achievements expire, with dry-run mode, a send cap and a deduplication log |
+| [Create Achievement Type from Course Template](automations/create-achievement-type-from-course-template/) | Create an achievement type from a course template and award it to qualified instructors |
 | [Create Booking from Event](automations/create-booking-from-event/) | Create a booking directly from an event with the event automatically added as an interest |
 | [Daily Event Resourcing Gaps Digest](automations/event-resourcing-digest/) | Daily email listing upcoming events that are missing instructors, rooms or other resources |
 | [Import Learners from a Spreadsheet](automations/import-learners-from-spreadsheet/) | Upload an Excel or CSV file to bulk-register learners onto an event, creating contacts and accounts as needed |
