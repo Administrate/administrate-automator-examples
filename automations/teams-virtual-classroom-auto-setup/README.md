@@ -128,7 +128,8 @@ query {
 4. **Resolve Instructor Graph ID**: looks up each internal instructor's Microsoft Graph user ID by email address. Instructors that cannot be found are dropped.
 5. **Get Online Meeting**: finds the Teams meeting owned by `ORGANISER_MAILBOX_ID` that matches the Event's joining link.
 6. **Build Merged Attendee List**: keeps existing attendees and adds the instructors with the `coorganizer` role, because the update replaces the whole attendee list.
-7. **Add Co-organisers**: PATCHes the meeting and **Final Log** reports who was added and who was skipped.
+7. **Meeting Found?**: continues only when a meeting matched. If none matched, or the lookup failed, **Log - No Meeting Found** returns a `no_meeting_found` item with the reason and the meeting is left unchanged.
+8. **Add Co-organisers**: PATCHes the meeting and **Final Log** reports who was added and who was skipped.
 
 ## 🩺 Troubleshooting
 
@@ -144,7 +145,8 @@ query {
 - Administrate has no webhook for staff changes. After adding the instructor, edit and save the Event to fire *Event Updated*.
 - Each save re-runs the update for all current instructors. This is harmless because it sets the same role again.
 
-**The add-on returns 403 or "No meeting matched":**
+**The add-on returns 403 or ends at `Log - No Meeting Found`:**
+- The `note` on the `no_meeting_found` item says whether the lookup failed or simply found no meeting with that joining link.
 - Check the Graph app has the `OnlineMeetings.ReadWrite.All` application permission with admin consent and that the application access policy covers the host account.
 - Check `ORGANISER_MAILBOX_ID` is the object ID of the account that owns the meetings.
 

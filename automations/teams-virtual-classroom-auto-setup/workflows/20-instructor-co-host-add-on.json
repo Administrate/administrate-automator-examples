@@ -220,7 +220,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
       "position": [
-        10512,
+        10736,
         1184
       ],
       "id": "9df38a48-f1dc-4bfd-9b9f-389e12c20051",
@@ -240,7 +240,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        10736,
+        10960,
         1184
       ],
       "id": "e2b81c23-eddf-46cc-916a-a20913f2c649",
@@ -314,6 +314,53 @@
       ],
       "id": "0a8e0365-1c0c-4fb2-8d6e-5ef5b7eee70a",
       "name": "Config"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "b229b2a9-c0d8-4605-b2b0-3ac2df714369",
+              "leftValue": "={{ $json.meetingId }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        10512,
+        1184
+      ],
+      "id": "2e87da40-4bc7-4671-b5df-2e497e3f60a6",
+      "name": "Meeting Found?"
+    },
+    {
+      "parameters": {
+        "jsCode": "const eventInfo = $('Identify Instructors').first().json;\nconst lookup = $json.meetingResp ?? {};\nconst lookupError = lookup.error ? (typeof lookup.error === 'string' ? lookup.error : lookup.error.message) : null;\n\nreturn [{\n  json: {\n    timestamp: $now.toISO(),\n    status: 'no_meeting_found',\n    eventCode: eventInfo.eventCode,\n    eventTitle: eventInfo.eventTitle,\n    remoteMeetingUrl: eventInfo.remoteMeetingUrl,\n    note: lookupError\n      ? `Online meeting lookup failed (${lookupError}), so no co-organisers were added.`\n      : 'No Teams meeting owned by the organiser mailbox matched the event join URL, so no co-organisers were added.',\n  },\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        10736,
+        1376
+      ],
+      "id": "35415f28-c159-4a02-96ac-959c761fa94d",
+      "name": "Log - No Meeting Found"
     }
   ],
   "pinData": {},
@@ -424,7 +471,7 @@
       "main": [
         [
           {
-            "node": "Add Co-organisers",
+            "node": "Meeting Found?",
             "type": "main",
             "index": 0
           }
@@ -447,6 +494,24 @@
         [
           {
             "node": "Teams Classroom Configured?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Meeting Found?": {
+      "main": [
+        [
+          {
+            "node": "Add Co-organisers",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log - No Meeting Found",
             "type": "main",
             "index": 0
           }

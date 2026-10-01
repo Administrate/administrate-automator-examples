@@ -261,6 +261,7 @@
     },
     {
       "parameters": {
+        "method": "POST",
         "url": "={{ $('Config').first().json.ADMINISTRATE_API_URL }}",
         "authentication": "predefinedCredentialType",
         "nodeCredentialType": "administrateOAuth2Api",
