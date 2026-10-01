@@ -37,6 +37,7 @@ Examples with several workflows have a `workflows/` subdirectory. Download the r
 | [Daily Event Resourcing Gaps Digest](automations/event-resourcing-digest/) | Daily email listing upcoming events that are missing instructors, rooms or other resources |
 | [Import Learners from a Spreadsheet](automations/import-learners-from-spreadsheet/) | Upload an Excel or CSV file to bulk-register learners onto an event, creating contacts and accounts as needed |
 | [Instructor and Resource Utilisation Dashboards](automations/utilization-dashboards/) | Password-protected dashboards showing instructor and resource utilisation from Administrate data |
+| [Instructor Availability Conflicts Digest](automations/instructor-availability-conflicts-digest/) | Weekday email listing sessions where an instructor is booked twice or while absent, using Administrate's own conflict check |
 | [Instructor Jump Ball](automations/instructor-jump-ball/) | Send RSVP requests to instructors and manage responses for event assignments |
 | [Log Automation Failures to Administrate](automations/error-logging-to-administrate/) | Shared error workflow, logging sub-workflow and daily digest for recording automation failures in Administrate |
 | [Logging vILT Attendance](automations/logging-vilt-attendance/) | Automatically record Zoom attendance in Administrate by matching email addresses |
