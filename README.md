@@ -56,6 +56,7 @@ Examples with several workflows have a `workflows/` subdirectory. Download the r
 | [Tag an Entity](automations/tag-an-entity/) | Reusable sub-workflow that adds tags to a course template or learning path, creating missing tags |
 | [Teams Virtual Classroom Auto Setup](automations/teams-virtual-classroom-auto-setup/) | Set up a Microsoft Teams virtual classroom automatically when a virtual event is created |
 | [Updating Billing & Shipping Addresses](automations/updating-billing-shipping-addresses/) | Automatically copy the default address to billing and shipping fields when missing |
+| [Upload Event Content](automations/upload-event-content/) | Reusable sub-workflow that creates LMS content on an event, uploading files from Smartsheet attachments |
 | [Waitlist: Timed Offers with Accept/Decline](automations/waitlist-offer-accept/) | Offer freed places to waitlisted learners in turn, hold the place for a set time and record their accept/decline response |
 
 ## 💬 Help
