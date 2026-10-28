@@ -215,6 +215,7 @@
           "name": "n8n API"
         }
       },
+      "onError": "continueRegularOutput",
       "notes": "Needs a credential. Choose an n8n API credential that belongs to the same n8n project as this workflow. Without it this node fails harmlessly, the handler takes the Done branch and the failure stays in the n8n execution list.\n\nWhy this node exists: the error trigger payload never carries the failing workflow's data. The failed execution does, so it is fetched here to recover the event ID."
     }
   ],
