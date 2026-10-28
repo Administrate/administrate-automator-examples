@@ -238,7 +238,7 @@
           "assignments": [
             {
               "id": "cbaaa1ad-0664-459f-83e5-7d859b048805",
-              "name": "=scheduledTime",
+              "name": "scheduledTime",
               "value": "={{ $now.plus({ minutes: $json.delayMinutes }).toUTC().toFormat(\"yyyy-MM-dd'T'HH:mm:ss\") }}",
               "type": "string"
             }
