@@ -1,0 +1,2138 @@
+{
+  "name": "Instructor Invitations - Response Handler",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "b4f6bbc9-71a4-4e6e-850f-3d5057338599",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "e1bead5f-8279-4a06-b7d5-bf8991084251",
+      "name": "Response Submitted",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        352
+      ],
+      "webhookId": "cdb44f05-4516-4830-945b-4fdd1e91deda"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c1",
+              "name": "GRAPHQL_URL",
+              "type": "string",
+              "value": "https://api.getadministrate.com/graphql"
+            },
+            {
+              "id": "c2",
+              "name": "ORIGIN_IDENTIFIER",
+              "type": "string",
+              "value": "Automator - Instructor Invitations"
+            },
+            {
+              "id": "c3",
+              "name": "COORDINATOR_ROLE_NAME",
+              "type": "string",
+              "value": "Coordinator"
+            },
+            {
+              "id": "c4",
+              "name": "SENDING_ADDRESS_ID",
+              "type": "string",
+              "value": "REPLACE_WITH_SENDING_ADDRESS_ID"
+            },
+            {
+              "id": "c5",
+              "name": "FALLBACK_ROLE_ID",
+              "type": "string",
+              "value": "REPLACE_WITH_FALLBACK_STAFF_ROLE_ID"
+            },
+            {
+              "id": "c5b",
+              "name": "FALLBACK_ROLE_NAME",
+              "type": "string",
+              "value": "Instructor"
+            },
+            {
+              "id": "c5c",
+              "name": "VERB_BASE",
+              "type": "string",
+              "value": "deliver"
+            },
+            {
+              "id": "c5d",
+              "name": "VERB_GERUND",
+              "type": "string",
+              "value": "delivering"
+            },
+            {
+              "id": "c6",
+              "name": "INVITATIONS_TABLE_ID",
+              "type": "string",
+              "value": "REPLACE_WITH_INVITATIONS_TABLE_ID"
+            },
+            {
+              "id": "c7",
+              "name": "CORRESPONDENCE_TABLE_ID",
+              "type": "string",
+              "value": "REPLACE_WITH_CORRESPONDENCE_TABLE_ID"
+            },
+            {
+              "id": "c8",
+              "name": "ANSWER_LABEL_YES",
+              "type": "string",
+              "value": "Yes, available"
+            },
+            {
+              "id": "c9",
+              "name": "ANSWER_LABEL_NO",
+              "type": "string",
+              "value": "No, not available"
+            },
+            {
+              "id": "c10",
+              "name": "ANSWER_LABEL_MAYBE",
+              "type": "string",
+              "value": "Maybe"
+            },
+            {
+              "id": "b78c4540-57bf-406e-a4fd-68259a85f733",
+              "name": "ANSWER_LABEL_UNABLE",
+              "type": "string",
+              "value": "Could not accept (appropriate role not held)"
+            },
+            {
+              "id": "c18",
+              "name": "BRAND_NAME",
+              "type": "string",
+              "value": "Your Organisation"
+            },
+            {
+              "id": "c19",
+              "name": "BRAND_CSS",
+              "type": "string",
+              "value": ":root{--g:#1F5FAD;--gd:#163F73;--gt:#E8EFF8;--ink:#1A1A1A;--muted:#5A5A5A;--line:#D4D4D4;--danger:#A3241F}*,*::before,*::after{box-sizing:border-box}html{font-size:100%}body{margin:0;font-family:\"Segoe UI\",Roboto,\"Helvetica Neue\",Arial,sans-serif;font-size:clamp(1rem,0.95rem + 0.25vw,1.125rem);line-height:1.6;color:var(--ink);background:#FFF}.masthead{background:var(--gd);color:#FFF;padding:clamp(1rem,3vw,1.75rem) clamp(1rem,5vw,2.5rem)}.masthead p{margin:0;font-weight:600;letter-spacing:.08em;text-transform:uppercase;font-size:.8em}main{max-width:44rem;margin:0 auto;padding:clamp(1.25rem,5vw,2.5rem) clamp(1rem,5vw,2.5rem) 4rem}h1{font-size:clamp(1.4rem,1.1rem + 1.4vw,2rem);line-height:1.25;margin:0 0 .5em;color:var(--gd)}.notice{border-left:4px solid var(--g);background:var(--gt);padding:.9rem 1rem;margin:0 0 1.5rem}.error{border-left-color:var(--danger);background:#FBEDEC}blockquote{margin:0 0 1.5rem;padding:.25rem 0 .25rem 1rem;border-left:3px solid #D4D4D4;color:var(--muted)}"
+            },
+            {
+              "id": "c20",
+              "name": "EMAIL_PALETTE",
+              "type": "string",
+              "value": "FONT=Segoe UI,Roboto,Helvetica Neue,Arial,sans-serif|SHELLBG=#F2F4F7|ACCENT=#1F5FAD|DARK=#163F73|TINT=#E8EFF8|AMBER=#7F5F00|AMBERBG=#FDF0D5|DANGER=#A3241F|DANGERBG=#FBEDEC|INK=#1A1A1A|MUTED=#5A5A5A|LINE=#D4D4D4"
+            },
+            {
+              "id": "c21",
+              "name": "EMAIL_SHELL",
+              "type": "string",
+              "value": "<div style=\"background:%%SHELLBG%%;padding:24px 12px;font-family:%%FONT%%;\"><table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" width=\"100%\"><tr><td align=\"center\"><table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" width=\"600\" style=\"width:600px;max-width:600px;background:#FFFFFF;border:1px solid %%LINE%%;\"><tr><td style=\"background:%%DARK%%;padding:16px 28px;\"><span style=\"color:#FFFFFF;font-size:12px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;font-family:%%FONT%%;\">%%BRAND%%</span></td></tr><tr><td style=\"padding:26px 28px 8px;font-size:15px;line-height:1.55;color:%%INK%%;font-family:%%FONT%%;\">%%BODY%%</td></tr></table></td></tr></table></div>"
+            },
+            {
+              "id": "c22",
+              "name": "EMAIL_BUTTON",
+              "type": "string",
+              "value": "<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"margin:4px 0 18px;\"><tr><td style=\"background:%%ACCENT%%;\"><a href=\"%%URL%%\" style=\"display:inline-block;padding:12px 26px;font-size:15px;font-weight:600;color:#FFFFFF;text-decoration:none;font-family:%%FONT%%;\">%%LABEL%%</a></td></tr></table>"
+            },
+            {
+              "id": "92109867-ce3d-4949-9404-3d73db771435",
+              "name": "RESPONSE_BASE_URL",
+              "type": "string",
+              "value": "https://YOUR-N8N-HOST/webhook/311377a4-5399-4bb7-8f6a-8d671ba0e3d3"
+            },
+            {
+              "id": "1223fc7a-bffc-4901-bef2-3f15255e1805",
+              "name": "LINK_RESEND_MINUTES",
+              "type": "number",
+              "value": 10
+            },
+            {
+              "id": "c2e80064-b37d-41bd-b5dd-5c8114bf7288",
+              "name": "SUMMARY_WORKFLOW_ID",
+              "type": "string",
+              "value": "REPLACE_WITH_ID_OF_RECOMPUTE_EVENT_SUMMARY_WORKFLOW"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "98609f7a-a1c4-4bee-8058-5d56ef580354",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        224,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "s1",
+              "name": "eventId",
+              "value": "={{ ($('Response Submitted').item.json.body || {}).e }}",
+              "type": "string"
+            },
+            {
+              "id": "s2",
+              "name": "contactId",
+              "value": "={{ ($('Response Submitted').item.json.body || {}).c }}",
+              "type": "string"
+            },
+            {
+              "id": "s3",
+              "name": "behalfContactId",
+              "value": "={{ ($('Response Submitted').item.json.body || {}).behalf_contact_id || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "s4",
+              "name": "subjectContactId",
+              "value": "={{ ($('Response Submitted').item.json.body || {}).behalf_contact_id || ($('Response Submitted').item.json.body || {}).c }}",
+              "type": "string"
+            },
+            {
+              "id": "s5",
+              "name": "onBehalf",
+              "value": "={{ (($('Response Submitted').item.json.body || {}).behalf_contact_id ? 'true' : 'false') }}",
+              "type": "string"
+            },
+            {
+              "id": "s6",
+              "name": "answer",
+              "value": "={{ ($('Response Submitted').item.json.body || {}).answer || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "s7",
+              "name": "comments",
+              "value": "={{ ($('Response Submitted').item.json.body || {}).comments || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "s8",
+              "name": "linkToken",
+              "value": "={{ ($('Response Submitted').item.json.body || {}).t || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "s9",
+              "name": "action",
+              "value": "={{ ($('Response Submitted').item.json.body || {}).action || '' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "06e8b378-b878-4f94-8148-2935664e97e1",
+      "name": "Extract submission",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        448,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').item.json.GRAPHQL_URL }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ query: 'query Revalidate($eventId: ID!, $contactId: ID!, $roleId: ID!) { event: node(id: $eventId) { ... on Event { id title code lifecycleState classroomStart location { id name } requiredStaff { quantity staffRole { id name } } customFieldValues { definitionKey value } staff { edges { node { id staffRole { id name } contact { id firstName lastName emailAddress } } } } } } responder: node(id: $contactId) { ... on Contact { id firstName lastName emailAddress isInstructor isQualified(eventId: $eventId, staffRoleId: $roleId) staffRoles { id name } } } }', variables: { eventId: $('Extract submission').item.json.eventId, contactId: $('Extract submission').item.json.subjectContactId, roleId: $('Config').first().json.FALLBACK_ROLE_ID } }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "e95c4fc4-7edd-4dff-91b5-30fbc3cfe748",
+      "name": "Re-validate Staffing",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1568,
+        352
+      ],
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "e1",
+              "leftValue": "={{ (($json.errors || []).length > 0) }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              },
+              "rightValue": ""
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "eaa4f1f7-12ce-4c24-8e05-8a2aa7d7b11e",
+      "name": "IF Re-validate Errors?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1792,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').item.json.GRAPHQL_URL }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ query: 'mutation Log($originIdentifier: String!, $nodeId: ID!, $message: String!, $status: ExternalLogTypeStatus!, $payload: String){ externalLog{ createExternalIntegrationLog(input:{ originIdentifier:$originIdentifier, nodeId:$nodeId, message:$message, status:$status, payload:$payload }){ errors{ label message value } } } }', variables: { originIdentifier: $('Config').item.json.ORIGIN_IDENTIFIER, nodeId: $('Extract submission').item.json.eventId, message: 'Could not record an instructor response', status: 'failed', payload: JSON.stringify($json) } }) }}",
+        "options": {}
+      },
+      "id": "d1cbdfe3-70ac-455a-9a5f-4f1f3acd9622",
+      "name": "Log Failure",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3808,
+        -16
+      ],
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      },
+      "onError": "continueRegularOutput",
+      "notes": "Every failure path converges here. nodeId uses the submitted event id, because a re-validation failure means Decide never ran."
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ '<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><title>Something went wrong</title><style>' + $('Config').item.json.BRAND_CSS + '</style></head><body><header class=\"masthead\"><p>' + $('Config').item.json.BRAND_NAME + '</p></header><main><h1>Something went wrong</h1><div class=\"notice error\"><p>Nothing was recorded, so nothing has changed.</p></div><p>Please try again shortly. If it keeps happening, reply to the invitation email and someone will record it for you.</p></main></body></html>' }}",
+        "options": {
+          "responseCode": 503,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/html; charset=utf-8"
+              },
+              {
+                "name": "Cache-Control",
+                "value": "no-store"
+              }
+            ]
+          }
+        }
+      },
+      "id": "633afb24-2d01-40d7-a986-d5cedfe57840",
+      "name": "Serve Error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        4032,
+        -16
+      ],
+      "notes": "Responds before Stop, because Stop and Error is terminal and the caller would otherwise wait for a reply that never comes."
+    },
+    {
+      "parameters": {
+        "errorMessage": "Response could not be recorded: Administrate returned errors (check both errors arrays)."
+      },
+      "id": "cc7dda44-53c5-4510-a755-79a1183c8fe0",
+      "name": "Stop",
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        4256,
+        -16
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "/*\tDecides whether the submission is genuine and prepares the wording.\n\tSomebody reaches an event two ways: they accept an invitation and are assigned here,\n\tor a coordinator staffs them first and the invitation goes out through Email to Staff.\n\tBoth are supported, and either can be withdrawn by declining.\n\tA fourth answer, unable, is not a decision - it is the invited person reporting that\n\ttheir record is missing what the event needs.\n\tRole names, the verb and email styling all come from Config, never hardcoded\t*/\n\nconst cfg = $('Config').first().json;\nconst sub = $('Extract submission').first().json;\nconst api = $json;\n\nconst event = (api.data || {}).event || null;\nconst responder = (api.data || {}).responder || null;\n\nconst staff = (((event || {}).staff || {}).edges || []).map(e => e.node);\nconst coordRole = String(cfg.COORDINATOR_ROLE_NAME).trim();\nconst fallbackRole = String(cfg.FALLBACK_ROLE_NAME || 'Instructor').trim();\n\n/*\tThe verb for what an instructor does with an event. The literal is a last resort if\n\tconfig is blank, not the setting - change VERB_BASE in Config\t*/\nconst verb = String(cfg.VERB_BASE || 'deliver').trim();\n\nconst esc = (v) => String(v === null || v === undefined ? '' : v)\n\t.split('&').join('&amp;').split('<').join('&lt;').split('>').join('&gt;').split('\"').join('&quot;');\n\nconst page = (title, body) => '<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><title>' + esc(title) + '</title><style>' + cfg.BRAND_CSS + '</style></head><body><header class=\"masthead\"><p>' + esc(cfg.BRAND_NAME) + '</p></header><main>' + body + '</main></body></html>';\n\n/*\tThe email frame, button and palette live in Config, so the look is changed in one\n\tplace. Pipe separated because the font list itself contains commas\t*/\nconst pal = {};\nfor (const part of String(cfg.EMAIL_PALETTE || '').split('|')) {\n\tconst at = part.indexOf('=');\n\tif (at > 0) { pal[part.slice(0, at).trim()] = part.slice(at + 1).trim(); }\n}\n\n/*\tPalette tokens first, then the content, so a colour name appearing inside the body\n\tcannot be substituted twice\t*/\nconst fill = (tpl, extra) => {\n\tlet s = String(tpl || '');\n\tfor (const k of Object.keys(pal)) { s = s.split('%%' + k + '%%').join(pal[k]); }\n\tfor (const k of Object.keys(extra || {})) { s = s.split('%%' + k + '%%').join(extra[k]); }\n\treturn s;\n};\n\nconst emailShell = (inner) => fill(cfg.EMAIL_SHELL, { BRAND: esc(cfg.BRAND_NAME), BODY: inner });\nconst quoteBlock = (text) => '<div style=\"border-left:3px solid ' + pal.LINE + ';padding:2px 0 2px 14px;margin:0 0 16px;color:' + pal.MUTED + ';font-style:italic;\">' + esc(text) + '</div>';\n\nconst NOOP = JSON.stringify({ query: 'query NoOp { __typename }' });\nconst blockedHeading = 'Answer cannot be recorded yet';\n\nconst shell = (heading, message, cls, tail) => ({\n\tvalid: false,\n\tisUnable: false,\n\tisDeclined: false,\n\tstaffId: '',\n\tnotifyContactIds: [],\n\tcoordinatorContactIds: [],\n\trejectionHtml: page(heading, '<h1>' + esc(heading) + '</h1><div class=\"' + cls + '\"><p>' + esc(message) + '</p></div><p>' + tail + '</p>'),\n\tassignBody: NOOP\n});\n\nconst refuse = (heading, message) => [{ json: shell(heading, message, 'notice error', 'Please reply to the invitation email and someone will help.') }];\nconst closeOff = (heading, message) => [{ json: shell(heading, message, 'notice', 'You can close this page.') }];\n\nconst answerOk = ['yes', 'no', 'maybe', 'unable'].indexOf(sub.answer) !== -1;\n\nif (!event || !responder) { return refuse('We could not record that response', 'This invitation may have been withdrawn, or the link may be incomplete.'); }\nif (!answerOk) { return refuse('We could not record that response', 'That answer was not one of the options offered.'); }\n\nconst isUnable = sub.answer === 'unable';\n\nconst onBehalf = sub.onBehalf === 'true';\nconst clicker = staff.find(s => s.contact && s.contact.id === sub.contactId) || null;\nconst clickerIsCoordinator = clicker !== null && String((clicker.staffRole || {}).name || '').trim() === coordRole;\n\nif (onBehalf && !clickerIsCoordinator) {\n\treturn refuse('Only the ' + coordRole + ' can record that', 'Recording an answer on somebody else\\u2019s behalf is done by the ' + coordRole + ' for that event.');\n}\n\nconst myStaff = staff.find(s => s.contact\n\t&& s.contact.id === responder.id\n\t&& String((s.staffRole || {}).name || '').trim() !== coordRole) || null;\n\nconst alreadyOn = myStaff !== null;\nconst staffId = alreadyOn ? myStaff.id : '';\nconst staffedRole = alreadyOn ? String((myStaff.staffRole || {}).name || '').trim() : '';\n\nlet requiredRoleCount = 0;\nconst requiredOpen = [];\n\nfor (const req of (event.requiredStaff || [])) {\n\tconst roleName = String((req.staffRole || {}).name || '').trim();\n\tconst roleId = String((req.staffRole || {}).id || '');\n\tconst qty = Number(req.quantity || 0);\n\tif (roleName === coordRole || qty === 0) { continue; }\n\trequiredRoleCount = requiredRoleCount + 1;\n\tconst holders = staff.filter(s => String((s.staffRole || {}).name || '').trim() === roleName);\n\tif (holders.length < qty) { requiredOpen.push({ id: roleId, name: roleName }); }\n}\n\nconst slotsFilled = requiredRoleCount > 0 && requiredOpen.length === 0;\nconst neededRole = requiredOpen.length > 0 ? requiredOpen[0].name : fallbackRole;\n\nconst myRoleIds = (responder.staffRoles || []).map(r => String(r.id));\nconst holdableOpen = requiredOpen.filter(r => myRoleIds.indexOf(r.id) !== -1);\nconst fallbackRoleId = String(cfg.FALLBACK_ROLE_ID);\n\nconst targetRole = requiredRoleCount === 0\n\t? (myRoleIds.indexOf(fallbackRoleId) !== -1 ? { id: fallbackRoleId, name: fallbackRole } : null)\n\t: (holdableOpen.length > 0 ? holdableOpen[0] : null);\n\nconst missingRole = targetRole === null;\nconst notEligible = responder.isInstructor !== true && responder.isQualified !== true;\n\nconst blockedReason = missingRole\n\t? 'This event needs a ' + neededRole + ', and your contact record does not have that role yet. Until it is added, an answer cannot be saved against the event.'\n\t: 'Your contact record is not marked as able to ' + verb + ' events yet. Until that is set, an answer cannot be saved against the event.';\n\nif (!isUnable && !onBehalf && !alreadyOn && notEligible) {\n\treturn refuse(blockedHeading, blockedReason);\n}\n\nif (sub.answer === 'yes' && slotsFilled && !alreadyOn) {\n\treturn closeOff('This event is now fully staffed', 'Somebody else accepted before we heard from you, so no response is needed. Thank you for considering it.');\n}\n\nif (sub.answer === 'yes' && !alreadyOn && missingRole) {\n\treturn refuse(blockedHeading, blockedReason);\n}\n\nconst name = responder.firstName + ' ' + responder.lastName;\nconst now = new Date().toISOString();\nconst roleLabel = staffedRole || (targetRole ? targetRole.name : neededRole);\n\nconst coordinatorContactIds = staff\n\t.filter(s => s.contact && String((s.staffRole || {}).name || '').trim() === coordRole)\n\t.map(s => s.contact.id);\n\nconst hasCoordinator = coordinatorContactIds.length > 0;\n\nconst notifyContactIds = coordinatorContactIds.slice();\nif (notifyContactIds.indexOf(responder.id) === -1) { notifyContactIds.push(responder.id); }\n\nconst labels = {\n\tyes: cfg.ANSWER_LABEL_YES,\n\tno: cfg.ANSWER_LABEL_NO,\n\tmaybe: cfg.ANSWER_LABEL_MAYBE,\n\tunable: cfg.ANSWER_LABEL_UNABLE\n};\n\nconst statuses = { yes: 'accepted', no: 'declined', maybe: 'maybe', unable: 'assign_failed' };\nconst logStatuses = { yes: 'success', no: 'success', maybe: 'pending', unable: 'failed' };\n\nconst answerLabel = labels[sub.answer];\nconst behalfNote = onBehalf ? ' Recorded by the ' + coordRole + ' on their behalf.' : '';\nconst quoted = sub.comments ? quoteBlock(sub.comments) : '<p style=\"margin:0 0 16px;color:' + pal.MUTED + ';\">No comments were added.</p>';\n\nconst shouldAssign = sub.answer === 'yes' && !alreadyOn && targetRole !== null;\nconst isDeclined = sub.answer === 'no' && alreadyOn;\n\nconst assignBody = shouldAssign\n\t? JSON.stringify({\n\t\tquery: 'mutation AssignToEvent($eventId: ID!, $contactId: ID!, $roleId: ID!){ event { addStaff(input:{ eventId:$eventId, contactId:$contactId, staffRoleId:$roleId }){ errors{ label message value } } } }',\n\t\tvariables: { eventId: event.id, contactId: responder.id, roleId: targetRole.id }\n\t})\n\t: NOOP;\n\n/*\tThe coordinator and the responder both read this one, so it is written in the third\n\tperson. The answer is the thing they are looking for, so it leads\t*/\nconst emailSubject = name + ' - ' + answerLabel + ' - ' + event.title;\n\nconst answerColour = sub.answer === 'yes' ? pal.ACCENT : (sub.answer === 'no' ? pal.DANGER : pal.MUTED);\n\nconst emailBody = emailShell(\n\t'<p style=\"margin:0 0 6px;color:' + pal.MUTED + ';font-size:13px;\">Response recorded</p>'\n\t+ '<p style=\"margin:0 0 4px;font-size:20px;font-weight:600;color:' + pal.INK + ';\">' + esc(name) + '</p>'\n\t+ '<p style=\"margin:0 0 18px;font-size:16px;font-weight:600;color:' + answerColour + ';\">' + esc(answerLabel) + '</p>'\n\t+ '<p style=\"margin:0 0 6px;\">Invitation to ' + esc(verb) + ' <strong>' + esc(event.title) + '</strong>.' + esc(behalfNote) + '</p>'\n\t+ '<p style=\"margin:18px 0 8px;color:' + pal.MUTED + ';font-size:13px;\">Comments</p>' + quoted\n\t+ (shouldAssign ? '<p style=\"margin:0 0 16px;\">' + esc(name) + ' is now assigned to the event as ' + esc(roleLabel) + '.</p>' : '')\n\t+ (isDeclined ? '<p style=\"margin:0 0 16px;\">' + esc(name) + ' has been taken off the event.</p>' : '')\n\t+ '<p style=\"margin:20px 0 8px;padding-top:14px;border-top:1px solid ' + pal.LINE + ';color:' + pal.MUTED + ';font-size:13px;\">This note goes to the ' + esc(coordRole) + ' and to the person who answered.</p>');\n\nconst failSubject = 'Action needed: ' + name + ' cannot be added to ' + event.title;\n\nconst failOpening = isUnable\n\t? '<p style=\"margin:0 0 16px;\"><strong>' + esc(name) + '</strong> opened the invitation to ' + esc(verb) + ' <strong>' + esc(event.title) + '</strong> and could not answer it, because their contact record does not carry the ' + esc(neededRole) + ' role this event needs.</p>' + (sub.comments ? '<p style=\"margin:0 0 8px;color:' + pal.MUTED + ';font-size:13px;\">They added</p>' + quoted : '')\n\t: '<p style=\"margin:0 0 16px;\"><strong>' + esc(name) + '</strong> accepted the invitation to ' + esc(verb) + ' <strong>' + esc(event.title) + '</strong>, but Administrate refused to assign them as ' + esc(roleLabel) + '.</p>';\n\nconst failBody = emailShell(\n\t'<p style=\"margin:0 0 6px;color:' + pal.DANGER + ';font-size:13px;font-weight:600;\">Action needed</p>'\n\t+ '<p style=\"margin:0 0 18px;font-size:20px;font-weight:600;color:' + pal.INK + ';\">' + esc(name) + ' cannot be added</p>'\n\t+ failOpening\n\t+ '<p style=\"margin:0 0 16px;\">They have not been added to the event, and they have been told somebody will be in touch.</p>'\n\t+ '<div style=\"background:' + pal.DANGERBG + ';border-left:3px solid ' + pal.DANGER + ';padding:12px 14px;margin:0 0 16px;\">'\n\t+ '<p style=\"margin:0;\"><strong>To fix it:</strong> open their contact record in Administrate, add the ' + esc(roleLabel) + ' role, then ask them to open their personal response link again.</p></div>'\n\t+ '<p style=\"margin:0 0 16px;color:' + pal.MUTED + ';\">If they were invited by mistake, nothing needs doing. Nothing on the event has been changed.</p>');\n\nconst thanksSelf = sub.answer === 'yes'\n\t? '<h1>Thank you, you are confirmed</h1><div class=\"notice\"><p>You are ' + (alreadyOn ? 'confirmed to ' + esc(verb) : 'now assigned to ' + esc(verb)) + ' <strong>' + esc(event.title) + '</strong>.' + (hasCoordinator ? ' The ' + esc(coordRole) + ' has been told.' : '') + '</p></div>'\n\t: (sub.answer === 'no'\n\t\t? '<h1>Thank you for letting us know</h1><div class=\"notice\"><p>We have recorded that you are not available for <strong>' + esc(event.title) + '</strong>' + (isDeclined ? ', and you have been taken off it' : '') + '. We will ask someone else.</p></div>'\n\t\t: '<h1>Thank you, we will be in touch</h1><div class=\"notice\"><p>We have recorded your response about <strong>' + esc(event.title) + '</strong>. Your link stays open, so you can give a firm answer whenever you are ready.</p></div>');\n\nconst thanksBehalf = '<h1>Response recorded</h1><div class=\"notice\"><p>' + esc(answerLabel) + ' recorded for <strong>' + esc(name) + '</strong> on ' + esc(event.title) + '.'\n\t+ (shouldAssign ? ' They have been assigned to the event.' : '')\n\t+ (isDeclined ? ' They have been removed from the event.' : '') + '</p></div>';\n\nconst unassignedInner = isUnable\n\t? (hasCoordinator\n\t\t? '<h1>Thank you, we have passed this on</h1><div class=\"notice\"><p>The ' + esc(coordRole) + ' for <strong>' + esc(event.title) + '</strong> knows the ' + esc(neededRole) + ' role needs adding to your record, and will be in touch.</p></div>'\n\t\t: '<h1>Thank you, we have recorded this</h1><div class=\"notice\"><p>This event has no ' + esc(coordRole) + ' for us to tell, so please reply to the invitation email for <strong>' + esc(event.title) + '</strong> and somebody will add the ' + esc(neededRole) + ' role to your record.</p></div>')\n\t: (hasCoordinator\n\t\t? '<h1>Thank you, we have your answer</h1><div class=\"notice\"><p>We have recorded that you are available for <strong>' + esc(event.title) + '</strong>. The ' + esc(coordRole) + ' needs to confirm your place, and will be in touch.</p></div>'\n\t\t: '<h1>Thank you, we have your answer</h1><div class=\"notice\"><p>We have recorded that you are available for <strong>' + esc(event.title) + '</strong>. This event has no ' + esc(coordRole) + ', so please reply to the invitation email and somebody will confirm your place.</p></div>');\n\nconst thanksUnassigned = page('Response recorded', unassignedInner + '<p>You can close this page.</p>');\n\nconst failLogMessage = (isUnable\n\t? 'Cannot assign ' + name + ': their contact record does not carry the ' + neededRole + ' role, which this event requires. Reported by them from the invitation page. No answer recorded and they are not on the event.'\n\t: 'Cannot assign ' + name + ' as ' + roleLabel + ': Administrate refused the assignment, which means their contact record does not carry that role. Their acceptance is recorded but they are not on the event.')\n\t+ ' Fix: add the ' + roleLabel + ' role to their contact record, then ask them to open their personal response link again.';\n\nreturn [{ json: {\n\tvalid: true,\n\tassigned: shouldAssign,\n\tisUnable: isUnable,\n\tisDeclined: isDeclined,\n\tstaffId: staffId,\n\ttargetRoleId: targetRole ? targetRole.id : '',\n\tneededRole: neededRole,\n\thasCoordinator: hasCoordinator,\n\tcoordinatorContactIds: coordinatorContactIds,\n\tnotifyContactIds: notifyContactIds,\n\teventId: event.id,\n\teventTitle: String(event.title || ''),\n\tcontactId: responder.id,\n\tcontactName: name,\n\tcontactEmail: String(responder.emailAddress || ''),\n\tstaffRole: roleLabel,\n\tanswer: sub.answer,\n\tanswerLabel: answerLabel,\n\tstatus: statuses[sub.answer],\n\tlogStatus: logStatuses[sub.answer],\n\tcomments: sub.comments,\n\tonBehalf: onBehalf,\n\tchannel: onBehalf ? 'coordinator' : 'form',\n\tsubmittedBy: onBehalf && clicker ? clicker.contact.firstName + ' ' + clicker.contact.lastName : name,\n\tnow: now,\n\tassignBody: assignBody,\n\temailSubject: emailSubject,\n\temailBody: emailBody,\n\tfailSubject: failSubject,\n\tfailBody: failBody,\n\tlogMessage: name + ' responded: ' + answerLabel + (sub.comments ? ' - ' + sub.comments : '') + behalfNote + (shouldAssign ? ' Assigned to the event as ' + roleLabel + '.' : '') + (isDeclined ? ' Removed from the event.' : ''),\n\tfailLogMessage: failLogMessage,\n\tlogPayload: JSON.stringify({ eventId: event.id, contactId: responder.id, answer: sub.answer, comments: sub.comments, assigned: shouldAssign, removed: isDeclined, onBehalf: onBehalf, roleId: targetRole ? targetRole.id : '', neededRole: neededRole, hasCoordinator: hasCoordinator, at: now }),\n\tthanksHtml: page('Response recorded', (onBehalf ? thanksBehalf : thanksSelf) + '<p>You can close this page.</p>'),\n\tthanksUnassignedHtml: thanksUnassigned\n} }];"
+      },
+      "id": "ddd9c866-41f7-4969-8334-57b25d2c77e1",
+      "name": "Decide",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2016,
+        416
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "v1",
+              "leftValue": "={{ $json.valid }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              },
+              "rightValue": ""
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "6e6575a1-ad1c-46d7-896b-39130e6f17fa",
+      "name": "IF Submission Valid?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2240,
+        416
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Config').item.json.INVITATIONS_TABLE_ID }}"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "event_id",
+              "keyValue": "={{ $('Decide').item.json.eventId }}"
+            },
+            {
+              "keyName": "contact_id",
+              "keyValue": "={{ $('Decide').item.json.contactId }}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "matchingColumns": [
+            "event_id",
+            "contact_id"
+          ],
+          "schema": [
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "event_id",
+              "id": "event_id",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "event_title",
+              "id": "event_title",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "contact_id",
+              "id": "contact_id",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "contact_name",
+              "id": "contact_name",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "contact_email",
+              "id": "contact_email",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "staff_role",
+              "id": "staff_role",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "status",
+              "id": "status",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "responded_at",
+              "id": "responded_at",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "response_channel",
+              "id": "response_channel",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "updated_at",
+              "id": "updated_at",
+              "required": false,
+              "type": "string"
+            }
+          ],
+          "value": {
+            "contact_email": "={{ $('Decide').item.json.contactEmail }}",
+            "contact_id": "={{ $('Decide').item.json.contactId }}",
+            "contact_name": "={{ $('Decide').item.json.contactName }}",
+            "event_id": "={{ $('Decide').item.json.eventId }}",
+            "event_title": "={{ $('Decide').item.json.eventTitle }}",
+            "responded_at": "={{ $('Decide').item.json.now }}",
+            "response_channel": "={{ $('Decide').item.json.channel }}",
+            "staff_role": "={{ $('Decide').item.json.staffRole }}",
+            "status": "={{ $('Decide').item.json.status }}",
+            "updated_at": "={{ $('Decide').item.json.now }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "d2920075-6835-4713-b561-87b42ac96cf3",
+      "name": "Upsert Invitation State",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        2464,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "dataTableId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Config').item.json.CORRESPONDENCE_TABLE_ID }}"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "schema": [
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "event_id",
+              "id": "event_id",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "contact_id",
+              "id": "contact_id",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "direction",
+              "id": "direction",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "channel",
+              "id": "channel",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "occurred_at",
+              "id": "occurred_at",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "answer",
+              "id": "answer",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "comments",
+              "id": "comments",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "submitted_by",
+              "id": "submitted_by",
+              "required": false,
+              "type": "string"
+            }
+          ],
+          "value": {
+            "answer": "={{ $('Decide').item.json.answerLabel }}",
+            "channel": "={{ $('Decide').item.json.channel }}",
+            "comments": "={{ $('Decide').item.json.comments }}",
+            "contact_id": "={{ $('Decide').item.json.contactId }}",
+            "direction": "inbound",
+            "event_id": "={{ $('Decide').item.json.eventId }}",
+            "occurred_at": "={{ $('Decide').item.json.now }}",
+            "submitted_by": "={{ $('Decide').item.json.submittedBy }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "f3209482-70e6-426b-83ed-9e82a037e3a5",
+      "name": "Append Correspondence",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        2912,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').item.json.GRAPHQL_URL }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ query: 'mutation NotifyResponse($contactIds: [String]!, $subject: String, $body: String, $eventId: String, $sendingAddressId: ID){ bulkAdhocEmails{ sendBulkContactAdhocEmail(input:{ contactIds:$contactIds, subject:$subject, body:$body, eventId:$eventId, sendingAddressId:$sendingAddressId }){ errors{ label message value } } } }', variables: { contactIds: $('Decide').first().json.notifyContactIds, subject: $('Decide').first().json.emailSubject, body: $('Decide').first().json.emailBody, eventId: $('Decide').first().json.eventId, sendingAddressId: $('Config').first().json.SENDING_ADDRESS_ID } }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "e4bb4f97-8e60-4b15-8dc9-f99cab7b7474",
+      "name": "Notify Coordinator And Responder",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3360,
+        224
+      ],
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      },
+      "onError": "continueRegularOutput",
+      "notes": "staffIds is deliberately omitted, which sends to every staff member on the event."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "n1",
+              "leftValue": "={{ (($json.errors || []).length > 0) || (((($json.data || {}).bulkAdhocEmails || {}).sendBulkContactAdhocEmail || {}).errors || []).length > 0 }}",
+              "operator": {
+                "operation": "true",
+                "singleValue": true,
+                "type": "boolean"
+              },
+              "rightValue": ""
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "a5e21fd9-955b-4c4e-a82f-4ae82d8d1105",
+      "name": "IF Notify Errors?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        3584,
+        224
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "d1",
+              "leftValue": "={{ $('Decide').item.json.isDeclined }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              },
+              "rightValue": ""
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "5a485f73-4e24-4f6f-880e-51ccdea8482e",
+      "name": "IF Declined?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        3808,
+        272
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').item.json.GRAPHQL_URL }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ query: 'mutation RemoveDeclined($staffId: ID!){ event{ removeStaff(input:{ staffId:$staffId, notifyStaff:false }){ errors{ label message value } } } }', variables: { staffId: $('Decide').item.json.staffId } }) }}",
+        "options": {}
+      },
+      "id": "d7eba078-3a3f-42aa-84d1-6e043ca6ea0c",
+      "name": "Remove Declined Staff",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        4032,
+        208
+      ],
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      },
+      "onError": "continueRegularOutput",
+      "notes": "notifyStaff false suppresses the You have been removed from an Event system email, so a polite decline is not answered with a removal notice."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').item.json.GRAPHQL_URL }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ query: 'mutation Log($originIdentifier: String!, $nodeId: ID!, $message: String!, $status: ExternalLogTypeStatus!, $payload: String){ externalLog{ createExternalIntegrationLog(input:{ originIdentifier:$originIdentifier, nodeId:$nodeId, message:$message, status:$status, payload:$payload }){ errors{ label message value } } } }', variables: { originIdentifier: $('Config').item.json.ORIGIN_IDENTIFIER, nodeId: $('Decide').item.json.eventId, message: $('Decide').item.json.logMessage, status: $('Decide').item.json.logStatus, payload: $('Decide').item.json.logPayload } }) }}",
+        "options": {}
+      },
+      "id": "cde05f9c-02f0-41ea-a028-6ed8f2932642",
+      "name": "Log Success",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        4256,
+        272
+      ],
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.rejectionHtml }}",
+        "options": {
+          "responseCode": 400,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/html; charset=utf-8"
+              },
+              {
+                "name": "Cache-Control",
+                "value": "no-store"
+              }
+            ]
+          }
+        }
+      },
+      "id": "e0831e5e-cc2b-45ba-b231-6363d3682328",
+      "name": "Serve Rejection",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        2464,
+        512
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $('Decide').item.json.thanksHtml }}",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/html; charset=utf-8"
+              },
+              {
+                "name": "Cache-Control",
+                "value": "no-store"
+              }
+            ]
+          }
+        }
+      },
+      "id": "d7ab3f2a-2ff8-4ab3-ad88-125930a98f7d",
+      "name": "Serve Thank You",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        4480,
+        272
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "6b3793e2-ac3c-46d6-b044-b8602d3513bc",
+      "name": "Done",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        4704,
+        512
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 40 Response Handler\n\nPOST only. This is where an answer is recorded, and where personal links are emailed.\n\n### Token check first\n**Check Link Token** reads the submitter's invitation row and compares the posted token in constant time. A missing or wrong token gets an *invalid or expired link* page (HTTP 403) and **nothing is written**.\n\n### Personal link requests\nThe **Email me my link** button on 30 posts `action=request_link`. The handler reads the event and contact, creates or reuses a random token, saves it on the invitation row (`invited`, or `coordinator` for the event's coordinator) and emails the link to the address on the contact record. The page shown is the same whether or not anything was sent.\n\n### What one valid answer does\n1. Re-reads staffing from Administrate. Nothing posted is trusted.\n2. Upserts the invitation row (event plus contact), then appends a correspondence row.\n3. On *yes*, assigns the role the event asks for. On *no*, removes them without a removal notice.\n4. Emails the coordinator and the responder, logs the outcome on the event and calls 20 to recompute the summary.\n5. When staffing has just become complete, 20 sends the staffing complete email (and publishes automatically if the event asks for it). Nothing in this workflow sends it, so it cannot go twice.\n\nIf Administrate refuses the assignment, the row becomes `assign_failed`, the coordinator is told and the responder sees a neutral page.\n\n### Setup\nAdministrate OAuth2 credential on every HTTP Request node. Fill in Config, then activate.",
+        "height": 600,
+        "width": 636,
+        "color": 4
+      },
+      "id": "edf1343b-09e6-446c-9c4f-b7224f9abd01",
+      "name": "Sticky Note - 40 Response Handler",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -784,
+        -64
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Config\n\n**RESPONSE_BASE_URL** - production URL of **30 Response Form**. Personal links are built from it.\n\n**SUMMARY_WORKFLOW_ID** - ID of **20 Recompute Event Summary**.\n\n**INVITATIONS_TABLE_ID** / **CORRESPONDENCE_TABLE_ID** - the invitations and correspondence Data Tables.\n\n**LINK_RESEND_MINUTES** - minimum gap between personal link emails to the same person.\n\n**SENDING_ADDRESS_ID** - verified Administrate sending address.\n\n**COORDINATOR_ROLE_NAME**, **FALLBACK_ROLE_ID**, **FALLBACK_ROLE_NAME**, **VERB_BASE**, **VERB_GERUND** - as in 30.\n\n**ANSWER_LABEL_YES / NO / MAYBE / UNABLE** - answer wording in emails and the log.\n\nThe staffing complete email, publish link and automatic publishing settings live in **20** Config.\n\n**BRAND_NAME**, **BRAND_CSS**, **EMAIL_PALETTE**, **EMAIL_SHELL**, **EMAIL_BUTTON** - page and email styling. Use inline styles only and never quote a font name inside EMAIL_PALETTE.",
+        "height": 616,
+        "width": 764,
+        "color": 6
+      },
+      "id": "1593372e-7764-4a3a-8cda-856edf4c0634",
+      "name": "Sticky Note - Config",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -32,
+        -1712
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Config').first().json.SUMMARY_WORKFLOW_ID }}"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "schema": [
+            {
+              "canBeUsedToMatch": true,
+              "display": true,
+              "displayName": "eventId",
+              "id": "eventId",
+              "required": false,
+              "type": "string"
+            }
+          ],
+          "value": {
+            "eventId": "={{ $('Decide').first().json.eventId }}"
+          }
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "e13dc42c-b817-45d4-9d9a-ee51f7a6155c",
+      "name": "Recompute Summary",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        4704,
+        320
+      ],
+      "notes": "Calls 20 Recompute Event Summary (SUMMARY_WORKFLOW_ID in Config). 20 calculates the summary and, when staffing has just become complete, sends the staffing complete email itself. Runs after the response page has been served, so the responder never waits for it."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').item.json.GRAPHQL_URL }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $('Decide').item.json.assignBody }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "269e581e-c075-4c3a-9f80-216c5f5e97e8",
+      "name": "Assign On Acceptance",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2688,
+        320
+      ],
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      },
+      "notes": "Acceptance is the assignment. Runs a harmless no-op query on any other answer, which keeps the chain linear."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "af1",
+              "leftValue": "={{ $('Decide').first().json.isUnable === true || ($('Decide').first().json.assigned === true && ((($('Assign On Acceptance').first().json.errors || []).length > 0) || ((((($('Assign On Acceptance').first().json.data || {}).event || {}).addStaff || {}).errors) || []).length > 0)) }}",
+              "operator": {
+                "operation": "true",
+                "singleValue": true,
+                "type": "boolean"
+              },
+              "rightValue": ""
+            }
+          ],
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          }
+        },
+        "options": {}
+      },
+      "id": "e0e64a5a-35c2-4706-bb0f-8be7ac453f68",
+      "name": "IF Needs Attention?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        3136,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').first().json.GRAPHQL_URL }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ ($('Decide').first().json.coordinatorContactIds || []).length > 0 ? JSON.stringify({ query: 'mutation AssignFailed($contactIds: [String]!, $subject: String, $body: String, $eventId: String, $sendingAddressId: ID){ bulkAdhocEmails{ sendBulkContactAdhocEmail(input:{ contactIds:$contactIds, subject:$subject, body:$body, eventId:$eventId, sendingAddressId:$sendingAddressId }){ errors{ label message value } } } }', variables: { contactIds: $('Decide').first().json.coordinatorContactIds, subject: $('Decide').first().json.failSubject, body: $('Decide').first().json.failBody, eventId: $('Decide').first().json.eventId, sendingAddressId: $('Config').first().json.SENDING_ADDRESS_ID } }) : JSON.stringify({ query: 'query NoOp { __typename }' }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "c4805e12-81a1-4748-8d41-cca09fabe63b",
+      "name": "Tell Coordinator Assignment Failed",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        4032,
+        512
+      ],
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      },
+      "onError": "continueRegularOutput",
+      "notes": "Goes to the coordinators only, not the responder. They have already been told their answer is recorded and that somebody will be in touch, so there is nothing useful they could do with this."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').first().json.GRAPHQL_URL }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ query: 'mutation Log($originIdentifier: String!, $nodeId: ID!, $message: String!, $status: ExternalLogTypeStatus!, $payload: String){ externalLog{ createExternalIntegrationLog(input:{ originIdentifier:$originIdentifier, nodeId:$nodeId, message:$message, status:$status, payload:$payload }){ errors{ label message value } } } }', variables: { originIdentifier: $('Config').first().json.ORIGIN_IDENTIFIER, nodeId: $('Decide').first().json.eventId, message: $('Decide').first().json.failLogMessage + ((($('Decide').first().json.coordinatorContactIds || []).length === 0) ? ' SEPARATE PROBLEM: this event has no ' + $('Config').first().json.COORDINATOR_ROLE_NAME + ' staffed on it, so nobody could be emailed about any of this. Assign one to the event.' : ''), status: 'failed', payload: JSON.stringify($('Assign On Acceptance').first().json) } }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "4d292fad-3c6b-4f63-a77f-1212498bc43e",
+      "name": "Log Assignment Failure",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        4256,
+        512
+      ],
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      },
+      "onError": "continueRegularOutput",
+      "notes": "Written against the event, so it appears where the coordinator is already looking rather than only in the n8n execution list."
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Config').first().json.INVITATIONS_TABLE_ID }}"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "event_id",
+              "keyValue": "={{ $('Decide').first().json.eventId }}"
+            },
+            {
+              "keyName": "contact_id",
+              "keyValue": "={{ $('Decide').first().json.contactId }}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "matchingColumns": [
+            "event_id",
+            "contact_id"
+          ],
+          "schema": [
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "event_id",
+              "id": "event_id",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "contact_id",
+              "id": "contact_id",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": false,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "status",
+              "id": "status",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": false,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "updated_at",
+              "id": "updated_at",
+              "required": false,
+              "type": "string"
+            }
+          ],
+          "value": {
+            "status": "assign_failed",
+            "updated_at": "={{ $('Decide').first().json.now }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "f0ff88f2-d6d4-4a39-a187-2163591673fa",
+      "name": "Mark Assignment Failed",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        3808,
+        512
+      ],
+      "onError": "continueRegularOutput",
+      "notes": "The row was written as accepted before the assignment was attempted. Correcting it here keeps the summary honest, because 20 Recompute Event Summary counts accepted rows and would otherwise report the event as fully staffed."
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $('Decide').first().json.thanksUnassignedHtml }}",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/html; charset=utf-8"
+              },
+              {
+                "name": "Cache-Control",
+                "value": "no-store"
+              }
+            ]
+          }
+        }
+      },
+      "id": "9ac93f04-0d25-4809-9724-61e2285e82e7",
+      "name": "Serve Assignment Problem",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        4480,
+        512
+      ],
+      "notes": "Neutral rather than an error. The person did nothing wrong, their answer is recorded, and a human will finish it."
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Config').first().json.INVITATIONS_TABLE_ID }}"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "event_id",
+              "keyValue": "={{ $('Extract submission').item.json.eventId }}"
+            },
+            {
+              "keyName": "contact_id",
+              "keyValue": "={{ $('Extract submission').item.json.contactId }}"
+            }
+          ]
+        },
+        "returnAll": true
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        672,
+        352
+      ],
+      "name": "Read Submitter Invitation",
+      "alwaysOutputData": true,
+      "notes": "The row of whoever submitted the form. It holds their personal token.",
+      "id": "fc99a9e2-43ac-4824-ae04-068863233ecc"
+    },
+    {
+      "parameters": {
+        "jsCode": "/*\tNothing is recorded unless the submission carries the personal token stored on the\n\tsubmitter's invitation row. For an on-behalf answer that is the coordinator's own token.\n\tA request for a personal link needs no token: the link only ever goes to the email\n\taddress on the contact record\t*/\n\nconst cfg = $('Config').first().json;\nconst sub = $('Extract submission').first().json;\nconst rows = $input.all().map((item) => item.json).filter((row) => row && row.event_id);\nconst row = rows.find((r) => String(r.event_id) === String(sub.eventId) && String(r.contact_id) === String(sub.contactId)) || null;\n\n/*\tCompares in constant time, so response timing does not leak how much of a guess\n\twas right. An empty token never matches\t*/\nconst sameToken = (expected, given) => {\n\tconst a = String(expected || '');\n\tconst b = String(given || '');\n\tif (a === '' || b === '' || a.length !== b.length) { return false; }\n\tlet diff = 0;\n\tfor (let i = 0; i < a.length; i++) { diff = diff | (a.charCodeAt(i) ^ b.charCodeAt(i)); }\n\treturn diff === 0;\n};\n\nconst esc = (v) => String(v === null || v === undefined ? '' : v)\n\t.split('&').join('&amp;').split('<').join('&lt;').split('>').join('&gt;').split('\"').join('&quot;');\n\nconst page = (title, body) => '<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><title>' + esc(title) + '</title><style>' + cfg.BRAND_CSS + '</style></head><body><header class=\"masthead\"><p>' + esc(cfg.BRAND_NAME) + '</p></header><main>' + body + '</main></body></html>';\n\nconst linkRequest = String(sub.action || '') === 'request_link';\nconst hasIds = String(sub.eventId || '') !== '' && String(sub.contactId || '') !== '';\nconst valid = !linkRequest && hasIds && row !== null && sameToken(row.token, sub.linkToken);\n\nconst invalidHeading = 'This link is invalid or has expired';\nconst sentHeading = 'Check your email';\n\nreturn [{ json: {\n\tlinkRequest: linkRequest,\n\tvalid: valid,\n\trow: row,\n\tinvalidHtml: page(invalidHeading, '<h1>' + esc(invalidHeading) + '</h1><div class=\"notice error\"><p>Your answer was not recorded and nothing has changed.</p></div><p>Open the most recent email we sent you and use the link in it. If you cannot find it, reply to the invitation email and someone will help.</p>'),\n\tlinkSentHtml: page(sentHeading, '<h1>' + esc(sentHeading) + '</h1><div class=\"notice\"><p>If this invitation is still open, we have emailed a personal link to the address we hold for you. It can take a few minutes to arrive.</p></div><p>You can close this page.</p>')\n} }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        896,
+        352
+      ],
+      "name": "Check Link Token",
+      "id": "87015868-7e2b-401b-8aea-4ce463c086ff"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "e6fdc646-db1d-4fe6-959a-1c7eb96cb3e2",
+              "leftValue": "={{ $json.linkRequest }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              },
+              "rightValue": ""
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1120,
+        352
+      ],
+      "name": "IF Link Request?",
+      "id": "fd949d62-e5eb-4489-bd35-3b34e8d9b5c9"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "9cb30842-6dfa-44b7-ac22-a66324fac46a",
+              "leftValue": "={{ $json.valid }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              },
+              "rightValue": ""
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1344,
+        448
+      ],
+      "name": "IF Link Token Valid?",
+      "id": "f68db4aa-96aa-473b-bc10-49596418228d"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $('Check Link Token').first().json.invalidHtml }}",
+        "options": {
+          "responseCode": 403,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/html; charset=utf-8"
+              },
+              {
+                "name": "Cache-Control",
+                "value": "no-store"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1568,
+        640
+      ],
+      "name": "Serve Invalid Link",
+      "id": "4080abff-7a13-47e4-9efb-171a9007a034"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').first().json.GRAPHQL_URL }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ query: 'query LinkContext($eventId: ID!, $contactId: ID!) { event: node(id: $eventId) { ... on Event { id title staff { edges { node { id staffRole { id name } contact { id } } } } } } contact: node(id: $contactId) { ... on Contact { id firstName lastName emailAddress } } }', variables: { eventId: $('Extract submission').item.json.eventId, contactId: $('Extract submission').item.json.contactId } }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1344,
+        160
+      ],
+      "name": "Fetch Link Context",
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      },
+      "onError": "continueRegularOutput",
+      "id": "9adaf65b-6d0b-4075-a4da-2de2843decb4"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c414ff19-cb5e-4abc-b2c6-b04a4898729e",
+              "leftValue": "={{ (($json.errors || []).length > 0) }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              },
+              "rightValue": ""
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1568,
+        160
+      ],
+      "name": "IF Link Context Errors?",
+      "id": "536cdaef-a3ed-4591-8ef9-d1483f3076dd"
+    },
+    {
+      "parameters": {
+        "jsCode": "/*\tSomebody opened an invitation without a valid personal link and asked for one.\n\tThe link goes only to the email address on their contact record, so knowing an event\n\tand contact ID is not enough to answer for somebody else.\n\tAn existing token is reused rather than replaced, so asking again cannot break a link\n\talready sent. Requests within LINK_RESEND_MINUTES of the last one send nothing.\n\tThe page shown afterwards is the same whatever happens here, so it does not reveal\n\twhether an event or contact exists\t*/\n\nconst cfg = $('Config').first().json;\nconst api = $input.first().json;\nconst row = $('Check Link Token').first().json.row || null;\n\nconst event = (api.data || {}).event || null;\nconst contact = (api.data || {}).contact || null;\n\nconst coordRole = String(cfg.COORDINATOR_ROLE_NAME).trim();\nconst verb = String(cfg.VERB_BASE || 'deliver').trim();\n\n/*\tA random, unguessable token. 32 bytes from a secure source, hex encoded. It is\n\tnever derived from the event or contact ID. Uses the crypto module where the Code\n\tnode allows it, otherwise the Web Crypto API\t*/\nconst randomToken = () => {\n\tlet bytes = null;\n\ttry {\n\t\tbytes = Array.from(require('crypto').randomBytes(32));\n\t} catch (error) {\n\t\tif (typeof crypto !== 'undefined' && crypto.getRandomValues) {\n\t\t\tbytes = Array.from(crypto.getRandomValues(new Uint8Array(32)));\n\t\t}\n\t}\n\tif (!bytes) {\n\t\tthrow new Error('No secure random source available. Allow the crypto module in Code nodes (NODE_FUNCTION_ALLOW_BUILTIN=crypto).');\n\t}\n\treturn bytes.map((b) => b.toString(16).padStart(2, '0')).join('');\n};\n\nconst esc = (v) => String(v === null || v === undefined ? '' : v)\n\t.split('&').join('&amp;').split('<').join('&lt;').split('>').join('&gt;').split('\"').join('&quot;');\n\nconst pal = {};\nfor (const part of String(cfg.EMAIL_PALETTE || '').split('|')) {\n\tconst at = part.indexOf('=');\n\tif (at > 0) { pal[part.slice(0, at).trim()] = part.slice(at + 1).trim(); }\n}\n\nconst fill = (tpl, extra) => {\n\tlet s = String(tpl || '');\n\tfor (const k of Object.keys(pal)) { s = s.split('%%' + k + '%%').join(pal[k]); }\n\tfor (const k of Object.keys(extra || {})) { s = s.split('%%' + k + '%%').join(extra[k]); }\n\treturn s;\n};\n\nconst emailShell = (inner) => fill(cfg.EMAIL_SHELL, { BRAND: esc(cfg.BRAND_NAME), BODY: inner });\nconst emailButton = (url, label) => fill(cfg.EMAIL_BUTTON, { URL: esc(url), LABEL: esc(label) });\n\nconst now = new Date();\nconst nowIso = now.toISOString();\nconst resendMinutes = Number(cfg.LINK_RESEND_MINUTES || 0);\nconst lastSent = row && row.link_sent_at ? new Date(String(row.link_sent_at)).getTime() : NaN;\nconst tooSoon = !isNaN(lastSent) && (now.getTime() - lastSent) < resendMinutes * 60000;\nconst email = String((contact || {}).emailAddress || '').trim();\n\nif (event === null || contact === null || email === '' || tooSoon) {\n\treturn [{ json: { send: false } }];\n}\n\nconst staff = ((event.staff || {}).edges || []).map((e) => e.node);\nconst isCoordinator = staff.some((s) => s.contact\n\t&& String(s.contact.id) === String(contact.id)\n\t&& String((s.staffRole || {}).name || '').trim() === coordRole);\n\nconst token = row && row.token ? String(row.token) : randomToken();\nconst name = String((contact.firstName || '') + ' ' + (contact.lastName || '')).trim();\nconst link = String(cfg.RESPONSE_BASE_URL) + '?e=' + encodeURIComponent(event.id) + '&c=' + encodeURIComponent(contact.id) + '&t=' + encodeURIComponent(token);\n\nconst body = emailShell(\n\t'<p style=\"margin:0 0 16px;\">Hi ' + esc(contact.firstName || name) + ',</p>'\n\t+ '<p style=\"margin:0 0 6px;color:' + pal.MUTED + ';font-size:13px;\">' + (isCoordinator ? 'Your ' + esc(coordRole) + ' link' : 'Your personal response link') + '</p>'\n\t+ '<p style=\"margin:0 0 18px;font-size:20px;font-weight:600;color:' + pal.INK + ';\">' + esc(event.title) + '</p>'\n\t+ '<p style=\"margin:0 0 4px;\">' + (isCoordinator\n\t\t? 'Use this link to record responses for this event on behalf of the people invited.'\n\t\t: 'Use this link to tell us whether you are available to ' + esc(verb) + ' this event.') + '</p>'\n\t+ emailButton(link, isCoordinator ? 'Open the event' : 'Give your answer')\n\t+ '<p style=\"margin:0 0 16px;color:' + pal.MUTED + ';\">This link is personal to you. Please do not forward it.</p>');\n\n/*\tA new row starts as invited, or coordinator for the event's coordinator, who is never\n\tchased or counted. An existing row keeps its status and its age\t*/\nreturn [{ json: {\n\tsend: true,\n\teventId: String(event.id),\n\teventTitle: String(event.title || ''),\n\tcontactId: String(contact.id),\n\tcontactName: name,\n\tcontactEmail: email,\n\tstatus: row && row.status ? String(row.status) : (isCoordinator ? 'coordinator' : 'invited'),\n\ttoken: token,\n\tnow: nowIso,\n\tupdatedAt: row && row.updated_at ? String(row.updated_at) : nowIso,\n\tsubject: (isCoordinator ? 'Your ' + coordRole + ' link: ' : 'Your response link: ') + String(event.title || ''),\n\tbody: body\n} }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1792,
+        64
+      ],
+      "name": "Prepare Link Email",
+      "id": "8f945f89-bebd-4cab-a1a0-f2b021ce236d"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "54fabbdc-ee24-4017-bc7a-d884780a9731",
+              "leftValue": "={{ $json.send }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              },
+              "rightValue": ""
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2016,
+        64
+      ],
+      "name": "IF Send Link?",
+      "id": "63a4a5c7-289f-4dd5-ac7e-032415b3bd93"
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Config').first().json.INVITATIONS_TABLE_ID }}"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "event_id",
+              "keyValue": "={{ $('Prepare Link Email').item.json.eventId }}"
+            },
+            {
+              "keyName": "contact_id",
+              "keyValue": "={{ $('Prepare Link Email').item.json.contactId }}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "matchingColumns": [
+            "event_id",
+            "contact_id"
+          ],
+          "schema": [
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "event_id",
+              "id": "event_id",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "contact_id",
+              "id": "contact_id",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "event_title",
+              "id": "event_title",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "contact_name",
+              "id": "contact_name",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "contact_email",
+              "id": "contact_email",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "status",
+              "id": "status",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "token",
+              "id": "token",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "link_sent_at",
+              "id": "link_sent_at",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "updated_at",
+              "id": "updated_at",
+              "required": false,
+              "type": "string"
+            }
+          ],
+          "value": {
+            "event_id": "={{ $('Prepare Link Email').item.json.eventId }}",
+            "contact_id": "={{ $('Prepare Link Email').item.json.contactId }}",
+            "event_title": "={{ $('Prepare Link Email').item.json.eventTitle }}",
+            "contact_name": "={{ $('Prepare Link Email').item.json.contactName }}",
+            "contact_email": "={{ $('Prepare Link Email').item.json.contactEmail }}",
+            "status": "={{ $('Prepare Link Email').item.json.status }}",
+            "token": "={{ $('Prepare Link Email').item.json.token }}",
+            "link_sent_at": "={{ $('Prepare Link Email').item.json.now }}",
+            "updated_at": "={{ $('Prepare Link Email').item.json.updatedAt }}"
+          }
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        2240,
+        -32
+      ],
+      "name": "Save Invitation Link",
+      "notes": "Saved before the email goes, so the emailed link always works.",
+      "id": "e76bf817-27b7-449f-99a7-747233a5635f"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').first().json.GRAPHQL_URL }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ query: 'mutation SendPersonalLink($contactIds: [String]!, $subject: String, $body: String, $eventId: String, $sendingAddressId: ID){ bulkAdhocEmails{ sendBulkContactAdhocEmail(input:{ contactIds:$contactIds, subject:$subject, body:$body, eventId:$eventId, sendingAddressId:$sendingAddressId }){ errors{ label message value } } } }', variables: { contactIds: [$('Prepare Link Email').first().json.contactId], subject: $('Prepare Link Email').first().json.subject, body: $('Prepare Link Email').first().json.body, eventId: $('Prepare Link Email').first().json.eventId, sendingAddressId: $('Config').first().json.SENDING_ADDRESS_ID } }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2464,
+        -32
+      ],
+      "name": "Send Link Email",
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      },
+      "onError": "continueRegularOutput",
+      "id": "fa6648f7-59d8-4bbe-bbe8-f8190aa69f79"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "652deaa0-ca3a-49c1-9b9d-aa052a97f2b0",
+              "leftValue": "={{ (($json.errors || []).length > 0) || (((($json.data || {}).bulkAdhocEmails || {}).sendBulkContactAdhocEmail || {}).errors || []).length > 0 }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              },
+              "rightValue": ""
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2688,
+        -32
+      ],
+      "name": "IF Link Email Errors?",
+      "id": "89e79d63-7565-400f-a160-6abd8bf6a6e4"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $('Check Link Token').first().json.linkSentHtml }}",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/html; charset=utf-8"
+              },
+              {
+                "name": "Cache-Control",
+                "value": "no-store"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        2912,
+        112
+      ],
+      "name": "Serve Link Sent",
+      "id": "e548e609-b608-4fc8-addc-4d913d8ac7fc"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Response Submitted": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Extract submission",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract submission": {
+      "main": [
+        [
+          {
+            "node": "Read Submitter Invitation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Re-validate Staffing": {
+      "main": [
+        [
+          {
+            "node": "IF Re-validate Errors?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Re-validate Errors?": {
+      "main": [
+        [
+          {
+            "node": "Log Failure",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Decide",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Failure": {
+      "main": [
+        [
+          {
+            "node": "Serve Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Serve Error": {
+      "main": [
+        [
+          {
+            "node": "Stop",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Decide": {
+      "main": [
+        [
+          {
+            "node": "IF Submission Valid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Submission Valid?": {
+      "main": [
+        [
+          {
+            "node": "Upsert Invitation State",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Serve Rejection",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Notify Errors?": {
+      "main": [
+        [
+          {
+            "node": "Log Failure",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "IF Declined?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Declined?": {
+      "main": [
+        [
+          {
+            "node": "Remove Declined Staff",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Remove Declined Staff": {
+      "main": [
+        [
+          {
+            "node": "Log Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Success": {
+      "main": [
+        [
+          {
+            "node": "Serve Thank You",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Serve Thank You": {
+      "main": [
+        [
+          {
+            "node": "Done",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Recompute Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upsert Invitation State": {
+      "main": [
+        [
+          {
+            "node": "Assign On Acceptance",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Assign On Acceptance": {
+      "main": [
+        [
+          {
+            "node": "Append Correspondence",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Coordinator And Responder": {
+      "main": [
+        [
+          {
+            "node": "IF Notify Errors?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append Correspondence": {
+      "main": [
+        [
+          {
+            "node": "IF Needs Attention?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Assignment Failed": {
+      "main": [
+        [
+          {
+            "node": "Tell Coordinator Assignment Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tell Coordinator Assignment Failed": {
+      "main": [
+        [
+          {
+            "node": "Log Assignment Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Assignment Failure": {
+      "main": [
+        [
+          {
+            "node": "Serve Assignment Problem",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Needs Attention?": {
+      "main": [
+        [
+          {
+            "node": "Mark Assignment Failed",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Notify Coordinator And Responder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Serve Assignment Problem": {
+      "main": [
+        [
+          {
+            "node": "Recompute Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Submitter Invitation": {
+      "main": [
+        [
+          {
+            "node": "Check Link Token",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Link Token": {
+      "main": [
+        [
+          {
+            "node": "IF Link Request?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Link Request?": {
+      "main": [
+        [
+          {
+            "node": "Fetch Link Context",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "IF Link Token Valid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Link Token Valid?": {
+      "main": [
+        [
+          {
+            "node": "Re-validate Staffing",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Serve Invalid Link",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Link Context": {
+      "main": [
+        [
+          {
+            "node": "IF Link Context Errors?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Link Context Errors?": {
+      "main": [
+        [
+          {
+            "node": "Log Failure",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare Link Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Link Email": {
+      "main": [
+        [
+          {
+            "node": "IF Send Link?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Send Link?": {
+      "main": [
+        [
+          {
+            "node": "Save Invitation Link",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Serve Link Sent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Invitation Link": {
+      "main": [
+        [
+          {
+            "node": "Send Link Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Link Email": {
+      "main": [
+        [
+          {
+            "node": "IF Link Email Errors?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Link Email Errors?": {
+      "main": [
+        [
+          {
+            "node": "Log Failure",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Serve Link Sent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true,
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed"
+  },
+  "tags": []
+}

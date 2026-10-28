@@ -1,0 +1,560 @@
+{
+  "name": "Instructor Invitations - Publish Event Page",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "452ecc33-23f3-4c9b-a85b-0365322545b2",
+        "responseMode": "responseNode",
+        "options": {
+          "ignoreBots": true
+        }
+      },
+      "id": "0806b24b-aa85-431d-8f1b-221e17201b06",
+      "name": "Publish Link",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        96
+      ],
+      "webhookId": "f6273513-25be-4857-b857-c6a2ba660d3d"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c1",
+              "name": "GRAPHQL_URL",
+              "type": "string",
+              "value": "https://api.getadministrate.com/graphql"
+            },
+            {
+              "id": "c2",
+              "name": "ORIGIN_IDENTIFIER",
+              "type": "string",
+              "value": "Automator - Instructor Invitations"
+            },
+            {
+              "id": "c3",
+              "name": "COORDINATOR_ROLE_NAME",
+              "type": "string",
+              "value": "Coordinator"
+            },
+            {
+              "id": "c3b",
+              "name": "VERB_BASE",
+              "type": "string",
+              "value": "deliver"
+            },
+            {
+              "id": "c3c",
+              "name": "VERB_GERUND",
+              "type": "string",
+              "value": "delivering"
+            },
+            {
+              "id": "c4",
+              "name": "PUBLISH_SUBMIT_URL",
+              "type": "string",
+              "value": "https://YOUR-N8N-HOST/webhook/5e47d173-634e-48e2-af12-0829f35dc39d"
+            },
+            {
+              "id": "c5",
+              "name": "BRAND_NAME",
+              "type": "string",
+              "value": "Your Organisation"
+            },
+            {
+              "id": "c6",
+              "name": "BRAND_CSS",
+              "type": "string",
+              "value": ":root{--g:#1F5FAD;--gd:#163F73;--gt:#E8EFF8;--ink:#1A1A1A;--muted:#5A5A5A;--line:#D4D4D4;--danger:#A3241F;--amber:#7F5F00;--amberbg:#FDF0D5}*,*::before,*::after{box-sizing:border-box}html{font-size:100%;-webkit-text-size-adjust:100%}body{margin:0;font-family:\"Segoe UI\",Roboto,\"Helvetica Neue\",Arial,sans-serif;font-size:clamp(1rem,0.95rem + 0.25vw,1.125rem);line-height:1.6;color:var(--ink);background:#FFF}.masthead{background:var(--gd);color:#FFF;padding:clamp(1rem,3vw,1.75rem) clamp(1rem,5vw,2.5rem)}.masthead p{margin:0;font-weight:600;letter-spacing:.08em;text-transform:uppercase;font-size:.8em}main{max-width:44rem;margin:0 auto;padding:clamp(1.25rem,5vw,2.5rem) clamp(1rem,5vw,2.5rem) 4rem}h1{font-size:clamp(1.4rem,1.1rem + 1.4vw,2rem);line-height:1.25;margin:0 0 .35em;color:var(--gd)}h2{font-size:1.1em;margin:2rem 0 .5rem}.meta{margin:0 0 2rem;color:var(--muted)}.meta span{white-space:nowrap}.notice{border-left:4px solid var(--g);background:var(--gt);padding:.9rem 1rem;margin:0 0 1.75rem}.error{border-left-color:var(--danger);background:#FBEDEC}.warn{border-left-color:var(--amber);background:var(--amberbg)}ul.people{list-style:none;margin:0 0 1.75rem;padding:0;border:1px solid var(--line);border-radius:.25rem}ul.people li{padding:.7rem 1rem;display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap}ul.people li + li{border-top:1px solid var(--line)}ul.people .role{color:var(--muted);font-size:.9em}.check{display:flex;align-items:flex-start;gap:.75rem;padding:.6rem 0;margin:0 0 1.5rem}.check input{flex:none;width:1.25rem;height:1.25rem;margin:.15rem 0 0;accent-color:var(--g)}.check label{cursor:pointer}.check .hint{display:block;color:var(--muted);font-size:.9em}button{font:inherit;font-weight:600;color:#FFF;background:var(--g);border:1px solid var(--gd);border-radius:.25rem;padding:.7rem 1.6rem;cursor:pointer;min-height:2.75rem}button:hover{background:var(--gd)}a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid var(--g);outline-offset:2px}@media (prefers-contrast:more){body{color:#000}.meta,ul.people .role,.check .hint{color:#333}}"
+            },
+            {
+              "id": "34a41604-6fce-4a44-bf45-c8886b67dd31",
+              "name": "PUBLISH_LINKS_TABLE_ID",
+              "type": "string",
+              "value": "REPLACE_WITH_PUBLISH_LINKS_TABLE_ID"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "8d40f9a6-e3bf-4881-924b-bbc3c9cbe5be",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        224,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "s1",
+              "name": "eventId",
+              "value": "={{ ($('Publish Link').item.json.query || {}).e }}",
+              "type": "string"
+            },
+            {
+              "id": "s2",
+              "name": "contactId",
+              "value": "={{ ($('Publish Link').item.json.query || {}).c }}",
+              "type": "string"
+            },
+            {
+              "id": "s3",
+              "name": "linkToken",
+              "value": "={{ ($('Publish Link').item.json.query || {}).t || '' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "3b3bed7f-969e-4f7d-8272-416dd2803bb6",
+      "name": "Extract link",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        448,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').item.json.GRAPHQL_URL }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ query: 'query PublishContext($eventId: ID!) { node(id: $eventId) { ... on Event { id title code lifecycleState classroomStart location { id name } requiredStaff { quantity staffRole { id name } } staff { edges { node { id staffRole { id name } contact { id firstName lastName emailAddress } } } } } } }', variables: { eventId: $('Extract link').item.json.eventId } }) }}",
+        "options": {}
+      },
+      "id": "c5628f2e-6ffe-43a3-a573-729699bc553f",
+      "name": "Fetch Event Context",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1344,
+        96
+      ],
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "e1",
+              "leftValue": "={{ (($json.errors || []).length > 0) }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              },
+              "rightValue": ""
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "6dc6d615-fdf5-4ce8-95f3-a51ed05dc842",
+      "name": "IF Fetch Errors?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1568,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').item.json.GRAPHQL_URL }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ query: 'mutation Log($originIdentifier: String!, $nodeId: ID!, $message: String!, $status: ExternalLogTypeStatus!, $payload: String){ externalLog{ createExternalIntegrationLog(input:{ originIdentifier:$originIdentifier, nodeId:$nodeId, message:$message, status:$status, payload:$payload }){ errors{ label message value } } } }', variables: { originIdentifier: $('Config').item.json.ORIGIN_IDENTIFIER, nodeId: $('Extract link').item.json.eventId, message: 'Could not open the publish page for this event', status: 'failed', payload: JSON.stringify($json) } }) }}",
+        "options": {}
+      },
+      "id": "981a54d1-bef2-49f4-84b8-84bb683b1253",
+      "name": "Log Failure",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1792,
+        0
+      ],
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ '<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><title>Something went wrong</title><style>' + $('Config').item.json.BRAND_CSS + '</style></head><body><header class=\"masthead\"><p>' + $('Config').item.json.BRAND_NAME + '</p></header><main><h1>Something went wrong</h1><div class=\"notice error\"><p>We could not open this event just now.</p></div><p>Please try again shortly.</p></main></body></html>' }}",
+        "options": {
+          "responseCode": 503,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/html; charset=utf-8"
+              },
+              {
+                "name": "Cache-Control",
+                "value": "no-store"
+              }
+            ]
+          }
+        }
+      },
+      "id": "e642ee87-2ec8-4ac6-af67-98762465a862",
+      "name": "Serve Error Page",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        2016,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "/*\tRenders the page a coordinator reaches from the staffing complete email.\n\tRead only - publishing happens on the POST in the publish handler.\n\tRole names and the verb both come from config, never hardcoded\t*/\n\nconst cfg = $('Config').first().json;\nconst link = $('Extract link').first().json;\nconst event = ($json.data || {}).node || null;\n\nconst staffList = (((event || {}).staff || {}).edges || []).map(e => e.node);\nconst coordRole = String(cfg.COORDINATOR_ROLE_NAME).trim();\nconst me = staffList.find(s => s.contact && s.contact.id === link.contactId) || null;\nconst isCoordinator = me !== null && String((me.staffRole || {}).name || '').trim() === coordRole;\n\n/*\tThe verb for what an instructor does with an event. Both forms are used on this page:\n\tshort of people to deliver it, and Delivering this event. The literals are a last resort if\n\tconfig is blank, not the setting - change VERB_BASE and VERB_GERUND in Config\t*/\nconst verb = String(cfg.VERB_BASE || 'deliver').trim();\nconst verbing = String(cfg.VERB_GERUND || 'delivering').trim();\nconst titleCase = (s) => s.charAt(0).toUpperCase() + s.slice(1);\n\nconst esc = (v) => String(v === null || v === undefined ? '' : v)\n\t.split('&').join('&amp;').split('<').join('&lt;').split('>').join('&gt;').split('\"').join('&quot;');\n\nconst prettyDate = (iso) => {\n\tif (!iso) { return ''; }\n\tconst d = new Date(String(iso).replace(' ', 'T'));\n\tif (isNaN(d.getTime())) { return String(iso); }\n\tconst months = ['January','February','March','April','May','June','July','August','September','October','November','December'];\n\treturn months[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear();\n};\n\nconst page = (title, body) => '<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><title>' + esc(title) + '</title><style>' + cfg.BRAND_CSS + '</style></head><body><header class=\"masthead\"><p>' + esc(cfg.BRAND_NAME) + '</p></header><main>' + body + '</main></body></html>';\n\nif (!event) {\n\treturn [{ json: { html: page('We could not open this event', '<h1>We could not open this event</h1><div class=\"notice error\"><p>The link may be incomplete, or the event may no longer exist.</p></div><p>Please reply to the email you came from and someone will help.</p>') } }];\n}\n\n/*\tPublishing changes visibility, so only the coordinator may do it\t*/\nif (!isCoordinator) {\n\treturn [{ json: { html: page('Only the ' + coordRole + ' can publish', '<h1>Only the ' + esc(coordRole) + ' can publish this event</h1><div class=\"notice error\"><p>Publishing is done by the ' + esc(coordRole) + ' named on the event.</p></div><p>If you think that should be you, reply to the email you came from and someone will sort it out.</p>') } }];\n}\n\nconst header = '<h1>' + esc(event.title) + '</h1><p class=\"meta\"><span>' + esc(prettyDate(event.classroomStart)) + '</span>'\n\t+ (event.location ? ' &middot; <span>' + esc(event.location.name) + '</span>' : '') + '</p>';\n\n/*\tAlready published - say so rather than offering to do it again. Nothing is wrong\n\there, so it closes off calmly rather than reading as an error\t*/\nif (String(event.lifecycleState || '') !== 'draft') {\n\treturn [{ json: { html: page('Already published', header + '<div class=\"notice\"><p>This event is already <strong>' + esc(event.lifecycleState) + '</strong>. Nothing further to do here.</p></div><p>You can close this page.</p>') } }];\n}\n\n/*\tPer role: required against confirmed. Anyone assigned in that role counts as confirmed,\n\tbecause a decline removes them from the event. The coordinator is shown but not counted,\n\tsince they are set by hand and never answer an invitation\t*/\nconst required = event.requiredStaff || [];\nconst roleRows = [];\nlet totalRequired = 0;\nlet totalConfirmed = 0;\n\nfor (const req of required) {\n\tconst roleName = String((req.staffRole || {}).name || '').trim();\n\tconst qty = Number(req.quantity || 0);\n\tif (qty === 0) { continue; }\n\tconst held = staffList.filter(s => String((s.staffRole || {}).name || '').trim() === roleName).length;\n\troleRows.push(Math.min(held, qty) + ' of ' + qty + ' ' + roleName);\n\tif (roleName === coordRole) { continue; }\n\ttotalRequired = totalRequired + qty;\n\ttotalConfirmed = totalConfirmed + Math.min(held, qty);\n}\n\nconst complete = totalRequired > 0 && totalConfirmed >= totalRequired;\nconst onEvent = staffList.filter(s => String((s.staffRole || {}).name || '').trim() !== coordRole);\n\nconst people = onEvent.length\n\t? '<ul class=\"people\">' + onEvent.map(s => '<li><span>' + esc(s.contact.firstName + ' ' + s.contact.lastName) + '</span><span class=\"role\">' + esc(String((s.staffRole || {}).name || '').trim()) + '</span></li>').join('') + '</ul>'\n\t: '<p><em>Nobody is currently assigned to ' + esc(verb) + ' this event.</em></p>';\n\nconst status = totalRequired === 0\n\t? '<div class=\"notice warn\"><p>No required personnel are set on this event, so there is nothing to check staffing against. Publish only if you are sure.</p></div>'\n\t: (complete\n\t\t? '<div class=\"notice\"><p><strong>Staffing is complete.</strong> ' + esc(roleRows.join(', ')) + '.</p></div>'\n\t\t: '<div class=\"notice warn\"><p><strong>Staffing is not complete.</strong> ' + esc(roleRows.join(', ')) + '. You can still publish, but the event will go live short of people to ' + esc(verb) + ' it.</p></div>');\n\nconst body = header + status\n\t+ '<h2>' + esc(titleCase(verbing)) + ' this event</h2>' + people\n\t+ '<form method=\"post\" action=\"' + esc(cfg.PUBLISH_SUBMIT_URL) + '\">'\n\t+ '<input type=\"hidden\" name=\"e\" value=\"' + esc(link.eventId) + '\">'\n\t+ '<input type=\"hidden\" name=\"c\" value=\"' + esc(link.contactId) + '\">'\n\t+ '<input type=\"hidden\" name=\"t\" value=\"' + esc(link.linkToken) + '\">'\n\t+ '<div class=\"check\"><input type=\"checkbox\" id=\"notify\" name=\"notify\" value=\"yes\" checked>'\n\t+ '<label for=\"notify\">Tell everybody ' + esc(verbing) + ' it<span class=\"hint\">Sends each of them a note that the event is going ahead. Untick if you would rather tell them yourself.</span></label></div>'\n\t+ '<p><button type=\"submit\">Publish this event</button></p></form>';\n\nreturn [{ json: { html: page('Publish event', body) } }];"
+      },
+      "id": "80555946-9fe7-4204-a718-1404311f4003",
+      "name": "Render Page",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1792,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.html }}",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/html; charset=utf-8"
+              },
+              {
+                "name": "Cache-Control",
+                "value": "no-store"
+              }
+            ]
+          }
+        }
+      },
+      "id": "0c807e82-f004-4f43-b804-0dd05f9bd740",
+      "name": "Serve Page",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        2016,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 60 Publish Event Page\n\nThe page a coordinator reaches from the staffing complete email. **GET only, and it writes nothing.** Publishing happens on the POST in **70 Publish Event Handler**, so a mail scanner opening the link cannot publish anything.\n\n### Token check\nThe link carries `?e=<event>&c=<contact>&t=<token>`. **Check Publish Token** compares the token with the one saved for the event in the publish links Data Table. A wrong or replaced token gets an *invalid or expired link* page.\n\n### Who can use it\nOnly somebody holding the coordinator role on the event. It shows staffing against required personnel and warns, but still allows publishing, when staffing is short.\n\n### Setup\nAdministrate OAuth2 credential on **Fetch Event Context** and **Log Failure**. Fill in Config, then activate. Put this workflow's production URL in `PUBLISH_PAGE_URL` in 40.",
+        "height": 384,
+        "width": 444,
+        "color": 4
+      },
+      "id": "8e3db180-16ea-478a-b5ab-9b5fe1641380",
+      "name": "Sticky Note - 60 Publish Event Page",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -512,
+        -336
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Config\n\n**PUBLISH_SUBMIT_URL** - production URL of **70 Publish Event Handler**.\n\n**PUBLISH_LINKS_TABLE_ID** - the publish links Data Table.\n\n**COORDINATOR_ROLE_NAME**, **VERB_BASE**, **VERB_GERUND**, **BRAND_NAME**, **BRAND_CSS** - as in 30.",
+        "height": 264,
+        "width": 492,
+        "color": 6
+      },
+      "id": "60c98dc6-84e1-48b2-ab96-aae2af6e1e73",
+      "name": "Sticky Note - Config",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        32,
+        -1024
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Config').first().json.PUBLISH_LINKS_TABLE_ID }}"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "event_id",
+              "keyValue": "={{ $('Extract link').item.json.eventId }}"
+            }
+          ]
+        },
+        "returnAll": true
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        672,
+        96
+      ],
+      "name": "Read Publish Link",
+      "alwaysOutputData": true,
+      "id": "4d9b72a0-42c3-4be1-9c4c-40c884a46cd9"
+    },
+    {
+      "parameters": {
+        "jsCode": "/*\tThe publish link in the staffing complete email carries a random token saved per event\n\tby 40 Response Handler. A newer completion email replaces it, so older links expire.\n\tNothing is shown about the event without a matching token. Nothing is written here\t*/\n\nconst cfg = $('Config').first().json;\nconst link = $('Extract link').first().json;\nconst rows = $input.all().map((item) => item.json).filter((row) => row && row.event_id);\nconst row = rows.find((r) => String(r.event_id) === String(link.eventId)) || null;\n\n/*\tCompares in constant time, so response timing does not leak how much of a guess\n\twas right. An empty token never matches\t*/\nconst sameToken = (expected, given) => {\n\tconst a = String(expected || '');\n\tconst b = String(given || '');\n\tif (a === '' || b === '' || a.length !== b.length) { return false; }\n\tlet diff = 0;\n\tfor (let i = 0; i < a.length; i++) { diff = diff | (a.charCodeAt(i) ^ b.charCodeAt(i)); }\n\treturn diff === 0;\n};\n\nconst esc = (v) => String(v === null || v === undefined ? '' : v)\n\t.split('&').join('&amp;').split('<').join('&lt;').split('>').join('&gt;').split('\"').join('&quot;');\n\nconst page = (title, body) => '<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><title>' + esc(title) + '</title><style>' + cfg.BRAND_CSS + '</style></head><body><header class=\"masthead\"><p>' + esc(cfg.BRAND_NAME) + '</p></header><main>' + body + '</main></body></html>';\n\nconst valid = String(link.eventId || '') !== '' && String(link.contactId || '') !== '' && row !== null && sameToken(row.token, link.linkToken);\nconst heading = 'This link is invalid or has expired';\n\nreturn [{ json: {\n\tvalid: valid,\n\thtml: valid ? '' : page(heading, '<h1>' + esc(heading) + '</h1><div class=\"notice error\"><p>' + 'This publish link is not valid any more. A newer staffing complete email may have replaced it.' + '</p></div><p>Use the link in the most recent staffing complete email, or publish the event in Administrate.</p>')\n} }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        896,
+        96
+      ],
+      "name": "Check Publish Token",
+      "id": "1e3ff6af-caa4-4280-9a2e-8fac22e312fe"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "443da312-93ff-4e74-bc6e-f90648d9d791",
+              "leftValue": "={{ $json.valid }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              },
+              "rightValue": ""
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1120,
+        96
+      ],
+      "name": "IF Publish Token Valid?",
+      "id": "f987ba0e-4e0f-486c-9435-ead138c904ce"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.html }}",
+        "options": {
+          "responseCode": 403,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/html; charset=utf-8"
+              },
+              {
+                "name": "Cache-Control",
+                "value": "no-store"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1344,
+        336
+      ],
+      "name": "Serve Invalid Link",
+      "id": "93be9518-0563-4933-8749-43b3198a77fe"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Publish Link": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Extract link",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract link": {
+      "main": [
+        [
+          {
+            "node": "Read Publish Link",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Event Context": {
+      "main": [
+        [
+          {
+            "node": "IF Fetch Errors?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Fetch Errors?": {
+      "main": [
+        [
+          {
+            "node": "Log Failure",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Render Page",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Failure": {
+      "main": [
+        [
+          {
+            "node": "Serve Error Page",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Render Page": {
+      "main": [
+        [
+          {
+            "node": "Serve Page",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Publish Link": {
+      "main": [
+        [
+          {
+            "node": "Check Publish Token",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Publish Token": {
+      "main": [
+        [
+          {
+            "node": "IF Publish Token Valid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Publish Token Valid?": {
+      "main": [
+        [
+          {
+            "node": "Fetch Event Context",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Serve Invalid Link",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true,
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed"
+  },
+  "tags": []
+}

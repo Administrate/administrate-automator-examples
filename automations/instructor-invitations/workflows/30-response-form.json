@@ -1,0 +1,575 @@
+{
+  "name": "Instructor Invitations - Response Form",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "311377a4-5399-4bb7-8f6a-8d671ba0e3d3",
+        "responseMode": "responseNode",
+        "options": {
+          "ignoreBots": true
+        }
+      },
+      "id": "1d4d8b13-dcaa-4050-8d02-f552ef8b6328",
+      "name": "Invitation Link",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        96
+      ],
+      "webhookId": "7422b568-5bbf-4cad-b1d3-e649dfc212d6"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c1",
+              "name": "GRAPHQL_URL",
+              "type": "string",
+              "value": "https://api.getadministrate.com/graphql"
+            },
+            {
+              "id": "c2",
+              "name": "ORIGIN_IDENTIFIER",
+              "type": "string",
+              "value": "Automator - Instructor Invitations"
+            },
+            {
+              "id": "c3",
+              "name": "SUBMIT_URL",
+              "type": "string",
+              "value": "https://YOUR-N8N-HOST/webhook/b4f6bbc9-71a4-4e6e-850f-3d5057338599"
+            },
+            {
+              "id": "c4",
+              "name": "COORDINATOR_ROLE_NAME",
+              "type": "string",
+              "value": "Coordinator"
+            },
+            {
+              "id": "c5",
+              "name": "FALLBACK_ROLE_ID",
+              "type": "string",
+              "value": "REPLACE_WITH_FALLBACK_STAFF_ROLE_ID"
+            },
+            {
+              "id": "c5b",
+              "name": "FALLBACK_ROLE_NAME",
+              "type": "string",
+              "value": "Instructor"
+            },
+            {
+              "id": "c5c",
+              "name": "VERB_BASE",
+              "type": "string",
+              "value": "deliver"
+            },
+            {
+              "id": "c5d",
+              "name": "VERB_GERUND",
+              "type": "string",
+              "value": "delivering"
+            },
+            {
+              "id": "c6",
+              "name": "INVITATIONS_TABLE_ID",
+              "type": "string",
+              "value": "REPLACE_WITH_INVITATIONS_TABLE_ID"
+            },
+            {
+              "id": "c7",
+              "name": "BRAND_NAME",
+              "type": "string",
+              "value": "Your Organisation"
+            },
+            {
+              "id": "c8",
+              "name": "BRAND_CSS",
+              "type": "string",
+              "value": ":root{--g:#1F5FAD;--gd:#163F73;--gt:#E8EFF8;--ink:#1A1A1A;--muted:#5A5A5A;--line:#D4D4D4;--danger:#A3241F}*,*::before,*::after{box-sizing:border-box}html{font-size:100%;-webkit-text-size-adjust:100%}body{margin:0;font-family:\"Segoe UI\",Roboto,\"Helvetica Neue\",Arial,sans-serif;font-size:clamp(1rem,0.95rem + 0.25vw,1.125rem);line-height:1.6;color:var(--ink);background:#FFF}.masthead{background:var(--gd);color:#FFF;padding:clamp(1rem,3vw,1.75rem) clamp(1rem,5vw,2.5rem)}.masthead p{margin:0;font-weight:600;letter-spacing:.08em;text-transform:uppercase;font-size:.8em}main{max-width:44rem;margin:0 auto;padding:clamp(1.25rem,5vw,2.5rem) clamp(1rem,5vw,2.5rem) 4rem}h1{font-size:clamp(1.4rem,1.1rem + 1.4vw,2rem);line-height:1.25;margin:0 0 .35em;color:var(--gd)}.meta{margin:0 0 2rem;color:var(--muted)}.meta span{white-space:nowrap}fieldset{border:1px solid var(--line);border-radius:.25rem;padding:clamp(.75rem,3vw,1.25rem);margin:0 0 1.75rem}legend{font-weight:600;padding:0 .4em}.choice{display:flex;align-items:flex-start;gap:.75rem;padding:.6rem .4rem}.choice + .choice{border-top:1px solid var(--line)}.choice input{flex:none;width:1.25rem;height:1.25rem;margin:.15rem 0 0;accent-color:var(--g)}.choice label{cursor:pointer}.choice .hint{display:block;color:var(--muted);font-size:.9em}label.block{display:block;font-weight:600;margin:0 0 .4rem}textarea,select{width:100%;font:inherit;color:inherit;padding:.6rem .7rem;border:1px solid var(--line);border-radius:.25rem;background:#FFF}textarea{min-height:7rem;resize:vertical}.help{color:var(--muted);font-size:.9em;margin:.35rem 0 0}button{font:inherit;font-weight:600;color:#FFF;background:var(--g);border:1px solid var(--gd);border-radius:.25rem;padding:.7rem 1.6rem;cursor:pointer;min-height:2.75rem}button:hover{background:var(--gd)}a:focus-visible,button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:3px solid var(--g);outline-offset:2px}.notice{border-left:4px solid var(--g);background:var(--gt);padding:.9rem 1rem;margin:0 0 1.75rem}.error{border-left-color:var(--danger);background:#FBEDEC}@media (prefers-contrast:more){body{color:#000}.help,.meta,.choice .hint{color:#333}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "17180cae-123a-4737-b3a1-7f9ebf79e8ed",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        224,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "s1",
+              "name": "eventId",
+              "value": "={{ ($('Invitation Link').item.json.query || {}).e }}",
+              "type": "string"
+            },
+            {
+              "id": "s2",
+              "name": "contactId",
+              "value": "={{ ($('Invitation Link').item.json.query || {}).c }}",
+              "type": "string"
+            },
+            {
+              "id": "s3",
+              "name": "linkToken",
+              "value": "={{ ($('Invitation Link').item.json.query || {}).t || '' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "eeb9409f-87df-4c56-a9e3-ac670d7d3a2c",
+      "name": "Extract link",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        448,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').first().json.GRAPHQL_URL }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ query: 'query ResponseContext($eventId: ID!, $contactId: ID!, $roleId: ID!) { event: node(id: $eventId) { ... on Event { id title code lifecycleState classroomStart location { id name } requiredStaff { quantity staffRole { id name } } staff { edges { node { id staffRole { id name } contact { id firstName lastName emailAddress } } } } } } responder: node(id: $contactId) { ... on Contact { id firstName lastName emailAddress isInstructor isStaff isQualified(eventId: $eventId, staffRoleId: $roleId) staffRoles { id name } } } }', variables: { eventId: $('Extract link').first().json.eventId, contactId: $('Extract link').first().json.contactId, roleId: $('Config').first().json.FALLBACK_ROLE_ID } }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "270b4fb1-fafb-4e6b-affc-d368f4b5b897",
+      "name": "Fetch Event Staffing",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1344,
+        96
+      ],
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "e1",
+              "leftValue": "={{ (($json.errors || []).length > 0) }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              },
+              "rightValue": ""
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "55384ffd-ecd4-4671-a69f-80e6ae3a15d3",
+      "name": "IF Fetch Errors?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1568,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').first().json.GRAPHQL_URL }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ query: 'mutation Log($originIdentifier: String!, $nodeId: ID!, $message: String!, $status: ExternalLogTypeStatus!, $payload: String){ externalLog{ createExternalIntegrationLog(input:{ originIdentifier:$originIdentifier, nodeId:$nodeId, message:$message, status:$status, payload:$payload }){ errors{ label message value } } } }', variables: { originIdentifier: $('Config').first().json.ORIGIN_IDENTIFIER, nodeId: $('Extract link').first().json.eventId, message: 'Could not open the response page for this invitation', status: 'failed', payload: JSON.stringify($json) } }) }}",
+        "options": {}
+      },
+      "id": "3a4e4323-6932-4f9e-9866-a14921ad2758",
+      "name": "Log Failure",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1792,
+        0
+      ],
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ '<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><title>Something went wrong</title><style>' + $('Config').first().json.BRAND_CSS + '</style></head><body><header class=\"masthead\"><p>' + $('Config').first().json.BRAND_NAME + '</p></header><main><h1>Something went wrong</h1><div class=\"notice error\"><p>We could not open this invitation just now.</p></div><p>Please try again shortly, or reply to the invitation email and someone will help.</p></main></body></html>' }}",
+        "options": {
+          "responseCode": 503,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/html; charset=utf-8"
+              },
+              {
+                "name": "Cache-Control",
+                "value": "no-store"
+              }
+            ]
+          }
+        }
+      },
+      "id": "5e21f606-99e4-4d8b-a787-34744030f3fb",
+      "name": "Serve Error Page",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        2016,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "/*\tBuilds the response page. Somebody can be asked two ways: as a candidate invited\n\tthrough Email to Contacts, who is not on the event, or as somebody a coordinator\n\tstaffed first and then invited through Email to Staff. Both must be able to answer.\n\tOnly reached with a valid personal token. Every form carries the token, so the\n\tresponse handler can check it again before recording anything.\n\tRole names and the verb both come from config, never hardcoded, so the page reads in\n\tyour own vocabulary\t*/\n\nconst cfg = $('Config').first().json;\nconst link = $('Extract link').first().json;\nconst api = $input.first().json;\n\nconst event = (api.data || {}).event || null;\nconst responder = (api.data || {}).responder || null;\n\nconst coordRole = String(cfg.COORDINATOR_ROLE_NAME).trim();\nconst fallbackRole = String(cfg.FALLBACK_ROLE_NAME || 'Instructor').trim();\n\n/*\tThe verb for what an instructor does with an event. Two forms are needed because the\n\tsentences below use both: deliver this event, and delivering this event. The literals here\n\tare a last resort if config is ever blank, not the setting - change VERB_BASE and\n\tVERB_GERUND in Config\t*/\nconst verb = String(cfg.VERB_BASE || 'deliver').trim();\nconst verbing = String(cfg.VERB_GERUND || 'delivering').trim();\n\n/*\tEvery invitation row for this event. The responder's own row may not exist yet -\n\tabsent is the normal first click\t*/\nconst rows = $('Read Prior Response').all().map(i => i.json).filter(r => r && r.event_id);\nconst prior = rows.find(r => String(r.contact_id) === String(link.contactId)) || null;\n\nconst esc = (v) => String(v === null || v === undefined ? '' : v)\n\t.split('&').join('&amp;').split('<').join('&lt;').split('>').join('&gt;').split('\"').join('&quot;');\n\nconst prettyDate = (iso) => {\n\tif (!iso) { return ''; }\n\tconst d = new Date(String(iso).replace(' ', 'T'));\n\tif (isNaN(d.getTime())) { return String(iso); }\n\tconst months = ['January','February','March','April','May','June','July','August','September','October','November','December'];\n\treturn months[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear();\n};\n\nconst page = (title, body) => '<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><title>' + esc(title) + '</title><style>' + cfg.BRAND_CSS + '</style></head><body><header class=\"masthead\"><p>' + esc(cfg.BRAND_NAME) + '</p></header><main>' + body + '</main></body></html>';\n\n/*\tTwo kinds of page that are not the form, and they are not the same thing.\n\trefuse is for something genuinely wrong, so it ends by pointing at a human.\n\tcloseOff is for when everything is in order and there is simply nothing to do\t*/\nconst refuse = (heading, message) => [{ json: { valid: false, html: page(heading, '<h1>' + esc(heading) + '</h1><div class=\"notice error\"><p>' + esc(message) + '</p></div><p>Please reply to the invitation email and someone will help.</p>') } }];\n\nconst closeOff = (heading, message) => [{ json: { valid: false, html: page(heading, '<h1>' + esc(heading) + '</h1><div class=\"notice\"><p>' + esc(message) + '</p></div><p>You can close this page.</p>') } }];\n\nconst blockedHeading = 'Answer cannot be recorded yet';\n\nif (!event) { return refuse('This invitation is no longer active', 'The link may be incomplete, or the event may no longer exist.'); }\n\nconst staff = ((event.staff || {}).edges || []).map(e => e.node);\n\n/*\tWhether anybody holds the coordinator role on this event. This is a separate problem\n\tfrom the one below: it does not stop an answer, it stops anybody being told about it\t*/\nconst hasCoordinator = staff.some(s => String((s.staffRole || {}).name || '').trim() === coordRole);\n\n/*\tThe coordinator is staff on the event, so they are recognised from staffing\t*/\nconst me = staff.find(s => s.contact && s.contact.id === link.contactId) || null;\nconst isCoordinator = me !== null && String((me.staffRole || {}).name || '').trim() === coordRole;\n\n/*\tThe responder's own staff record, read from the staff list rather than from required\n\tpersonnel so it still resolves when required personnel is unset. The coordinator role\n\tis skipped because a coordinator is not one of the people ' + verbing + ' the event\t*/\nconst myStaff = staff.find(s => s.contact\n\t&& s.contact.id === link.contactId\n\t&& String((s.staffRole || {}).name || '').trim() !== coordRole) || null;\n\nconst alreadyOn = myStaff !== null;\n\nconst header = '<h1>Are you available to ' + esc(verb) + ' ' + esc(event.title) + '?</h1>'\n\t+ '<p class=\"meta\"><span>' + esc(prettyDate(event.classroomStart)) + '</span>'\n\t+ (event.location ? ' &middot; <span>' + esc(event.location.name) + '</span>' : '') + '</p>';\n\n/*\tWhich roles this event still needs. Roles are custom defined per tenant and an event\n\tcan require more than one, so this is read from the event rather than assumed\t*/\nlet requiredRoleCount = 0;\nconst requiredOpen = [];\n\nfor (const req of (event.requiredStaff || [])) {\n\tconst roleName = String((req.staffRole || {}).name || '').trim();\n\tconst roleId = String((req.staffRole || {}).id || '');\n\tconst qty = Number(req.quantity || 0);\n\tif (roleName === coordRole || qty === 0) { continue; }\n\trequiredRoleCount = requiredRoleCount + 1;\n\tconst holders = staff.filter(s => String((s.staffRole || {}).name || '').trim() === roleName);\n\tif (holders.length < qty) { requiredOpen.push({ id: roleId, name: roleName }); }\n}\n\nconst slotsFilled = requiredRoleCount > 0 && requiredOpen.length === 0;\nconst neededRole = requiredOpen.length > 0 ? requiredOpen[0].name : fallbackRole;\n\n/*\tCoordinator view: record a response that arrived some other way.\n\tThe picker comes from the invitations table, since candidates are not on the event\t*/\nif (isCoordinator) {\n\tconst answered = ['accepted', 'declined'];\n\tconst open = rows.filter(r => answered.indexOf(String(r.status || '').toLowerCase()) === -1 && String(r.status || '') !== 'coordinator');\n\n\tif (open.length === 0) {\n\t\treturn closeOff('Nothing outstanding to record', 'Everybody we know about on this event has already given a firm answer. Somebody appears here once they have asked for their personal link or answered.');\n\t}\n\n\tconst options = open.map(r => '<option value=\"' + esc(r.contact_id) + '\">' + esc(r.contact_name || r.contact_email || r.contact_id) + '</option>').join('');\n\n\tconst body = '<h1>Record a response for ' + esc(event.title) + '</h1>'\n\t\t+ '<p class=\"meta\"><span>' + esc(prettyDate(event.classroomStart)) + '</span>'\n\t\t+ (event.location ? ' &middot; <span>' + esc(event.location.name) + '</span>' : '') + '</p>'\n\t\t+ '<div class=\"notice\"><p>You are the ' + esc(coordRole) + ' for this event. Use this page to record a response that arrived another way, such as a direct email reply.</p></div>'\n\t\t+ '<form method=\"post\" action=\"' + esc(cfg.SUBMIT_URL) + '\">'\n\t\t+ '<input type=\"hidden\" name=\"e\" value=\"' + esc(link.eventId) + '\">'\n\t\t+ '<input type=\"hidden\" name=\"c\" value=\"' + esc(link.contactId) + '\">'\n\t\t+ '<input type=\"hidden\" name=\"t\" value=\"' + esc(link.linkToken) + '\">'\n\t\t+ '<p><label class=\"block\" for=\"behalf\">Recording a response for</label><select id=\"behalf\" name=\"behalf_contact_id\" required><option value=\"\">Choose a person</option>' + options + '</select></p>'\n\t\t+ '<fieldset><legend>Their answer</legend>'\n\t\t+ '<div class=\"choice\"><input type=\"radio\" id=\"a-yes\" name=\"answer\" value=\"yes\" required><label for=\"a-yes\">Yes<span class=\"hint\">They will be assigned to ' + esc(verb) + ' this event.</span></label></div>'\n\t\t+ '<div class=\"choice\"><input type=\"radio\" id=\"a-no\" name=\"answer\" value=\"no\"><label for=\"a-no\">No<span class=\"hint\">If they are already on the event, they will be taken off it.</span></label></div>'\n\t\t+ '<div class=\"choice\"><input type=\"radio\" id=\"a-maybe\" name=\"answer\" value=\"maybe\"><label for=\"a-maybe\">Maybe<span class=\"hint\">Their link stays open, so they can still give a firm answer.</span></label></div>'\n\t\t+ '</fieldset>'\n\t\t+ '<p><label class=\"block\" for=\"comments\">Comments</label><textarea id=\"comments\" name=\"comments\" aria-describedby=\"comments-help\"></textarea>'\n\t\t+ '<span class=\"help\" id=\"comments-help\">Record what they actually said. It is stored exactly as written.</span></p>'\n\t\t+ '<p><button type=\"submit\">Record this response</button></p></form>';\n\n\treturn [{ json: { valid: true, html: page('Record a response', body) } }];\n}\n\n/*\tCandidate view\t*/\nif (!responder) { return refuse('This invitation is no longer active', 'The link may be incomplete.'); }\n\n/*\tThe next three are all in order rather than wrong, so none of them sends the reader\n\toff to find help. Each already says what to do if the reader disagrees\t*/\nif (prior && String(prior.status || '') === 'declined') {\n\treturn closeOff('You have already declined', 'We recorded that you are not available for this event. If that has changed, reply to the invitation email and we will pick it up.');\n}\n\n/*\tBeing on the event is not the same as having answered. Somebody the coordinator\n\tstaffed first is on it and has still not been asked, so only a recorded acceptance\n\tcloses the page\t*/\nif (alreadyOn && prior && String(prior.status || '') === 'accepted') {\n\treturn closeOff('You are already confirmed', 'You have accepted this event and are assigned to ' + verb + ' it. Nothing further is needed.');\n}\n\n/*\tA full event does not shut out one of the people who is themselves filling it\t*/\nif (slotsFilled && !alreadyOn) {\n\treturn closeOff('This event is now fully staffed', 'Somebody else accepted before we heard from you, so no response is needed. Thank you for considering it.');\n}\n\n/*\tTwo distinct reasons an answer cannot be honoured, and they are told apart because\n\tthe remedy differs. Either the contact record is missing the role this event needs,\n\twhich is what addStaff enforces, or the record is not marked as able to do this at\n\tall. Whether a coordinator exists is a third, separate matter, handled below\t*/\nconst myRoleIds = (responder.staffRoles || []).map(r => String(r.id));\nconst holdableOpen = requiredOpen.filter(r => myRoleIds.indexOf(r.id) !== -1);\nconst canHoldRole = requiredRoleCount === 0\n\t? myRoleIds.indexOf(String(cfg.FALLBACK_ROLE_ID)) !== -1\n\t: holdableOpen.length > 0;\n\nconst isEligible = responder.isInstructor === true || responder.isQualified === true;\n\nif (!alreadyOn && (!canHoldRole || !isEligible)) {\n\tif (prior && String(prior.status || '') === 'assign_failed') {\n\t\treturn closeOff('We have already passed this on', 'The ' + coordRole + ' knows your record needs updating for this event, and will be in touch.');\n\t}\n\n\tconst blockedReason = !canHoldRole\n\t\t? 'This event needs a ' + neededRole + ', and your contact record does not have that role yet. Until it is added, an answer cannot be saved against the event.'\n\t\t: 'Your contact record is not marked as able to ' + verb + ' events yet. Until that is set, an answer cannot be saved against the event.';\n\n\t/*\tNo coordinator on the event is a second and separate problem. It does not cause\n\t\tthe blockage, it removes the person who would normally fix it\t*/\n\tif (!hasCoordinator) {\n\t\treturn [{ json: { valid: false, html: page(blockedHeading,\n\t\t\t'<h1>' + esc(blockedHeading) + '</h1>'\n\t\t\t+ '<div class=\"notice error\"><p>' + esc(blockedReason) + '</p></div>'\n\t\t\t+ '<p>This event has no ' + esc(coordRole) + ' for us to pass it to, so please reply to the invitation email and somebody will sort both out.</p>') } }];\n\t}\n\n\treturn [{ json: { valid: false, html: page(blockedHeading,\n\t\t'<h1>' + esc(blockedHeading) + '</h1>'\n\t\t+ '<div class=\"notice error\"><p>' + esc(blockedReason) + '</p></div>'\n\t\t+ '<p>Tell the ' + esc(coordRole) + ' and they will get it added.</p>'\n\t\t+ '<form method=\"post\" action=\"' + esc(cfg.SUBMIT_URL) + '\">'\n\t\t+ '<input type=\"hidden\" name=\"e\" value=\"' + esc(link.eventId) + '\">'\n\t\t+ '<input type=\"hidden\" name=\"c\" value=\"' + esc(link.contactId) + '\">'\n\t\t+ '<input type=\"hidden\" name=\"t\" value=\"' + esc(link.linkToken) + '\">'\n\t\t+ '<input type=\"hidden\" name=\"answer\" value=\"unable\">'\n\t\t+ '<p><label class=\"block\" for=\"comments\">Anything you want to add</label><textarea id=\"comments\" name=\"comments\" aria-describedby=\"comments-help\"></textarea>'\n\t\t+ '<span class=\"help\" id=\"comments-help\">Optional. For example, whether you would still like to ' + esc(verb) + ' this event.</span></p>'\n\t\t+ '<p><button type=\"submit\">Tell the ' + esc(coordRole) + '</button></p></form>') } }];\n}\n\nconst assignedNotice = alreadyOn\n\t? '<div class=\"notice\"><p>You have been put down to ' + esc(verb) + ' this event. Please confirm whether you are available.</p></div>'\n\t: '';\n\n/*\tEach hint says what happens if you pick it, and nothing else. Restating the choice\n\tbefore explaining it just repeats the label, and it was the reason the three did not\n\tread as a set: two restated, one went straight to instruction\t*/\nconst yesHint = alreadyOn\n\t? 'Your place on this event stands.'\n\t: 'You will be assigned to ' + verb + ' this event.';\n\nconst noHint = alreadyOn\n\t? 'You will be taken off this event and we will ask somebody else.'\n\t: 'We will ask somebody else.';\n\nconst maybeHint = 'Your link stays open, and the ' + coordRole + ' will get back to you. Use the comments to say what you need to know.';\n\nconst body = header.replace('</p>', ' &middot; <span>' + esc(responder.firstName + ' ' + responder.lastName) + '</span></p>')\n\t+ assignedNotice\n\t+ (prior && String(prior.status || '') === 'maybe' ? '<div class=\"notice\"><p>You told us maybe last time. You can give a firm answer now.</p></div>' : '')\n\t+ '<form method=\"post\" action=\"' + esc(cfg.SUBMIT_URL) + '\">'\n\t+ '<input type=\"hidden\" name=\"e\" value=\"' + esc(link.eventId) + '\">'\n\t+ '<input type=\"hidden\" name=\"c\" value=\"' + esc(link.contactId) + '\">'\n\t+ '<input type=\"hidden\" name=\"t\" value=\"' + esc(link.linkToken) + '\">'\n\t+ '<fieldset><legend>Your answer</legend>'\n\t+ '<div class=\"choice\"><input type=\"radio\" id=\"a-yes\" name=\"answer\" value=\"yes\" required><label for=\"a-yes\">Yes<span class=\"hint\">' + esc(yesHint) + '</span></label></div>'\n\t+ '<div class=\"choice\"><input type=\"radio\" id=\"a-no\" name=\"answer\" value=\"no\"><label for=\"a-no\">No<span class=\"hint\">' + esc(noHint) + '</span></label></div>'\n\t+ '<div class=\"choice\"><input type=\"radio\" id=\"a-maybe\" name=\"answer\" value=\"maybe\"><label for=\"a-maybe\">Maybe<span class=\"hint\">' + esc(maybeHint) + '</span></label></div>'\n\t+ '</fieldset>'\n\t+ '<p><label class=\"block\" for=\"comments\">Comments</label><textarea id=\"comments\" name=\"comments\" aria-describedby=\"comments-help\"></textarea>'\n\t+ '<span class=\"help\" id=\"comments-help\">Optional. Anything you write is recorded exactly as written and read by a person.</span></p>'\n\t+ '<p><button type=\"submit\">Send my response</button></p></form>';\n\nreturn [{ json: { valid: true, html: page('Invitation to ' + verb + ' an event', body) } }];"
+      },
+      "id": "64bef2c0-efa9-4808-b007-c15d94ae2221",
+      "name": "Render Page",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1792,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.html }}",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/html; charset=utf-8"
+              },
+              {
+                "name": "Cache-Control",
+                "value": "no-store"
+              }
+            ]
+          }
+        }
+      },
+      "id": "d43d931c-9296-4e15-b80d-b33f35d7dbd9",
+      "name": "Serve Page",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        2016,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 30 Response Form\n\nThe page somebody lands on from an invitation. **GET only, and it writes nothing**, so a mail scanner opening the link cannot answer for anyone. Answers are recorded by **40 Response Handler** when the form is submitted.\n\n### Personal tokens\nA link is only honoured with `?e=<event>&c=<contact>&t=<token>` where the token matches the invitation row. **Check Link Token** compares it in constant time.\n- No token (the link in the invitation you send from Administrate): the page offers an **Email me my link** button.\n- Wrong token: an *invalid or expired link* page with the same button.\n- Valid token: the event is read and the form is shown. Every form carries the token.\n\n### Three views from one link\nA candidate sees the plain form. Somebody already staffed sees the same form with a note that they are on the event. The coordinator sees an on-behalf-of picker.\n\n### Setup\n1. Administrate OAuth2 credential on **Fetch Event Staffing** and **Log Failure**.\n2. Fill in Config, then activate.\n3. Use this workflow's production URL in your invitation template and in `RESPONSE_BASE_URL` in 40 and 50.",
+        "height": 504,
+        "width": 620,
+        "color": 4
+      },
+      "id": "b3923edf-39af-4b60-b1c3-44f2e18cebe0",
+      "name": "Sticky Note - 30 Response Form",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -720,
+        -464
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Config\n\n**SUBMIT_URL** - production URL of **40 Response Handler**. Forms post here.\n\n**COORDINATOR_ROLE_NAME** - staff role that coordinates the event and sees the on-behalf-of picker. Printed on the page.\n\n**FALLBACK_ROLE_ID** / **FALLBACK_ROLE_NAME** - used only when an event has no required personnel.\n\n**VERB_BASE** / **VERB_GERUND** - what an instructor does with an event, as in *available to deliver this event*. Keep them the same in 30, 40, 50 and 60.\n\n**INVITATIONS_TABLE_ID** - the invitations Data Table.\n\n**BRAND_NAME** / **BRAND_CSS** - masthead text and page styling.",
+        "height": 408,
+        "width": 748,
+        "color": 6
+      },
+      "id": "1347a597-1c86-465d-af43-91e5d0fc2a13",
+      "name": "Sticky Note - Config",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -48,
+        -1200
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Config').item.json.INVITATIONS_TABLE_ID }}"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "event_id",
+              "keyValue": "={{ $('Extract link').item.json.eventId }}"
+            }
+          ]
+        },
+        "returnAll": true
+      },
+      "id": "92711e66-8c42-475e-a8d8-eb99b7f1c423",
+      "name": "Read Prior Response",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        672,
+        96
+      ],
+      "alwaysOutputData": true,
+      "notes": "Every invitation row for this event. The responder's own row holds their token. A row exists once somebody has asked for their personal link, or has answered."
+    },
+    {
+      "parameters": {
+        "jsCode": "/*\tEvery link that can lead to a recorded answer carries a random token that is stored on\n\tthe invitation row. Without a matching token this page shows nothing about the event.\n\tIt offers to email the person their own personal link instead, as a button rather than\n\tautomatically, because mail scanners open links but do not press buttons.\n\tNothing is written here\t*/\n\nconst cfg = $('Config').first().json;\nconst link = $('Extract link').first().json;\nconst rows = $input.all().map((item) => item.json).filter((row) => row && row.event_id);\nconst row = rows.find((r) => String(r.contact_id) === String(link.contactId)) || null;\n\n/*\tCompares in constant time, so response timing does not leak how much of a guess\n\twas right. An empty token never matches\t*/\nconst sameToken = (expected, given) => {\n\tconst a = String(expected || '');\n\tconst b = String(given || '');\n\tif (a === '' || b === '' || a.length !== b.length) { return false; }\n\tlet diff = 0;\n\tfor (let i = 0; i < a.length; i++) { diff = diff | (a.charCodeAt(i) ^ b.charCodeAt(i)); }\n\treturn diff === 0;\n};\n\nconst hasIds = String(link.eventId || '') !== '' && String(link.contactId || '') !== '';\n\nif (hasIds && row !== null && sameToken(row.token, link.linkToken)) {\n\treturn [{ json: { valid: true } }];\n}\n\nconst esc = (v) => String(v === null || v === undefined ? '' : v)\n\t.split('&').join('&amp;').split('<').join('&lt;').split('>').join('&gt;').split('\"').join('&quot;');\n\nconst page = (title, body) => '<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><title>' + esc(title) + '</title><style>' + cfg.BRAND_CSS + '</style></head><body><header class=\"masthead\"><p>' + esc(cfg.BRAND_NAME) + '</p></header><main>' + body + '</main></body></html>';\n\nconst hasToken = String(link.linkToken || '') !== '';\n\nconst heading = hasToken ? 'This link is invalid or has expired' : 'Get your personal response link';\nconst message = hasToken\n\t? 'This link is not valid any more, so nothing can be recorded from it. A newer link may have replaced it.'\n\t: 'For your security, answers are only accepted through a personal link that we email to you.';\n\nconst action = hasIds\n\t? '<form method=\"post\" action=\"' + esc(cfg.SUBMIT_URL) + '\">'\n\t\t+ '<input type=\"hidden\" name=\"e\" value=\"' + esc(link.eventId) + '\">'\n\t\t+ '<input type=\"hidden\" name=\"c\" value=\"' + esc(link.contactId) + '\">'\n\t\t+ '<input type=\"hidden\" name=\"action\" value=\"request_link\">'\n\t\t+ '<p>We can email a personal link to the address we hold for you.</p>'\n\t\t+ '<p><button type=\"submit\">Email me my link</button></p></form>'\n\t: '<p>The link is incomplete. Please reply to the invitation email and someone will help.</p>';\n\nreturn [{ json: {\n\tvalid: false,\n\thtml: page(heading, '<h1>' + esc(heading) + '</h1><div class=\"notice' + (hasToken ? ' error' : '') + '\"><p>' + esc(message) + '</p></div>' + action)\n} }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        896,
+        96
+      ],
+      "name": "Check Link Token",
+      "id": "514be4c1-ff53-4531-bc6f-232f17515659"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "10f0bce8-382e-485d-a515-70ab2c245b6e",
+              "leftValue": "={{ $json.valid }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              },
+              "rightValue": ""
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1120,
+        96
+      ],
+      "name": "IF Link Token Valid?",
+      "id": "e27911ee-2bf9-462e-8a80-4e4ca9c2d10e"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.html }}",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/html; charset=utf-8"
+              },
+              {
+                "name": "Cache-Control",
+                "value": "no-store"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1344,
+        336
+      ],
+      "name": "Serve Link Problem",
+      "id": "2ff30dad-1f1b-4a41-b88c-9bfea98fbd53"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Invitation Link": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Extract link",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Event Staffing": {
+      "main": [
+        [
+          {
+            "node": "IF Fetch Errors?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Fetch Errors?": {
+      "main": [
+        [
+          {
+            "node": "Log Failure",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Render Page",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Failure": {
+      "main": [
+        [
+          {
+            "node": "Serve Error Page",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Render Page": {
+      "main": [
+        [
+          {
+            "node": "Serve Page",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract link": {
+      "main": [
+        [
+          {
+            "node": "Read Prior Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Prior Response": {
+      "main": [
+        [
+          {
+            "node": "Check Link Token",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Link Token": {
+      "main": [
+        [
+          {
+            "node": "IF Link Token Valid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Link Token Valid?": {
+      "main": [
+        [
+          {
+            "node": "Fetch Event Staffing",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Serve Link Problem",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true,
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed"
+  },
+  "tags": []
+}

@@ -1,0 +1,504 @@
+{
+  "name": "Bulk Complete LMS Content",
+  "nodes": [
+    {
+      "parameters": {
+        "query": "query getEventContent($eventId: ID!, $offset: Int) {\n  node(id: $eventId) {\n    ... on Event {\n      content(\n        offset: $offset\n        order: {field: order, direction: asc}\n        filters: [{field: isArchived, operation: eq, value: \"false\"}, {field: isHidden, operation: eq, value: \"false\"}, { field: type, operation: eq, value: \"scorm\" }]\n      ) {\n        pageInfo {\n          hasNextPage\n          endCursor\n        }\n        edges {\n          node {\n            id\n          }\n        }\n      }\n    }\n  }\n}",
+        "variables": "={{ JSON.stringify({ eventId: $('Config').first().json.EVENT_ID, offset: 0 }) }}",
+        "options": {
+          "pagination": {
+            "pagination": {
+              "paginationMode": "paginate",
+              "dataPath": "data.node.content.edges",
+              "completeExpression": "{{ $response.body.data.node.content.pageInfo.hasNextPage }}"
+            }
+          }
+        }
+      },
+      "type": "CUSTOM.administrate",
+      "typeVersion": 1,
+      "position": [
+        1184,
+        784
+      ],
+      "id": "14ffa9e6-5de9-4282-b885-cc2569436500",
+      "name": "Get Event Content",
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "query": "mutation AttemptScorm($learnerId: ID!, $contentId: ID!) {\n  learner {\n    attemptScorm(input: { learnerId: $learnerId, contentId: $contentId }) {\n      errors {\n        label\n        message\n        value\n      }\n      learner {\n        lmsProgress\n        contact {\n          name\n          id\n        }\n        contentResults {\n          edges {\n            node {\n              contentId\n              progress\n            }\n          }\n        }\n      }\n    }\n  }\n}",
+        "variables": "={{ JSON.stringify({ learnerId: $json.learnerId, contentId: $json.contentId }) }}",
+        "options": {
+          "pagination": {
+            "pagination": {}
+          }
+        }
+      },
+      "type": "CUSTOM.administrate",
+      "typeVersion": 1,
+      "position": [
+        2224,
+        640
+      ],
+      "id": "cd1b485a-2524-4557-ac75-3e06f5aa6bf6",
+      "name": "Attempt SCORM",
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      },
+      "onError": "continueRegularOutput",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "query": "mutation AdminCompleteScorm($learnerId: ID!, $contentId: ID!) {\n  learner {\n    adminCompleteScorm(input: { learnerId: $learnerId, contentId: $contentId }) {\n      errors {\n        label\n        message\n        value\n      }\n      learner {\n        lmsProgress\n        contact {\n          name\n          id\n        }\n        contentResults {\n          edges {\n            node {\n              contentId\n              progress\n            }\n          }\n        }\n      }\n    }\n  }\n}",
+        "variables": "={{ JSON.stringify({ learnerId: $('Loop Over Items').item.json.learnerId, contentId: $('Loop Over Items').item.json.contentId }) }}",
+        "options": {
+          "pagination": {
+            "pagination": {}
+          }
+        }
+      },
+      "type": "CUSTOM.administrate",
+      "typeVersion": 1,
+      "position": [
+        2624,
+        640
+      ],
+      "id": "96fde55e-9248-4ae2-8811-2567b300f07e",
+      "name": "Complete SCORM",
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      },
+      "onError": "continueRegularOutput",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "options": {
+          "reset": false
+        }
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        1904,
+        624
+      ],
+      "id": "8d4d88d2-8cfa-43b6-92f2-143e3adda1b5",
+      "name": "Loop Over Items"
+    },
+    {
+      "parameters": {
+        "query": "query getLearnersResults(\n    $offset: Int!\n    $limit: Int!\n    $filters: [LearnerFieldGraphFilter]!\n    $overrideLocator: String\n) {\n    learners(\n        offset: $offset\n        first: $limit\n        filters: $filters\n        order: { field: contactName, direction: asc }\n    ) {\n        edges {\n            node {\n                id\n                contactId\n                customFieldValues(filter: { definitionLocator: $overrideLocator }) {\n                    definitionLocator\n                    value\n                }\n            }\n        }\n        pageInfo {\n            hasNextPage\n            hasPreviousPage\n            startCursor\n            endCursor\n            totalRecords\n        }\n    }\n}\n",
+        "variables": "={{ JSON.stringify({ offset: 0, limit: 100, filters: [{ field: 'eventId', operation: 'eq', value: $('Config').first().json.EVENT_ID }, { field: 'contactId', operation: 'notnull' }], overrideLocator: $('Config').first().json.OVERRIDE_FIELD_LOCATOR }) }}",
+        "options": {
+          "pagination": {
+            "pagination": {
+              "paginationMode": "paginate",
+              "dataPath": "data.learners.edges",
+              "completeExpression": "{{ $response.body.data.learners.pageInfo.hasNextPage }}"
+            }
+          }
+        }
+      },
+      "type": "CUSTOM.administrate",
+      "typeVersion": 1,
+      "position": [
+        960,
+        528
+      ],
+      "id": "1b2ddc31-7dcb-4ef4-a307-c34bbbe052f2",
+      "name": "Get Learners",
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "db03a0fc-dfad-4cd1-8837-526dff856459",
+              "leftValue": "={{ ($json.node.customFieldValues || []).find(v => v.definitionLocator === $('Config').first().json.OVERRIDE_FIELD_LOCATOR)?.value ?? '' }}",
+              "rightValue": "true",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.3,
+      "position": [
+        1184,
+        528
+      ],
+      "id": "aa5bbaca-55c0-4e08-ae0a-d89545b67b71",
+      "name": "Filter For Override"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a4374647-5372-40cb-b27e-cc88150afe8e",
+              "name": "learnerId",
+              "value": "={{ $json.node.id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1408,
+        528
+      ],
+      "id": "607c9e9e-1a6a-47f8-91c3-f6be4b88f94f",
+      "name": "Set learnerId"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "7a235f5e-ebcc-4be5-9945-e4c77a3d87f2",
+              "name": "contentId",
+              "value": "={{ $json.node.id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1408,
+        720
+      ],
+      "id": "4ab6f98d-c7ec-4d2c-a03b-2971724975ab",
+      "name": "Set contentId"
+    },
+    {
+      "parameters": {
+        "content": "## Requirements\n- A Learner custom field of type **Checkbox**, for example named \"LMS Content Override\".\n- Set `OVERRIDE_FIELD_LOCATOR` in **Config** to its unique API name (default `lms_content_override`).",
+        "height": 416,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        256,
+        0
+      ],
+      "id": "77bcead6-a555-4536-98dd-c5386a752570",
+      "name": "Requirements Note"
+    },
+    {
+      "parameters": {
+        "content": "## Summary\nThis workflow marks all **SCORM** content on an Event as complete for selected Learners. It doesn't mark the Learner as having passed the Event; only the SCORM content itself is marked as 100% complete. Other content types are not changed.\n\nRun it from the Automator dropdown on the Event. It processes Learners whose override custom field is ticked.\n\n**Summarise Results** lists completed, warning and failed Learner and content pairs.",
+        "height": 496,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "4876020f-c045-444a-b944-98594629c33a",
+      "name": "Summary Note"
+    },
+    {
+      "parameters": {
+        "content": "## Usage\n1. Go to the Event's Students tab, click the student and select Edit Student.\n2. Tick \"Yes\" for LMS Content Override, then save.\n3. Go to the Event, open the Automator dropdown and select LMS Completion Override.\n4. To confirm the content has been completed, open the Event's Students tab, click Options and choose \"Record Results\".\n5. Expand the student's entry by clicking the blue Progress button. All of their SCORM content is now marked as complete.",
+        "height": 448,
+        "width": 304,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        512,
+        0
+      ],
+      "id": "3c7b0a68-153b-45e5-9ace-644f1ff7f8e7",
+      "name": "Usage Note"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineAll",
+        "options": {
+          "fuzzyCompare": false
+        }
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1632,
+        624
+      ],
+      "id": "29d135d3-7431-4a5e-9f22-c0e8e9d35788",
+      "name": "Create All Possible Combinations"
+    },
+    {
+      "parameters": {
+        "events": "V2ViaG9va1R5cGU6bWFudWFsX2V2ZW50",
+        "name": "LMS Completion Override",
+        "query": "query webhookQuery($objectid: ID!) {\n    node(id: $objectid) {\n        id\n        ... on Event {\n            id\n            legacyId\n        }\n    }\n}\n"
+      },
+      "type": "CUSTOM.administrateTrigger",
+      "typeVersion": 1,
+      "position": [
+        464,
+        624
+      ],
+      "id": "c4a34476-9af8-4681-b589-0246e4cf5357",
+      "name": "Administrate Trigger",
+      "webhookId": "2e3a4627-e57e-4a01-9669-db69d6279286",
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "939a5fe9-8983-4645-ab06-3f85594e7b07",
+              "name": "EVENT_ID",
+              "value": "={{ $json.payload.node.id }}",
+              "type": "string"
+            },
+            {
+              "id": "07ddc7b8-5ee8-45ee-b197-1f148562e75d",
+              "name": "OVERRIDE_FIELD_LOCATOR",
+              "value": "lms_content_override",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "0d4bef55-2766-4bb8-97d0-e7ddedd98b06",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        688,
+        624
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Administrate returns HTTP 200 even when a mutation is rejected, so both nested\n// errors arrays are checked. A request that fails outright arrives as an empty item\n// (the mutation nodes continue on error and always output data).\nconst pair = $('Loop Over Items').first().json;\nconst attempt = $('Attempt SCORM').first().json?.learner?.attemptScorm;\nconst complete = $input.first().json?.learner?.adminCompleteScorm;\n\nconst describe = (errors) => (errors || []).map(e => e.message || e.label).filter(Boolean).join('; ');\nconst attemptErrors = attempt ? describe(attempt.errors) : 'no response returned';\nconst completeErrors = complete ? describe(complete.errors) : 'no response returned';\n\nlet status = 'completed';\nlet reason = 'SCORM content marked as complete';\n\nif (completeErrors) {\n  status = 'error';\n  reason = `Completing failed: ${completeErrors}`;\n  if (attemptErrors) {\n    reason = `Attempt failed: ${attemptErrors}. ${reason}`;\n  }\n} else if (attemptErrors) {\n  status = 'warning';\n  reason = `Completed, but the attempt returned: ${attemptErrors}`;\n}\n\nreturn [{ json: {\n  learnerId: pair.learnerId,\n  contentId: pair.contentId,\n  learnerName: complete?.learner?.contact?.name ?? attempt?.learner?.contact?.name ?? '',\n  status,\n  reason\n} }];"
+      },
+      "id": "8a611737-0576-4504-a994-5cd3feb5b109",
+      "name": "Tag SCORM Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2848,
+        640
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const results = $input.all().map(item => item.json);\n\nconst completed = results.filter(r => r.status === 'completed');\nconst warnings = results.filter(r => r.status === 'warning');\nconst failures = results.filter(r => r.status === 'error');\n\nconst line = (r) => `- ${r.learnerName || r.learnerId} / ${r.contentId}: ${r.reason}`;\n\nconst summary = [\n  `Completed: ${completed.length}`,\n  `Completed with warnings: ${warnings.length}`,\n  `Failed: ${failures.length}`,\n  ...(warnings.length ? ['', 'Warnings:', ...warnings.map(line)] : []),\n  ...(failures.length ? ['', 'Failures:', ...failures.map(line)] : [])\n].join('\\n');\n\nreturn [{ json: {\n  eventId: $('Config').first().json.EVENT_ID,\n  completedCount: completed.length,\n  warningCount: warnings.length,\n  errorCount: failures.length,\n  warnings,\n  failures,\n  summary\n} }];"
+      },
+      "id": "62e5f30d-b724-4c34-8c4f-221d735503d4",
+      "name": "Summarise Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2128,
+        400
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Get Event Content": {
+      "main": [
+        [
+          {
+            "node": "Set contentId",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Attempt SCORM": {
+      "main": [
+        [
+          {
+            "node": "Complete SCORM",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [
+          {
+            "node": "Summarise Results",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Attempt SCORM",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Learners": {
+      "main": [
+        [
+          {
+            "node": "Filter For Override",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter For Override": {
+      "main": [
+        [
+          {
+            "node": "Set learnerId",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set learnerId": {
+      "main": [
+        [
+          {
+            "node": "Create All Possible Combinations",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set contentId": {
+      "main": [
+        [
+          {
+            "node": "Create All Possible Combinations",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Create All Possible Combinations": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Administrate Trigger": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Complete SCORM": {
+      "main": [
+        [
+          {
+            "node": "Tag SCORM Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Get Learners",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get Event Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tag SCORM Result": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "tags": []
+}

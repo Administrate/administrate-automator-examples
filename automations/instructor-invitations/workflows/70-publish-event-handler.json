@@ -1,0 +1,822 @@
+{
+  "name": "Instructor Invitations - Publish Event Handler",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "5e47d173-634e-48e2-af12-0829f35dc39d",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "3954d9a5-fe54-4c4f-ac89-3bd0c6fb6a0d",
+      "name": "Publish Submitted",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        192
+      ],
+      "webhookId": "827fce31-eafd-4ec3-b223-ccbf9998920f"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c1",
+              "name": "GRAPHQL_URL",
+              "type": "string",
+              "value": "https://api.getadministrate.com/graphql"
+            },
+            {
+              "id": "c2",
+              "name": "ORIGIN_IDENTIFIER",
+              "type": "string",
+              "value": "Automator - Instructor Invitations"
+            },
+            {
+              "id": "c3",
+              "name": "COORDINATOR_ROLE_NAME",
+              "type": "string",
+              "value": "Coordinator"
+            },
+            {
+              "id": "c4",
+              "name": "SENDING_ADDRESS_ID",
+              "type": "string",
+              "value": "REPLACE_WITH_SENDING_ADDRESS_ID"
+            },
+            {
+              "id": "c5",
+              "name": "CONFIRMED_TEMPLATE_ID",
+              "type": "string",
+              "value": "REPLACE_WITH_EVENT_CONFIRMED_TEMPLATE_ID"
+            },
+            {
+              "id": "c6",
+              "name": "SUPPRESS_PUBLISH_FIELD_KEY",
+              "type": "string",
+              "value": "REPLACE_WITH_DO_NOT_PUBLISH_FIELD_KEY"
+            },
+            {
+              "id": "c7",
+              "name": "CHECKBOX_TRUE_VALUES",
+              "type": "string",
+              "value": "true,1,yes,on"
+            },
+            {
+              "id": "c8",
+              "name": "PUBLISHED_STATE",
+              "type": "string",
+              "value": "published"
+            },
+            {
+              "id": "c9",
+              "name": "BRAND_NAME",
+              "type": "string",
+              "value": "Your Organisation"
+            },
+            {
+              "id": "c10",
+              "name": "BRAND_CSS",
+              "type": "string",
+              "value": ":root{--g:#1F5FAD;--gd:#163F73;--gt:#E8EFF8;--ink:#1A1A1A;--muted:#5A5A5A;--line:#D4D4D4;--danger:#A3241F;--amber:#7F5F00;--amberbg:#FDF0D5}*,*::before,*::after{box-sizing:border-box}html{font-size:100%}body{margin:0;font-family:\"Segoe UI\",Roboto,\"Helvetica Neue\",Arial,sans-serif;font-size:clamp(1rem,0.95rem + 0.25vw,1.125rem);line-height:1.6;color:var(--ink);background:#FFF}.masthead{background:var(--gd);color:#FFF;padding:clamp(1rem,3vw,1.75rem) clamp(1rem,5vw,2.5rem)}.masthead p{margin:0;font-weight:600;letter-spacing:.08em;text-transform:uppercase;font-size:.8em}main{max-width:44rem;margin:0 auto;padding:clamp(1.25rem,5vw,2.5rem) clamp(1rem,5vw,2.5rem) 4rem}h1{font-size:clamp(1.4rem,1.1rem + 1.4vw,2rem);line-height:1.25;margin:0 0 .5em;color:var(--gd)}.notice{border-left:4px solid var(--g);background:var(--gt);padding:.9rem 1rem;margin:0 0 1.5rem}.error{border-left-color:var(--danger);background:#FBEDEC}.warn{border-left-color:var(--amber);background:var(--amberbg)}"
+            },
+            {
+              "id": "90c76bae-3e4a-4793-be6a-4ca3044975d0",
+              "name": "PUBLISH_LINKS_TABLE_ID",
+              "type": "string",
+              "value": "REPLACE_WITH_PUBLISH_LINKS_TABLE_ID"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "d2c58965-00b2-43cb-8db4-17de385aabfb",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        224,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "s1",
+              "name": "eventId",
+              "value": "={{ ($('Publish Submitted').item.json.body || {}).e }}",
+              "type": "string"
+            },
+            {
+              "id": "s2",
+              "name": "contactId",
+              "value": "={{ ($('Publish Submitted').item.json.body || {}).c }}",
+              "type": "string"
+            },
+            {
+              "id": "s3",
+              "name": "notify",
+              "value": "={{ ($('Publish Submitted').item.json.body || {}).notify || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "s4",
+              "name": "linkToken",
+              "value": "={{ ($('Publish Submitted').item.json.body || {}).t || '' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "718bd0f7-6535-4c00-a4d5-304063984baa",
+      "name": "Extract submission",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        448,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').item.json.GRAPHQL_URL }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ query: 'query PublishRevalidate($eventId: ID!) { node(id: $eventId) { ... on Event { id title lifecycleState customFieldValues { definitionKey value } staff { edges { node { id staffRole { id name } contact { id firstName lastName } } } } } } }', variables: { eventId: $('Extract submission').item.json.eventId } }) }}",
+        "options": {}
+      },
+      "id": "53d77d90-35f9-44bc-bec1-d4cedada1104",
+      "name": "Re-validate Event",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1344,
+        192
+      ],
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      },
+      "onError": "continueRegularOutput",
+      "notes": "Nothing posted is trusted. Publishing is the only irreversible action here, so state and permission are read again."
+    },
+    {
+      "parameters": {
+        "jsCode": "/*\tRe-validate before publishing. Nothing posted is trusted, and publishing is the only\n\tirreversible thing this automation does.\n\tRole names come from config, never hardcoded\t*/\n\nconst cfg = $('Config').first().json;\nconst sub = $('Extract submission').first().json;\nconst event = ($json.data || {}).node || null;\n\nconst staffList = (((event || {}).staff || {}).edges || []).map(e => e.node);\nconst coordRole = String(cfg.COORDINATOR_ROLE_NAME).trim();\nconst clicker = staffList.find(s => s.contact && s.contact.id === sub.contactId) || null;\nconst isCoordinator = clicker !== null && String((clicker.staffRole || {}).name || '').trim() === coordRole;\n\n/*\tThe opt out field. Ticked means the coordinator wants publishing left alone,\n\tso this page refuses rather than overriding their setting\t*/\nconst suppressKey = String(cfg.SUPPRESS_PUBLISH_FIELD_KEY).trim();\nconst trueValues = String(cfg.CHECKBOX_TRUE_VALUES).split(',').map(v => v.trim().toLowerCase());\nlet suppressed = false;\n\nfor (const cf of ((event || {}).customFieldValues || [])) {\n\tif (String(cf.definitionKey || '') !== suppressKey) { continue; }\n\tsuppressed = trueValues.indexOf(String(cf.value === null || cf.value === undefined ? '' : cf.value).trim().toLowerCase()) !== -1;\n}\n\nconst esc = (v) => String(v === null || v === undefined ? '' : v)\n\t.split('&').join('&amp;').split('<').join('&lt;').split('>').join('&gt;').split('\"').join('&quot;');\n\nconst page = (title, body) => '<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><title>' + esc(title) + '</title><style>' + cfg.BRAND_CSS + '</style></head><body><header class=\"masthead\"><p>' + esc(cfg.BRAND_NAME) + '</p></header><main>' + body + '</main></body></html>';\n\nconst NOOP = 'query NoOp { __typename }';\n\n/*\tSomething is genuinely wrong, so it ends by pointing at a human\t*/\nconst refuse = (title, heading, message) => [{ json: {\n\tvalid: false,\n\thtml: page(title, '<h1>' + esc(heading) + '</h1><div class=\"notice error\"><p>' + esc(message) + '</p></div><p>Please reply to the email you came from and someone will help.</p>'),\n\tpublishMutation: NOOP,\n\tnotifyMutation: NOOP\n} }];\n\n/*\tEverything is in order and there is simply nothing to do, so no offer of help\t*/\nconst closeOff = (title, heading, message) => [{ json: {\n\tvalid: false,\n\thtml: page(title, '<h1>' + esc(heading) + '</h1><div class=\"notice\"><p>' + esc(message) + '</p></div><p>You can close this page.</p>'),\n\tpublishMutation: NOOP,\n\tnotifyMutation: NOOP\n} }];\n\nif (!event) { return refuse('Event not found', 'We could not open this event', 'The link may be incomplete, or the event may no longer exist.'); }\n\nif (!isCoordinator) {\n\treturn refuse('Only the ' + coordRole + ' can publish', 'Only the ' + coordRole + ' can publish this event', 'Publishing is done by the ' + coordRole + ' named on the event. If you think that should be you, somebody can add you.');\n}\n\nif (suppressed) {\n\treturn closeOff('Publishing is switched off', 'Publishing is switched off for this event', 'Somebody has asked for this one to be published in Administrate by hand, so this page will not do it.');\n}\n\n/*\tIdempotent. Publishing twice would re-notify everybody\t*/\nif (String(event.lifecycleState || '') !== 'draft') {\n\treturn closeOff('Already published', esc(event.title), 'This event is already ' + String(event.lifecycleState) + '. Nothing has been changed.');\n}\n\n/*\tEverybody running the event, which is everybody staffed except the coordinator.\n\tRead from the event rather than assuming a role name, so it works whatever you\n\tcall them\t*/\nconst running = staffList.filter(s => String((s.staffRole || {}).name || '').trim() !== coordRole);\nconst instructorIds = running.map(s => s.id);\nconst notifyWanted = String(sub.notify || '') === 'yes' && instructorIds.length > 0;\n\nconst confirmation = notifyWanted\n\t? '<p>' + running.length + (running.length === 1 ? ' person has' : ' people have') + ' been told the event is going ahead.</p>'\n\t: '<p>Nobody was notified, so let them know yourself if they are expecting to hear.</p>';\n\nreturn [{ json: {\n\tvalid: true,\n\teventId: event.id,\n\teventTitle: String(event.title || ''),\n\tnotify: notifyWanted,\n\tinstructorCount: running.length,\n\tpublishMutation: 'PUBLISH',\n\tnotifyMutation: notifyWanted ? 'NOTIFY' : NOOP,\n\tinstructorIds: instructorIds,\n\tlogMessage: 'Event published by ' + clicker.contact.firstName + ' ' + clicker.contact.lastName + '. ' + (notifyWanted ? running.length + ' notified.' : 'Nobody notified.'),\n\tlogPayload: JSON.stringify({ eventId: event.id, publishedBy: clicker.contact.id, notified: notifyWanted, instructorIds: instructorIds }),\n\thtml: page('Event published', '<h1>' + esc(event.title) + ' is published</h1><div class=\"notice\"><p>The event is now live in Administrate.</p></div>' + confirmation + '<p>You can close this page.</p>')\n} }];"
+      },
+      "id": "ed9a8f0f-6c4f-4d5e-9fba-48ff22278793",
+      "name": "Decide",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1568,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "v1",
+              "leftValue": "={{ $json.valid }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              },
+              "rightValue": ""
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "3608254b-7207-482b-bed0-35c68feded3f",
+      "name": "IF Allowed To Publish?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1792,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').item.json.GRAPHQL_URL }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ query: 'mutation PublishEvent($eventId: ID!, $state: EventLifecycleState!){ event{ update(eventId:$eventId, input:{ lifecycleState:$state }){ event{ id lifecycleState } errors{ label message value } } } }', variables: { eventId: $json.eventId, state: $('Config').item.json.PUBLISHED_STATE } }) }}",
+        "options": {}
+      },
+      "id": "e4e78871-f70c-4ab7-80aa-243db2f60370",
+      "name": "Publish Event",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2016,
+        96
+      ],
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      },
+      "onError": "continueRegularOutput",
+      "notes": "The only irreversible action in the whole automation."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "p1",
+              "leftValue": "={{ (($json.errors || []).length > 0) || (((($json.data || {}).event || {}).update || {}).errors || []).length > 0 }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              },
+              "rightValue": ""
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "602aa0b4-1e77-4373-a8a9-8cf9bc514eb3",
+      "name": "IF Publish Errors?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2240,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').item.json.GRAPHQL_URL }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ query: 'mutation Log($originIdentifier: String!, $nodeId: ID!, $message: String!, $status: ExternalLogTypeStatus!, $payload: String){ externalLog{ createExternalIntegrationLog(input:{ originIdentifier:$originIdentifier, nodeId:$nodeId, message:$message, status:$status, payload:$payload }){ errors{ label message value } } } }', variables: { originIdentifier: $('Config').item.json.ORIGIN_IDENTIFIER, nodeId: $('Extract submission').item.json.eventId, message: 'Could not publish this event', status: 'failed', payload: JSON.stringify($json) } }) }}",
+        "options": {}
+      },
+      "id": "0f3b0f1c-2878-4246-a950-488dc663b0e4",
+      "name": "Log Failure",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2464,
+        0
+      ],
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ '<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\"><title>Something went wrong</title><style>' + $('Config').item.json.BRAND_CSS + '</style></head><body><header class=\"masthead\"><p>' + $('Config').item.json.BRAND_NAME + '</p></header><main><h1>Something went wrong</h1><div class=\"notice error\"><p>The event was not published.</p></div><p>Please try again shortly.</p></main></body></html>' }}",
+        "options": {
+          "responseCode": 503,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/html; charset=utf-8"
+              },
+              {
+                "name": "Cache-Control",
+                "value": "no-store"
+              }
+            ]
+          }
+        }
+      },
+      "id": "77b3b2c7-2818-48c3-852b-42f3c62e0e56",
+      "name": "Serve Error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        2688,
+        0
+      ],
+      "notes": "Responds before Stop, because Stop and Error is terminal."
+    },
+    {
+      "parameters": {
+        "errorMessage": "Publish failed: Administrate returned errors (check both errors arrays)."
+      },
+      "id": "13592ad2-4624-4e72-be93-5bda761c940c",
+      "name": "Stop",
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        2912,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').item.json.GRAPHQL_URL }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $('Decide').item.json.notify ? JSON.stringify({ query: 'mutation NotifyConfirmed($eventId: String!, $staffIds: [String], $sendingAddressId: ID, $templateId: ID){ bulkAdhocEmails{ sendBulkStaffAdhocEmail(input:{ eventId:$eventId, staffIds:$staffIds, sendingAddressId:$sendingAddressId, templateId:$templateId }){ errors{ label message value } } } }', variables: { eventId: $('Decide').item.json.eventId, staffIds: $('Decide').item.json.instructorIds, sendingAddressId: $('Config').item.json.SENDING_ADDRESS_ID, templateId: $('Config').item.json.CONFIRMED_TEMPLATE_ID } }) : JSON.stringify({ query: 'query NoOp { __typename }' }) }}",
+        "options": {}
+      },
+      "id": "83cfc6b2-f887-4d1f-b1fa-13bd7a63ae70",
+      "name": "Notify Instructors",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2464,
+        192
+      ],
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      },
+      "onError": "continueRegularOutput",
+      "notes": "Uses the communication template in CONFIRMED_TEMPLATE_ID, so you own the wording. Runs a harmless no-op query when the coordinator unticked the box."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').item.json.GRAPHQL_URL }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ query: 'mutation Log($originIdentifier: String!, $nodeId: ID!, $message: String!, $status: ExternalLogTypeStatus!, $payload: String){ externalLog{ createExternalIntegrationLog(input:{ originIdentifier:$originIdentifier, nodeId:$nodeId, message:$message, status:$status, payload:$payload }){ errors{ label message value } } } }', variables: { originIdentifier: $('Config').item.json.ORIGIN_IDENTIFIER, nodeId: $('Decide').item.json.eventId, message: $('Decide').item.json.logMessage, status: 'success', payload: $('Decide').item.json.logPayload } }) }}",
+        "options": {}
+      },
+      "id": "491de2ab-732a-45b1-93b9-bf6a419c6b0c",
+      "name": "Log Success",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2688,
+        192
+      ],
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $('Decide').item.json.html }}",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/html; charset=utf-8"
+              },
+              {
+                "name": "Cache-Control",
+                "value": "no-store"
+              }
+            ]
+          }
+        }
+      },
+      "id": "ab33bc17-aa75-4057-91d7-71bff8f0ca59",
+      "name": "Serve Published",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        2912,
+        192
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "e2de1b76-2742-41d7-97d8-3611b6d3f76d",
+      "name": "Done",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        3136,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.html }}",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/html; charset=utf-8"
+              },
+              {
+                "name": "Cache-Control",
+                "value": "no-store"
+              }
+            ]
+          }
+        }
+      },
+      "id": "ab904013-e4bd-4e75-8f31-194bf70c4fbc",
+      "name": "Serve Refusal",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        2016,
+        288
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 70 Publish Event Handler\n\nPOST only. This is where an event is published, the only irreversible action in the example.\n\n### Checks, in order\n1. The publish token matches the one saved for the event. Otherwise an *invalid or expired link* page (HTTP 403) and nothing changes.\n2. The event exists and the person holds the coordinator role on it.\n3. The *Do not publish automatically* field is not Yes.\n4. The event is still a draft, so publishing twice cannot re-notify anybody.\n\n### What it does\nPublishes the event, optionally emails everybody staffed (except the coordinator) using the communication template in `CONFIRMED_TEMPLATE_ID`, and logs who published it.\n\n### Setup\nAdministrate OAuth2 credential on **Re-validate Event**, **Publish Event**, **Notify Instructors**, **Log Success** and **Log Failure**. Fill in Config, then activate.",
+        "height": 456,
+        "width": 556,
+        "color": 4
+      },
+      "id": "f8b20851-d54f-4c1c-822d-212f59559d10",
+      "name": "Sticky Note - 70 Publish Event Handler",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -624,
+        -112
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Config\n\n**PUBLISH_LINKS_TABLE_ID** - the publish links Data Table.\n\n**SENDING_ADDRESS_ID** - verified Administrate sending address.\n\n**CONFIRMED_TEMPLATE_ID** - Administrate communication template (staff audience) sent when the event goes live.\n\n**SUPPRESS_PUBLISH_FIELD_KEY** - `definitionKey` of the Event Yes/No field *Do not publish automatically*. Yes means this workflow refuses.\n\n**CHECKBOX_TRUE_VALUES** - values that count as yes.\n\n**PUBLISHED_STATE** - lifecycle state to move to (`published`).\n\n**COORDINATOR_ROLE_NAME**, **BRAND_NAME**, **BRAND_CSS** - as in 30.",
+        "height": 456,
+        "width": 588,
+        "color": 6
+      },
+      "id": "e71088c2-d4d2-40b7-8552-81c07521d91a",
+      "name": "Sticky Note - Config",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        48,
+        -1088
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Config').first().json.PUBLISH_LINKS_TABLE_ID }}"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "event_id",
+              "keyValue": "={{ $('Extract submission').item.json.eventId }}"
+            }
+          ]
+        },
+        "returnAll": true
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        672,
+        192
+      ],
+      "name": "Read Publish Link",
+      "alwaysOutputData": true,
+      "id": "cc01f136-7660-4f8e-839f-9d1827d0e5bd"
+    },
+    {
+      "parameters": {
+        "jsCode": "/*\tThe publish link in the staffing complete email carries a random token saved per event\n\tby 40 Response Handler. A newer completion email replaces it, so older links expire.\n\tNothing is shown about the event without a matching token. Nothing is written here\t*/\n\nconst cfg = $('Config').first().json;\nconst link = $('Extract submission').first().json;\nconst rows = $input.all().map((item) => item.json).filter((row) => row && row.event_id);\nconst row = rows.find((r) => String(r.event_id) === String(link.eventId)) || null;\n\n/*\tCompares in constant time, so response timing does not leak how much of a guess\n\twas right. An empty token never matches\t*/\nconst sameToken = (expected, given) => {\n\tconst a = String(expected || '');\n\tconst b = String(given || '');\n\tif (a === '' || b === '' || a.length !== b.length) { return false; }\n\tlet diff = 0;\n\tfor (let i = 0; i < a.length; i++) { diff = diff | (a.charCodeAt(i) ^ b.charCodeAt(i)); }\n\treturn diff === 0;\n};\n\nconst esc = (v) => String(v === null || v === undefined ? '' : v)\n\t.split('&').join('&amp;').split('<').join('&lt;').split('>').join('&gt;').split('\"').join('&quot;');\n\nconst page = (title, body) => '<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><title>' + esc(title) + '</title><style>' + cfg.BRAND_CSS + '</style></head><body><header class=\"masthead\"><p>' + esc(cfg.BRAND_NAME) + '</p></header><main>' + body + '</main></body></html>';\n\nconst valid = String(link.eventId || '') !== '' && String(link.contactId || '') !== '' && row !== null && sameToken(row.token, link.linkToken);\nconst heading = 'This link is invalid or has expired';\n\nreturn [{ json: {\n\tvalid: valid,\n\thtml: valid ? '' : page(heading, '<h1>' + esc(heading) + '</h1><div class=\"notice error\"><p>' + 'The event was not published and nothing has changed. This publish link is not valid any more.' + '</p></div><p>Use the link in the most recent staffing complete email, or publish the event in Administrate.</p>')\n} }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        896,
+        192
+      ],
+      "name": "Check Publish Token",
+      "id": "de5ab9d9-92f7-4a27-9eae-5b8a0651f6b1"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "f53a33e9-77c9-45e5-b211-7ddbd939adf3",
+              "leftValue": "={{ $json.valid }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              },
+              "rightValue": ""
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1120,
+        192
+      ],
+      "name": "IF Publish Token Valid?",
+      "id": "63db1264-248e-4959-b8a0-b34188d77a9a"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.html }}",
+        "options": {
+          "responseCode": 403,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/html; charset=utf-8"
+              },
+              {
+                "name": "Cache-Control",
+                "value": "no-store"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1344,
+        432
+      ],
+      "name": "Serve Invalid Link",
+      "id": "4d303462-aca3-498e-a8c9-76176d970f20"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Publish Submitted": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Extract submission",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract submission": {
+      "main": [
+        [
+          {
+            "node": "Read Publish Link",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Re-validate Event": {
+      "main": [
+        [
+          {
+            "node": "Decide",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Decide": {
+      "main": [
+        [
+          {
+            "node": "IF Allowed To Publish?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Allowed To Publish?": {
+      "main": [
+        [
+          {
+            "node": "Publish Event",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Serve Refusal",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Publish Event": {
+      "main": [
+        [
+          {
+            "node": "IF Publish Errors?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Publish Errors?": {
+      "main": [
+        [
+          {
+            "node": "Log Failure",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Notify Instructors",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Failure": {
+      "main": [
+        [
+          {
+            "node": "Serve Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Serve Error": {
+      "main": [
+        [
+          {
+            "node": "Stop",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Instructors": {
+      "main": [
+        [
+          {
+            "node": "Log Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Success": {
+      "main": [
+        [
+          {
+            "node": "Serve Published",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Serve Published": {
+      "main": [
+        [
+          {
+            "node": "Done",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Publish Link": {
+      "main": [
+        [
+          {
+            "node": "Check Publish Token",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Publish Token": {
+      "main": [
+        [
+          {
+            "node": "IF Publish Token Valid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Publish Token Valid?": {
+      "main": [
+        [
+          {
+            "node": "Re-validate Event",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Serve Invalid Link",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true,
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed"
+  },
+  "tags": []
+}
