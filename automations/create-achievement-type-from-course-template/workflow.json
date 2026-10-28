@@ -54,6 +54,7 @@
     {
       "parameters": {
         "path": "8c53d141-53e5-4503-ae64-d46585d0e9ea",
+        "authentication": "basicAuth",
         "responseMode": "responseNode",
         "options": {}
       },
@@ -65,6 +66,12 @@
       ],
       "id": "f237c047-a84d-4dd4-b586-3a0547216dfb",
       "name": "Form Display",
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "",
+          "name": "Achievement Form Basic Auth"
+        }
+      },
       "webhookId": "4685d483-6114-4c95-a595-cec60c785cbe"
     },
     {
@@ -100,7 +107,7 @@
     },
     {
       "parameters": {
-        "content": "## Form Submission Path\nReceives the instructor selection form. Its production URL goes in the Config node's `formSubmitUrl` field.\n\nThese form webhooks are unauthenticated, so anyone with the URL can open or post the form.",
+        "content": "## Form Submission Path\nReceives the instructor selection form. Its production URL goes in the Config node's `formSubmitUrl` field.\n\nBoth form webhooks use Basic Auth, so only people with the username and password can open the form or award Achievements.",
         "width": 400,
         "height": 200
       },
@@ -185,7 +192,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const escapeHtml = (value) => String(value ?? '')\n  .replace(/&/g, '&amp;')\n  .replace(/</g, '&lt;')\n  .replace(/>/g, '&gt;')\n  .replace(/\"/g, '&quot;')\n  .replace(/'/g, '&#39;');\n\nconst query = $('Form Display').first().json.query;\nconst achievementTypeId = query.achievementTypeId;\nconst courseCode = query.courseCode;\nconst courseTitle = decodeURIComponent(query.courseTitle || '');\nconst formSubmitUrl = $('Config').first().json.formSubmitUrl;\n// Get Instructors returns one item per page of 100 contacts\nconst instructors = $input.all().flatMap(page => (page.json.data?.contacts?.edges || []).map(e => e.node));\n\nconst rows = instructors.map(i =>\n  `<label class=\"row\"><input type=\"checkbox\" name=\"instructorId\" value=\"${escapeHtml(i.id)}\"><span>${escapeHtml(i.firstName)} ${escapeHtml(i.lastName)}</span></label>`\n).join('');\n\nconst html = `<!DOCTYPE html><html><head><meta charset=\"utf-8\"><title>Assign Achievement</title>\n<style>*{box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:560px;margin:48px auto;padding:0 24px;color:#111}h1{font-size:1.3em;margin-bottom:4px}.meta{color:#555;font-size:.9em;margin-bottom:20px}.controls{display:flex;gap:16px;margin-bottom:8px;font-size:.85em}.controls a{color:#0066cc;cursor:pointer;text-decoration:none}.list{border:1px solid #e0e0e0;border-radius:6px;overflow:hidden;margin-bottom:24px}.row{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid #f0f0f0;cursor:pointer}.row:last-child{border-bottom:none}.row:hover{background:#f7f9fc}input[type=checkbox]{width:16px;height:16px;cursor:pointer;accent-color:#0066cc}.btn{background:#0066cc;color:#fff;padding:11px 28px;border:none;border-radius:6px;cursor:pointer;font-size:.95em;font-weight:500}.btn:hover{background:#0052a3}.empty{padding:24px;color:#888;text-align:center}</style>\n</head><body>\n<h1>Assign Achievement Type</h1>\n<p class=\"meta\">Achievement: <strong>${escapeHtml(courseCode)}</strong> — ${escapeHtml(courseTitle)}</p>\n<p>Select instructors to award:</p>\n<form method=\"POST\" action=\"${escapeHtml(formSubmitUrl)}\">\n<input type=\"hidden\" name=\"achievementTypeId\" value=\"${escapeHtml(achievementTypeId)}\">\n<input type=\"hidden\" name=\"courseCode\" value=\"${escapeHtml(courseCode)}\">\n<div class=\"controls\">\n<a onclick=\"document.querySelectorAll('[name=instructorId]').forEach(c=>c.checked=true)\">Select all</a>\n<a onclick=\"document.querySelectorAll('[name=instructorId]').forEach(c=>c.checked=false)\">Clear all</a>\n</div>\n<div class=\"list\">${rows||'<p class=\"empty\">No instructors found.</p>'}</div>\n<button type=\"submit\" class=\"btn\">Award to Selected Instructors</button>\n</form></body></html>`;\nreturn [{ json: { html } }];"
+        "jsCode": "const escapeHtml = (value) => String(value ?? '')\n  .replace(/&/g, '&amp;')\n  .replace(/</g, '&lt;')\n  .replace(/>/g, '&gt;')\n  .replace(/\"/g, '&quot;')\n  .replace(/'/g, '&#39;');\n\nconst query = $('Form Display').first().json.query;\nconst achievementTypeId = query.achievementTypeId;\nconst courseCode = query.courseCode;\n// n8n has already URL-decoded the query string\nconst courseTitle = String(query.courseTitle || '');\nconst formSubmitUrl = $('Config').first().json.formSubmitUrl;\n// Get Instructors returns one item per page of 100 contacts\nconst instructors = $input.all().flatMap(page => (page.json.data?.contacts?.edges || []).map(e => e.node));\n\nconst rows = instructors.map(i =>\n  `<label class=\"row\"><input type=\"checkbox\" name=\"instructorId\" value=\"${escapeHtml(i.id)}\"><span>${escapeHtml(i.firstName)} ${escapeHtml(i.lastName)}</span></label>`\n).join('');\n\nconst html = `<!DOCTYPE html><html><head><meta charset=\"utf-8\"><title>Assign Achievement</title>\n<style>*{box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:560px;margin:48px auto;padding:0 24px;color:#111}h1{font-size:1.3em;margin-bottom:4px}.meta{color:#555;font-size:.9em;margin-bottom:20px}.controls{display:flex;gap:16px;margin-bottom:8px;font-size:.85em}.controls a{color:#0066cc;cursor:pointer;text-decoration:none}.list{border:1px solid #e0e0e0;border-radius:6px;overflow:hidden;margin-bottom:24px}.row{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid #f0f0f0;cursor:pointer}.row:last-child{border-bottom:none}.row:hover{background:#f7f9fc}input[type=checkbox]{width:16px;height:16px;cursor:pointer;accent-color:#0066cc}.btn{background:#0066cc;color:#fff;padding:11px 28px;border:none;border-radius:6px;cursor:pointer;font-size:.95em;font-weight:500}.btn:hover{background:#0052a3}.empty{padding:24px;color:#888;text-align:center}</style>\n</head><body>\n<h1>Assign Achievement Type</h1>\n<p class=\"meta\">Achievement: <strong>${escapeHtml(courseCode)}</strong> — ${escapeHtml(courseTitle)}</p>\n<p>Select instructors to award:</p>\n<form method=\"POST\" action=\"${escapeHtml(formSubmitUrl)}\">\n<input type=\"hidden\" name=\"achievementTypeId\" value=\"${escapeHtml(achievementTypeId)}\">\n<input type=\"hidden\" name=\"courseCode\" value=\"${escapeHtml(courseCode)}\">\n<div class=\"controls\">\n<a onclick=\"document.querySelectorAll('[name=instructorId]').forEach(c=>c.checked=true)\">Select all</a>\n<a onclick=\"document.querySelectorAll('[name=instructorId]').forEach(c=>c.checked=false)\">Clear all</a>\n</div>\n<div class=\"list\">${rows||'<p class=\"empty\">No instructors found.</p>'}</div>\n<button type=\"submit\" class=\"btn\">Award to Selected Instructors</button>\n</form></body></html>`;\nreturn [{ json: { html } }];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -368,6 +375,7 @@
       "parameters": {
         "httpMethod": "POST",
         "path": "acebfe7c-82ce-4721-99b3-348b3412e2ab",
+        "authentication": "basicAuth",
         "responseMode": "responseNode",
         "options": {}
       },
@@ -379,6 +387,12 @@
       ],
       "id": "3c927ff4-dfa1-42db-90de-645d99e6a921",
       "name": "Form Submission",
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "",
+          "name": "Achievement Form Basic Auth"
+        }
+      },
       "webhookId": "3e83fa8a-d4a9-4434-b862-41c86e0ce906"
     },
     {

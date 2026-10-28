@@ -27,6 +27,7 @@ This workflow adds a **Create Achievement Type** manual event to Course Template
 - Access to Administrate Automator
 - Administrate OAuth2 credentials with permission to read Course Templates and Contacts, create Achievement Types and award Achievements
 - A Slack OAuth2 credential that can send direct messages
+- A Basic Auth credential (username and password) to protect the instructor form
 - Instructors set up as Contacts in Administrate with an instructor Staff Role
 
 ### Installation
@@ -52,6 +53,13 @@ Select your Slack credential on:
 - `Slack: Achievement Type Created`
 - `Slack: Creation Error`
 
+Create a Basic Auth credential with a strong username and password and select it on both:
+
+- `Form Display`
+- `Form Submission`
+
+Share the username and password only with people allowed to award Achievements.
+
 #### 2. Fill in the Config node
 
 | Field | Value |
@@ -70,7 +78,7 @@ The easiest way to get the two form URLs is to open each webhook node after impo
 1. Activate the workflow. The Administrate Trigger registers the *Create Achievement Type* manual event on Course Templates.
 2. Open a test Course Template in Administrate and run **Create Achievement Type** from its actions.
 3. Check that a new Achievement Type exists with the course code as its name and the course title as its description.
-4. Check that Slack sent the message and open the link. The form should list your instructors.
+4. Check that Slack sent the message and open the link. Your browser should ask for the Basic Auth username and password, then the form should list your instructors. Cancelling the prompt should show an authorisation error instead.
 5. Tick one or two test instructors and submit. The confirmation page should show a tick next to each name.
 6. Open each instructor's Contact record and confirm the Achievement is listed.
 7. Run the manual event again on the same Course Template. If Administrate rejects the duplicate, the error should arrive in Slack.
@@ -106,7 +114,7 @@ The workflow has three entry points. Each one runs through **Config** and then *
 
 ## 🔒 Security
 
-The **Form Display** and **Form Submission** webhooks are unauthenticated. Anyone who has the URLs can open the form, see your instructor names and award Achievements. Keep the Slack message private and consider adding authentication to both webhook nodes (for example Header Auth or Basic Auth) or restricting access to your Automator host.
+The **Form Display** and **Form Submission** webhooks use Basic Auth. Without the username and password nobody can open the form, see your instructor names or award Achievements, even if they have the URLs. Anyone who has the credentials can award any Achievement Type to any Contact, so share them only with people trusted to do that and keep the Slack message private.
 
 Because the form page shows values taken from its query string, **Build Instructor Form** and **Build Confirmation** HTML-escape every value they add to the page. Keep that escaping in place if you change the HTML.
 
