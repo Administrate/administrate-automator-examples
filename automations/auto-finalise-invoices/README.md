@@ -14,7 +14,7 @@ A dry run mode is switched on by default so you can check the results before any
 
 - Runs on a daily schedule
 - Pages through every Opportunity in the source step (`PAGE_SIZE` per page)
-- Uses the soonest Event on each Opportunity to decide whether it's within the window
+- Uses the soonest upcoming Event on each Opportunity to decide whether it's within the window, ignoring Events that have already started
 - Copies a comments attribute and a PO reference attribute onto the invoice
 - Finalises the invoice and progresses the Opportunity to the target step
 - Skips invoices that aren't in Draft (for example Final or Void) and lists them in the summary
@@ -94,7 +94,7 @@ To find attribute keys, run the `Get Opportunities` query against an Opportunity
 1. **Schedule Trigger**: starts the run once a day.
 2. **Config**: holds the step IDs, attribute keys, window, page size, Slack channel and dry run flag.
 3. **Get Opportunities**: fetches every Opportunity in the source step, one page at a time, with its invoice state, attributes and Events.
-4. **Prepare Items**: keeps Opportunities whose soonest Event starts between now and `DAYS_WINDOW` days ahead and picks out the two attribute values.
+4. **Prepare Items**: ignores Events that have already started and keeps Opportunities whose soonest remaining Event starts within `DAYS_WINDOW` days and picks out the two attribute values.
 5. **Loop Over Items**: handles one Opportunity at a time.
 6. **Is Draft?**: invoices that aren't in Draft go to **Tag Skipped**.
 7. **Is Dry Run?**: in dry run mode, **Tag Dry Run** records what would happen and no mutations run.
