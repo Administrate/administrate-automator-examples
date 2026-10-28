@@ -118,7 +118,7 @@ query {
 6. **Check Classroom State / Already Configured (Fresh)?**: re-reads the Event and skips it if the classroom was configured in the meantime.
 7. **2. Configure Virtual Classroom**: sets the remote meeting type to Microsoft Teams.
 8. **3. Assign Host**: sets the host contact and staff role. Administrate generates the Teams meeting and link.
-9. **Build Log**: collects any GraphQL errors and returns a success or error item with the meeting URL.
+9. **Build Log**: collects any request failures and GraphQL errors and returns a success or error item with the meeting URL.
 
 ### Optional co-host add-on
 
