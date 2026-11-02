@@ -42,6 +42,7 @@ Examples with several workflows have a `workflows/` subdirectory. Download the r
 | [Delayed Email After Registration](automations/delayed-post-registration-email/) | Send a per-event follow-up email a set time after a learner registers |
 | [Import Learners from a Spreadsheet](automations/import-learners-from-spreadsheet/) | Upload an Excel or CSV file to bulk-register learners onto an event, creating contacts and accounts as needed |
 | [Instructor and Resource Utilisation Dashboards](automations/utilization-dashboards/) | Password-protected dashboards showing instructor and resource utilisation from Administrate data |
+| [Instructor Availability Conflicts Digest](automations/instructor-availability-conflicts-digest/) | Weekday email listing sessions where an instructor is booked twice or while absent, using Administrate's own conflict check |
 | [Instructor and Staff Invitations](automations/instructor-invitations/) | Invite instructors and staff to an event with secure personal links, chase non-responders and publish once staffing is complete |
 | [Instructor Jump Ball](automations/instructor-jump-ball/) | Send RSVP requests to instructors and manage responses for event assignments |
 | [Learner Substitution](automations/learner-substitution/) | Hand a learner's place to a named colleague from the learner record, registering the substitute before the place is released so it never counts as a withdrawal |
