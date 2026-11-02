@@ -12,8 +12,8 @@ Every weekday morning this workflow asks Administrate for its own conflict check
 
 - Uses Administrate's own conflict check (`contactConflicts`), so overlaps and absences are worked out by Administrate, not guessed from text
 - Covers every event, whether it was created by hand, imported or planned with Scheduler
-- One email, grouped by instructor and sorted by date, with duplicates removed
-- Shows what each session conflicts with: another session or an absence, with its times
+- One email, grouped by instructor and sorted by date
+- Shows what each session conflicts with: another session or an absence, with its times in a single time zone
 - Optional links to each event
 - No email when there is nothing to report
 - Option to leave out conflicts with unconfirmed bookings
@@ -45,7 +45,8 @@ Attach your Administrate OAuth2 credential to the three HTTP Request nodes: `Rea
 
 | Key | Set to |
 |---|---|
-| `WINDOW_DAYS` | How many days ahead to check (default `30`) |
+| `WINDOW_DAYS` | How many days ahead to check (default `30`). Administrate checks at most 90 days at a time, so a larger value is capped at `90` |
+| `TIMEZONE` | IANA time zone the times in the email are shown in (default `Europe/London`) |
 | `INCLUDE_UNCONFIRMED` | `false` to leave out conflicts with unconfirmed bookings (default `true`) |
 | `RECIPIENT_EMAILS` | `REPLACE_WITH_RECIPIENT_EMAIL` -> comma-separated addresses; each must be an Administrate contact |
 | `SENDING_ADDRESS_ID` | `REPLACE_WITH_SENDING_ADDRESS_ID` -> ID of a verified sending address |
@@ -80,7 +81,7 @@ If you use a shared error workflow, such as [Log Automation Failures to Administ
 
 1. **Every Morning** (or **Run Now**) reads the Config node.
 2. **Build Query** and **Read Conflicts** ask Administrate for every contact with a conflict between today and today + `WINDOW_DAYS`. Administrate returns, for each contact, the sessions in conflict and what each one conflicts with.
-3. **Build Digest** removes duplicates, optionally leaves out unconfirmed bookings, groups the sessions by instructor and sorts them by date, then builds the HTML email. If nothing is left, the workflow stops and no email is sent.
+3. **Build Digest** optionally leaves out unconfirmed bookings, groups the sessions by instructor and sorts them by date, then builds the HTML email with every time converted to `TIMEZONE`. If nothing is left, the workflow stops and no email is sent.
 4. **Dry Run?** sends the result to **Dry Run Report** when `DRY_RUN` is on.
 5. **Build Recipient Query**, **Find Recipients** and **Resolve Recipients** remove repeated addresses and look up each one as an Administrate contact. If an address matches no contact or several contacts, the run stops before any email is sent.
 6. **Send Digest** sends the email to each recipient through Administrate, and **Check Send** confirms each one was accepted.
@@ -102,8 +103,11 @@ If you use a shared error workflow, such as [Log Automation Failures to Administ
 - Merge or correct the duplicate contacts so the address matches one contact
 
 **A conflict you expected is missing:**
-- Check it falls within `WINDOW_DAYS`
+- Check it falls within `WINDOW_DAYS`, remembering that it is capped at 90 days
 - If `INCLUDE_UNCONFIRMED` is `false`, conflicts with unconfirmed bookings are left out
+
+**The times do not match the Administrate calendar:**
+- Set `TIMEZONE` to the zone your team works in. Every time in the email is converted to it, so a session and the booking it clashes with can be compared directly
 
 **Links to events do not work:**
 - Set `EVENT_URL_TEMPLATE` to your instance address, keeping `{id}` where the event number goes
