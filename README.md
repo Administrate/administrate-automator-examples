@@ -44,6 +44,7 @@ Examples with several workflows have a `workflows/` subdirectory. Download the r
 | [Instructor and Resource Utilisation Dashboards](automations/utilization-dashboards/) | Password-protected dashboards showing instructor and resource utilisation from Administrate data |
 | [Instructor and Staff Invitations](automations/instructor-invitations/) | Invite instructors and staff to an event with secure personal links, chase non-responders and publish once staffing is complete |
 | [Instructor Jump Ball](automations/instructor-jump-ball/) | Send RSVP requests to instructors and manage responses for event assignments |
+| [Learner Substitution](automations/learner-substitution/) | Hand a learner's place to a named colleague from the learner record, registering the substitute before the place is released so it never counts as a withdrawal |
 | [Log Automation Failures to Administrate](automations/error-logging-to-administrate/) | Shared error workflow, logging sub-workflow and daily digest for recording automation failures in Administrate |
 | [Logging vILT Attendance](automations/logging-vilt-attendance/) | Automatically record Zoom attendance in Administrate by matching email addresses |
 | [Managing Low Attendance](automations/managing-low-attendance/) | Email participants with referral links when events are below target fill rate |
