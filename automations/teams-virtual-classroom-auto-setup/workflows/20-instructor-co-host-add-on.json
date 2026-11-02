@@ -1,0 +1,529 @@
+{
+  "name": "Teams Instructor Co-Host Add-on",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Instructor Co-host Add-on (optional)\n\nAdds internal instructors as **co-organisers** of the Teams meeting created by the main workflow.\n\n- Trigger is **Event Updated**. Administrate has no webhook for staff changes, so after adding an instructor, edit and save the Event to fire it.\n- Only continues when the virtual classroom is already configured (`remoteMeeting.type == msteams`).\n- Reads staff with the role named `INSTRUCTOR_STAFF_ROLE_NAME` and splits them into internal (email domain in `INTERNAL_DOMAINS`) and external. External instructors are logged and skipped because they have no identity in your Microsoft tenant.\n- For each internal instructor it looks up their Microsoft Graph user ID, reads the meeting's current attendees (the PATCH replaces the whole list, so existing attendees are kept), adds the instructors with `role: coorganizer` and PATCHes the meeting.\n- `ORGANISER_MAILBOX_ID` is the Microsoft Entra object ID of the account that owns the meetings (the host contact from the main workflow).\n\n**Known limitations:**\n- Every save re-runs the PATCH for all current instructors, not only new ones. This is harmless because the PATCH sets the same role again.\n- Needs a Microsoft Graph app-only credential with `OnlineMeetings.ReadWrite.All` and an application access policy. Attach it to the three HTTP Request nodes after import.",
+        "height": 620,
+        "width": 620,
+        "color": 5
+      },
+      "id": "e5272fd7-97a5-4330-81e9-3d412f59a15c",
+      "name": "Sticky Note - Overview",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        8288,
+        688
+      ]
+    },
+    {
+      "parameters": {
+        "events": "V2ViaG9va1R5cGU6ZXZlbnRfdXBkYXRlZA==",
+        "name": "Instructor Co-host - Event Updated",
+        "query": "query webhookQuery($objectid: ID!) {\n  node(id: $objectid) {\n    ... on Event {\n      id\n      code\n      title\n      location { name }\n      remoteMeeting { type url }\n      staff {\n        edges {\n          node {\n            id\n            staffRole { id name }\n            contact { id firstName lastName emailAddress }\n          }\n        }\n      }\n    }\n  }\n}"
+      },
+      "type": "CUSTOM.administrateTrigger",
+      "typeVersion": 1,
+      "position": [
+        8240,
+        1328
+      ],
+      "id": "d0557d86-e330-4431-a7ff-6d94a71dc6dc",
+      "name": "Administrate Trigger",
+      "webhookId": "eb39724f-e78c-43b5-80ca-c894973a3671",
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const node = $json.payload.node;\nreturn [{\n  json: {\n    status: 'skipped',\n    timestamp: $now.toISO(),\n    eventId: node.id,\n    eventCode: node.code,\n    reason: 'Virtual classroom is not configured as Microsoft Teams yet',\n  },\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        8944,
+        1536
+      ],
+      "id": "21dd2e56-c9a2-4301-93a5-fc46bfca63b0",
+      "name": "Skip Log - Not Applicable"
+    },
+    {
+      "parameters": {
+        "jsCode": "const config = $('Config').first().json;\n// Comma-separated list, for example \"example.com,example.org\".\nconst internalDomains = String(config.INTERNAL_DOMAINS || '')\n  .split(',')\n  .map(d => d.trim().toLowerCase())\n  .filter(Boolean);\nconst node = $json.payload.node;\n\nconst instructors = (node.staff?.edges || [])\n  .map(e => e.node)\n  .filter(s => s.staffRole?.name === config.INSTRUCTOR_STAFF_ROLE_NAME)\n  .map(s => {\n    const email = s.contact?.emailAddress || '';\n    const domain = email.split('@')[1]?.toLowerCase() || '';\n    return {\n      staffId: s.id,\n      contactId: s.contact?.id,\n      name: `${s.contact?.firstName} ${s.contact?.lastName}`,\n      email,\n      internal: internalDomains.includes(domain),\n    };\n  });\n\nreturn [{\n  json: {\n    eventId: node.id,\n    eventCode: node.code,\n    eventTitle: node.title,\n    remoteMeetingUrl: node.remoteMeeting?.url ?? null,\n    instructorsInternal: instructors.filter(i => i.internal),\n    instructorsExternal: instructors.filter(i => !i.internal),\n  },\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        8944,
+        1248
+      ],
+      "id": "7a0dce87-2cf4-4af2-b54a-79444e14e025",
+      "name": "Identify Instructors"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "has-internal-1",
+              "leftValue": "={{ $json.instructorsInternal.length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "52b1283e-782d-491f-a2fb-a656be64e403",
+      "name": "Any Internal Instructors?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        9168,
+        1248
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $json;\nreturn [{\n  json: {\n    status: 'no_internal_instructors',\n    timestamp: $now.toISO(),\n    eventCode: d.eventCode,\n    eventTitle: d.eventTitle,\n    externalSkipped: d.instructorsExternal,\n    note: d.instructorsExternal.length ? 'Only external instructor(s) found so none can be added as Teams co-organizer (no tenant identity).' : 'No staff with the instructor role found on this event.',\n  },\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        9392,
+        1408
+      ],
+      "id": "19ce749a-a2a9-4eb6-b58d-153a593b541a",
+      "name": "Log - No Internal Instructors"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "instructorsInternal",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        9392,
+        1184
+      ],
+      "id": "69a1f87e-27e8-481a-a06d-135d592ab436",
+      "name": "Split Internal Instructors"
+    },
+    {
+      "parameters": {
+        "url": "=https://graph.microsoft.com/v1.0/users/{{ $json.email }}?$select=id,displayName,userPrincipalName",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        9616,
+        1184
+      ],
+      "id": "fba674d9-6670-440f-a1ff-5dfc6e8d207b",
+      "name": "Resolve Instructor Graph ID",
+      "credentials": {
+        "oAuth2Api": {
+          "id": "",
+          "name": "Microsoft Graph (App-only)"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Drop any that failed to resolve (e.g. no Entra account despite an internal email domain) instead of erroring the whole run.\nconst resolved = $input.all().map(i => i.json).filter(u => u && u.id && !u.error);\nreturn [{ json: { resolvedInstructors: resolved } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        9840,
+        1184
+      ],
+      "id": "093bc3a1-fa40-43e9-ba66-621fef383583",
+      "name": "Collect Resolved Instructors"
+    },
+    {
+      "parameters": {
+        "url": "=https://graph.microsoft.com/v1.0/users/{{ $('Config').first().json.ORGANISER_MAILBOX_ID }}/onlineMeetings?$filter=JoinWebUrl eq '{{ encodeURIComponent($('Identify Instructors').first().json.remoteMeetingUrl) }}'&$select=id,joinUrl,participants",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        10064,
+        1184
+      ],
+      "id": "83503f54-d5cc-4a40-8794-2cc8898f3ee8",
+      "name": "Get Online Meeting",
+      "credentials": {
+        "oAuth2Api": {
+          "id": "",
+          "name": "Microsoft Graph (App-only)"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const organiserMailboxId = $('Config').first().json.ORGANISER_MAILBOX_ID;\nconst eventInfo = $('Identify Instructors').first().json;\nconst resolved = $('Collect Resolved Instructors').first().json.resolvedInstructors;\nconst meetingResp = $json;\nconst meeting = meetingResp?.value?.[0];\n\nif (!meeting) {\n  return [{ json: { error: 'No meeting matched JoinWebUrl filter', eventCode: eventInfo.eventCode, meetingResp } }];\n}\n\nconst existingAttendees = meeting.participants?.attendees || [];\nconst resolvedIds = new Set(resolved.map(r => r.id));\n\nconst keptAttendees = existingAttendees.filter(a => !resolvedIds.has(a.identity?.user?.id));\nconst newAttendees = resolved.map(r => ({\n  identity: { user: { id: r.id, displayName: r.displayName } },\n  upn: r.userPrincipalName,\n  role: 'coorganizer',\n}));\n\nreturn [{\n  json: {\n    organiserMailboxId,\n    meetingId: meeting.id,\n    eventCode: eventInfo.eventCode,\n    eventTitle: eventInfo.eventTitle,\n    addedInstructors: resolved.map(r => r.displayName),\n    externalSkipped: eventInfo.instructorsExternal.map(i => i.name),\n    mergedAttendees: [...keptAttendees, ...newAttendees],\n  },\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        10288,
+        1184
+      ],
+      "id": "42a94444-2909-428d-80f6-c54b421362a7",
+      "name": "Build Merged Attendee List"
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "=https://graph.microsoft.com/v1.0/users/{{ $json.organiserMailboxId }}/onlineMeetings/{{ $json.meetingId }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Prefer",
+              "value": "include-unknown-enum-members"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ participants: { attendees: $json.mergedAttendees } }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        10736,
+        1184
+      ],
+      "id": "9df38a48-f1dc-4bfd-9b9f-389e12c20051",
+      "name": "Add Co-organisers",
+      "credentials": {
+        "oAuth2Api": {
+          "id": "",
+          "name": "Microsoft Graph (App-only)"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const built = $('Build Merged Attendee List').first().json;\nconst patchResp = $json;\n\nreturn [{\n  json: {\n    timestamp: $now.toISO(),\n    status: patchResp.error ? 'error' : 'success',\n    eventCode: built.eventCode,\n    eventTitle: built.eventTitle,\n    addedAsCoorganizer: built.addedInstructors,\n    skippedExternal: built.externalSkipped,\n    patchError: patchResp.error ?? null,\n  },\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        10960,
+        1184
+      ],
+      "id": "e2b81c23-eddf-46cc-916a-a20913f2c649",
+      "name": "Final Log"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "classroom-check-1",
+              "leftValue": "={{ $json.payload.node.remoteMeeting?.type }}",
+              "rightValue": "msteams",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "id": "585c80ee-b928-4889-b51d-f606d5f12158",
+      "name": "Teams Classroom Configured?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        8720,
+        1328
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "0d3342fe-115a-4521-a6ca-e62e37c85811",
+              "name": "INTERNAL_DOMAINS",
+              "value": "REPLACE_WITH_INTERNAL_EMAIL_DOMAINS",
+              "type": "string"
+            },
+            {
+              "id": "b6b9f287-bd1a-4b13-8706-ffb7a3fa3934",
+              "name": "ORGANISER_MAILBOX_ID",
+              "value": "REPLACE_WITH_ORGANISER_MAILBOX_OBJECT_ID",
+              "type": "string"
+            },
+            {
+              "id": "87f8ad4f-0404-4773-84c0-862faf8a82e8",
+              "name": "INSTRUCTOR_STAFF_ROLE_NAME",
+              "value": "Instructor",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        8480,
+        1328
+      ],
+      "id": "0a8e0365-1c0c-4fb2-8d6e-5ef5b7eee70a",
+      "name": "Config"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "b229b2a9-c0d8-4605-b2b0-3ac2df714369",
+              "leftValue": "={{ $json.meetingId }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        10512,
+        1184
+      ],
+      "id": "2e87da40-4bc7-4671-b5df-2e497e3f60a6",
+      "name": "Meeting Found?"
+    },
+    {
+      "parameters": {
+        "jsCode": "const eventInfo = $('Identify Instructors').first().json;\nconst lookup = $json.meetingResp ?? {};\nconst lookupError = lookup.error ? (typeof lookup.error === 'string' ? lookup.error : lookup.error.message) : null;\n\nreturn [{\n  json: {\n    timestamp: $now.toISO(),\n    status: 'no_meeting_found',\n    eventCode: eventInfo.eventCode,\n    eventTitle: eventInfo.eventTitle,\n    remoteMeetingUrl: eventInfo.remoteMeetingUrl,\n    note: lookupError\n      ? `Online meeting lookup failed (${lookupError}), so no co-organisers were added.`\n      : 'No Teams meeting owned by the organiser mailbox matched the event join URL, so no co-organisers were added.',\n  },\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        10736,
+        1376
+      ],
+      "id": "35415f28-c159-4a02-96ac-959c761fa94d",
+      "name": "Log - No Meeting Found"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Administrate Trigger": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Teams Classroom Configured?": {
+      "main": [
+        [
+          {
+            "node": "Identify Instructors",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Skip Log - Not Applicable",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Identify Instructors": {
+      "main": [
+        [
+          {
+            "node": "Any Internal Instructors?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Any Internal Instructors?": {
+      "main": [
+        [
+          {
+            "node": "Split Internal Instructors",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log - No Internal Instructors",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Internal Instructors": {
+      "main": [
+        [
+          {
+            "node": "Resolve Instructor Graph ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resolve Instructor Graph ID": {
+      "main": [
+        [
+          {
+            "node": "Collect Resolved Instructors",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collect Resolved Instructors": {
+      "main": [
+        [
+          {
+            "node": "Get Online Meeting",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Online Meeting": {
+      "main": [
+        [
+          {
+            "node": "Build Merged Attendee List",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Merged Attendee List": {
+      "main": [
+        [
+          {
+            "node": "Meeting Found?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add Co-organisers": {
+      "main": [
+        [
+          {
+            "node": "Final Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Teams Classroom Configured?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Meeting Found?": {
+      "main": [
+        [
+          {
+            "node": "Add Co-organisers",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log - No Meeting Found",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "tags": []
+}

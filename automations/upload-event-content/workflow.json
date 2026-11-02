@@ -1,0 +1,1285 @@
+{
+  "name": "Upload Event Content",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Upload Event Content\nReusable sub-workflow. Call it from an **Execute Workflow** node with **one item per content row**. File rows are downloaded from attachments on a Smartsheet sheet and uploaded to the Administrate DMS, then every row becomes LMS content on its Event. See the README for the input fields.\n\n**Config**\n- `GRAPHQL_URL`: your Administrate GraphQL URL.\n- `SMARTSHEET_API_BASE_URL`: leave as `https://api.smartsheet.com/2.0`.\n- `DMS_PARENT_FOLDER_ID`: base64 global ID of the DMS folder that per-call folders are created inside.\n- `DMS_PARENT_FOLDER_PATH`: the same folder as a path, such as `/Course Materials`. Change one, change both.\n- `DEFAULT_CONTENT_TYPE`: MIME type used when an attachment has none.\n\n**Credentials:** Administrate OAuth2 on the GraphQL nodes; a Bearer Auth credential holding a Smartsheet API token on **List Sheet Attachments** and **Get Attachment URL**.",
+        "height": 440,
+        "width": 620,
+        "color": 4
+      },
+      "id": "4c78cbe4-863d-4bc0-abe7-ef5b1ad91e44",
+      "name": "Sticky Note Setup",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -48,
+        -96
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## How it works\n1. Lists the sheet's attachments once and matches each row by `smartsheetRowId`, falling back to `contentFile`.\n2. Finds or creates the folder `dmsFolderName` inside `DMS_PARENT_FOLDER_ID` (only when a row has a file).\n3. Finds or creates every Learning Tag named in `tagsCsv`.\n4. Per row, in `ordering` order: file types (scorm, video, document, presentation) are uploaded with `requestUpload` and an S3 POST (within 60 seconds), then `createLmsResource` links the document. Other types go straight to `createLmsResource`.\n5. Returns one summary item with a result per row.\n\n**Folder IDs:** `requestUpload.folderId` and `folders.create.parentFolderId` take the base64 global ID, not the numeric legacyId. A legacyId fails with \"The folder specified does not exist\".",
+        "height": 360,
+        "width": 700,
+        "color": 5
+      },
+      "id": "a8885071-62dd-43a6-a7f8-4492919d91c4",
+      "name": "Sticky Note How It Works",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        640,
+        -96
+      ]
+    },
+    {
+      "parameters": {
+        "inputSource": "workflowInputs",
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "eventId",
+              "type": "string"
+            },
+            {
+              "name": "resourceType",
+              "type": "string"
+            },
+            {
+              "name": "displayName",
+              "type": "string"
+            },
+            {
+              "name": "ordering",
+              "type": "number"
+            },
+            {
+              "name": "isRequired",
+              "type": "boolean"
+            },
+            {
+              "name": "autoComplete",
+              "type": "boolean"
+            },
+            {
+              "name": "externalActivityURL",
+              "type": "string"
+            },
+            {
+              "name": "tagsCsv",
+              "type": "string"
+            },
+            {
+              "name": "contentFile",
+              "type": "string"
+            },
+            {
+              "name": "smartsheetRowId",
+              "type": "string"
+            },
+            {
+              "name": "smartsheetSheetId",
+              "type": "string"
+            },
+            {
+              "name": "dmsFolderName",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "id": "7cd5e640-b7c3-4d7a-b135-9e16e1c6404b",
+      "name": "When Called",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c1",
+              "name": "GRAPHQL_URL",
+              "type": "string",
+              "value": "https://YOUR-INSTANCE.administrateapp.com/graphql"
+            },
+            {
+              "id": "c2",
+              "name": "SMARTSHEET_API_BASE_URL",
+              "type": "string",
+              "value": "https://api.smartsheet.com/2.0"
+            },
+            {
+              "id": "c6",
+              "name": "DMS_PARENT_FOLDER_ID",
+              "type": "string",
+              "value": "REPLACE_WITH_DMS_PARENT_FOLDER_ID"
+            },
+            {
+              "id": "c7",
+              "name": "DMS_PARENT_FOLDER_PATH",
+              "type": "string",
+              "value": "REPLACE_WITH_DMS_PARENT_FOLDER_PATH"
+            },
+            {
+              "id": "c5",
+              "name": "DEFAULT_CONTENT_TYPE",
+              "type": "string",
+              "value": "application/zip"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "8f34862b-caf3-4046-939f-ab791e55c052",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        208,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $('Config').first().json.SMARTSHEET_API_BASE_URL }}/sheets/{{ $('When Called').first().json.smartsheetSheetId }}/attachments",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "options": {}
+      },
+      "id": "5e7b99b5-5ffc-43b3-9f3d-399d6f8ad56d",
+      "name": "List Sheet Attachments",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        416,
+        400
+      ],
+      "executeOnce": true,
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "",
+          "name": "Bearer Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').first().json.GRAPHQL_URL }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { query: \"query FindFolder($parent: String!, $name: String!) { folders(filters: [{ field: parentId, operation: eq, value: $parent }, { field: name, operation: eq, value: $name }]) { edges { node { id legacyId name path parentId } } } }\", variables: { parent: $('Config').first().json.DMS_PARENT_FOLDER_ID, name: String($('When Called').first().json.dmsFolderName || '').trim() } } }}",
+        "options": {}
+      },
+      "id": "b20a9555-a751-4669-ad52-edc807020f12",
+      "name": "Fetch DMS Folders",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        624,
+        400
+      ],
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      },
+      "notes": "Looks up the one folder named dmsFolderName inside DMS_PARENT_FOLDER_ID. Returns zero or one folder."
+    },
+    {
+      "parameters": {
+        "jsCode": "const FILE_TYPES = ['scorm', 'video', 'document', 'presentation'];\nconst config = $('Config').first().json;\nconst rows = $('When Called').all().map(i => i.json);\nconst response = $('Fetch DMS Folders').first().json || {};\n\n/*  Only calls that upload files need a folder  */\nconst needsFolder = rows.some(r => FILE_TYPES.includes(String(r.resourceType || '').trim().toLowerCase()));\nif (!needsFolder) {\n  return [{ json: { needsCreate: false, noFilesInThisCall: true, dmsFolderGlobalId: '', targetPath: '' } }];\n}\n\nif (Array.isArray(response.errors) && response.errors.length) {\n  throw new Error('Folder lookup failed: ' + JSON.stringify(response.errors));\n}\n\nconst folderName = String((rows[0] || {}).dmsFolderName || '').trim();\nif (!folderName) {\n  throw new Error('dmsFolderName is required when any item has a file resource type (' + FILE_TYPES.join(', ') + ').');\n}\n\nconst parentPath = String(config.DMS_PARENT_FOLDER_PATH || '').replace(/\\/+$/, '');\nconst targetPath = parentPath + '/' + folderName;\nconst edges = (((response.data || {}).folders || {}).edges) || [];\n\n/*  Two folders with the same name in the same parent would scatter files, so stop instead  */\nif (edges.length > 1) {\n  throw new Error('Found ' + edges.length + ' folders named \"' + folderName + '\" inside ' + parentPath + '. Remove the duplicate in Administrate and try again.');\n}\n\nconst match = edges.length ? edges[0].node : null;\nif (match && String(match.path || '') !== targetPath) {\n  throw new Error('Matched a folder at \"' + match.path + '\" but expected \"' + targetPath + '\". Check that DMS_PARENT_FOLDER_ID and DMS_PARENT_FOLDER_PATH in Config point at the same folder.');\n}\n\n/*  Keep the base64 global ID: requestUpload rejects the numeric legacyId  */\nreturn [{ json: {\n  dmsFolderName: folderName,\n  targetPath,\n  needsCreate: !match,\n  noFilesInThisCall: false,\n  dmsFolderGlobalId: match ? String(match.id) : ''\n} }];"
+      },
+      "id": "5fcc6b01-af74-4aaa-9a61-475253cd1b82",
+      "name": "Find Target Folder",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        832,
+        400
+      ],
+      "notes": "Decides whether to reuse or create the folder. Stops on a duplicate folder name, or if the two Config parent values point at different folders."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "778db28c-9f8b-4daf-86de-c5c24654f80c",
+              "leftValue": "={{ $json.needsCreate }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "b8fbea35-3fbe-4122-9b16-e35d55adcc82",
+      "name": "Folder Missing?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1040,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').first().json.GRAPHQL_URL }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { query: \"mutation CreateFolder($name: String!, $parent: ID) { folders { create(input: { name: $name, parentFolderId: $parent }) { folder { id legacyId name path } errors { label message value } } } }\", variables: { name: $json.dmsFolderName, parent: $('Config').first().json.DMS_PARENT_FOLDER_ID } } }}",
+        "options": {}
+      },
+      "id": "bd51e05a-07f0-4427-a826-3e7001500ac7",
+      "name": "Create Target Folder",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1248,
+        304
+      ],
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const formatErrors = (response, fieldErrors) => {\n  const messages = [];\n  (response.errors || []).forEach(e => messages.push(e.message || JSON.stringify(e)));\n  (fieldErrors || []).forEach(e => messages.push((e.label ? e.label + ': ' : '') + (e.message || JSON.stringify(e))));\n  return messages;\n};\n/*  Reached when the folder already existed, was just created or is not needed.\n    Normalises all three into the base64 global ID that requestUpload expects  */\nconst input = $input.first().json || {};\nconst createResult = ((input.data || {}).folders || {}).create || null;\n\nif (input.data || input.errors) {\n  const errors = formatErrors(input, (createResult || {}).errors);\n  if (errors.length) {\n    throw new Error('Could not create the DMS folder: ' + errors.join('; '));\n  }\n  const folder = (createResult || {}).folder || {};\n  const newId = String(folder.id || '').trim();\n  if (!newId) {\n    throw new Error('The DMS folder was created but no ID came back, so there is nothing to file documents against.');\n  }\n  return [{ json: { dmsFolderGlobalId: newId, dmsFolderPath: String(folder.path || ''), folderWasCreated: true } }];\n}\n\nif (input.noFilesInThisCall === true) {\n  return [{ json: { dmsFolderGlobalId: '', dmsFolderPath: '', folderWasCreated: false } }];\n}\n\nconst globalId = String(input.dmsFolderGlobalId || '').trim();\nif (!globalId) {\n  throw new Error('No DMS folder was resolved for this call.');\n}\nreturn [{ json: { dmsFolderGlobalId: globalId, dmsFolderPath: String(input.targetPath || ''), folderWasCreated: false } }];"
+      },
+      "id": "ee4e56a0-fbbe-4fd1-be57-bdd4d3fe8fd0",
+      "name": "Folder Ready",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1456,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const FILE_TYPES = ['scorm', 'video', 'document', 'presentation'];\nconst rows = $('When Called').all().map(i => i.json);\nconst attachments = (($('List Sheet Attachments').first().json || {}).data) || [];\n\n/*  Smartsheet pages attachments at 100 by default, so a short list would be a\n    silent under-match rather than an error. Stop if we are on the boundary  */\nif (attachments.length >= 100) {\n  throw new Error('Smartsheet returned ' + attachments.length + ' attachments, which is at or over the default page size. Add includeAll=true to List Sheet Attachments before trusting this match.');\n}\n\nconst byName = {};\nconst byRow = {};\nattachments.forEach(a => {\n  if (String(a.attachmentType || '') !== 'FILE') {\n    return;\n  }\n  const name = String(a.name || '').trim().toLowerCase();\n  if (name) {\n    byName[name] = a;\n  }\n  if (String(a.parentType || '') === 'ROW' && a.parentId) {\n    const key = String(a.parentId);\n    if (!byRow[key]) {\n      byRow[key] = a;\n    }\n  }\n});\n\nreturn rows.map(r => {\n  const out = Object.assign({}, r);\n  out.resourceType = String(r.resourceType || '').trim().toLowerCase();\n  out.needsFile = FILE_TYPES.includes(out.resourceType);\n  const rowId = String(r.smartsheetRowId || '').trim();\n  const contentFile = String(r.contentFile || '').trim().toLowerCase();\n  const byRowHit = rowId ? byRow[rowId] : null;\n  const byNameHit = contentFile ? byName[contentFile] : null;\n  const hit = byRowHit || byNameHit || null;\n  if (hit) {\n    out.attachmentId = hit.id;\n    out.attachmentName = hit.name;\n    out.attachmentMatchedBy = byRowHit ? 'row' : 'name';\n  } else if (out.needsFile) {\n    out.fileError = 'No Smartsheet attachment matched row \"' + rowId + '\" or file name \"' + String(r.contentFile || '') + '\".';\n  }\n  return { json: out };\n});"
+      },
+      "id": "7e9a7ee8-4bf8-4919-9955-4abc0d512f8e",
+      "name": "Match Rows to Attachments",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1664,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const rows = $('Match Rows to Attachments').all().map(i => i.json);\nconst names = [];\nrows.forEach(r => {\n  String(r.tagsCsv || '').split(',').map(s => s.trim()).filter(Boolean).forEach(name => names.push(name));\n});\nconst uniqueNames = [...new Set(names)];\nif (!uniqueNames.length) {\n  return [{ json: { tagName: '', noTags: true } }];\n}\nreturn uniqueNames.map(tagName => ({ json: { tagName } }));"
+      },
+      "id": "ea62e022-111d-477b-ad63-e5a4342ace2f",
+      "name": "Split Unique Tags",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1872,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "0a7d57ae-5c06-4081-ab48-4cb66e101523",
+              "leftValue": "={{ !$json.noTags }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "e1fec15e-fd68-4628-84c4-9dcd87c662d0",
+      "name": "Any Tags?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2080,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').first().json.GRAPHQL_URL }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { query: \"query FindLearningTag($name: String!) { learningTags(filters: [{ field: name, operation: eq, value: $name }]) { edges { node { id name } } } }\", variables: { name: $json.tagName } } }}",
+        "options": {}
+      },
+      "id": "a6e560fd-8277-4801-9632-05298d893070",
+      "name": "Find Tag",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        2288,
+        304
+      ],
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "/*  Lists the tags that do not exist yet. Always returns at least one item so\n    exactly one branch of the next IF runs and Collect Tag Map runs once  */\nconst tagNames = $('Split Unique Tags').all().map(i => i.json.tagName);\nconst lookups = $('Find Tag').all().map(i => i.json);\nconst missing = tagNames.filter((tagName, index) => {\n  const response = lookups[index] || {};\n  if (Array.isArray(response.errors) && response.errors.length) {\n    return false;\n  }\n  const edges = ((response.data || {}).learningTags || {}).edges || [];\n  return edges.length === 0;\n});\nif (!missing.length) {\n  return [{ json: { nothingToCreate: true } }];\n}\nreturn missing.map(tagName => ({ json: { tagName } }));"
+      },
+      "id": "1e2e5923-b644-4234-82ee-27be9cf2cd33",
+      "name": "Find Missing Tags",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2496,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "85621663-30b4-45d3-aeeb-4ca3a943462a",
+              "leftValue": "={{ !$json.nothingToCreate }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "15becb15-71d5-4e42-98e0-5addd83f295d",
+      "name": "Any Tags to Create?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2704,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').first().json.GRAPHQL_URL }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { query: \"mutation CreateLearningTag($name: String!) { learningTags { create(input: [{ name: $name }]) { learningTags { id name } errors { label message value } } } }\", variables: { name: $json.tagName } } }}",
+        "options": {}
+      },
+      "id": "00a366b3-a26a-42d3-bbe6-09140fad87b5",
+      "name": "Create Tag",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        2912,
+        208
+      ],
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const formatErrors = (response, fieldErrors) => {\n  const messages = [];\n  (response.errors || []).forEach(e => messages.push(e.message || JSON.stringify(e)));\n  (fieldErrors || []).forEach(e => messages.push((e.label ? e.label + ': ' : '') + (e.message || JSON.stringify(e))));\n  return messages;\n};\n/*  Builds a tag name to ID map, then gives each row its learningTagIds.\n    Runs before any content is created, so a tag failure stops the call cleanly  */\nconst tagIds = {};\nconst tagErrors = [];\n\nif ($('Find Tag').isExecuted) {\n  const tagNames = $('Split Unique Tags').all().map(i => i.json.tagName);\n  const lookups = $('Find Tag').all().map(i => i.json);\n  tagNames.forEach((tagName, index) => {\n    const response = lookups[index] || {};\n    const errors = formatErrors(response);\n    if (errors.length) {\n      tagErrors.push('Looking up tag \"' + tagName + '\" failed: ' + errors.join('; '));\n      return;\n    }\n    const edges = ((response.data || {}).learningTags || {}).edges || [];\n    if (edges.length) {\n      tagIds[tagName.toLowerCase()] = edges[0].node.id;\n    }\n  });\n}\n\nif ($('Create Tag').isExecuted) {\n  const toCreate = $('Find Missing Tags').all().map(i => i.json.tagName);\n  const created = $('Create Tag').all().map(i => i.json);\n  toCreate.forEach((tagName, index) => {\n    const response = created[index] || {};\n    const createResult = ((response.data || {}).learningTags || {}).create || {};\n    const errors = formatErrors(response, createResult.errors);\n    const tag = (createResult.learningTags || [])[0];\n    if (errors.length || !tag || !tag.id) {\n      tagErrors.push('Creating tag \"' + tagName + '\" failed: ' + (errors.join('; ') || 'no ID was returned'));\n      return;\n    }\n    tagIds[tagName.toLowerCase()] = tag.id;\n  });\n}\n\nif (tagErrors.length) {\n  throw new Error('Learning Tags could not be resolved, so no content was created. ' + tagErrors.join(' | '));\n}\n\nconst rows = $('Match Rows to Attachments').all().map(i => i.json);\nreturn rows.map(r => {\n  const names = String(r.tagsCsv || '').split(',').map(s => s.trim()).filter(Boolean);\n  const ids = [...new Set(names.map(name => tagIds[name.toLowerCase()]).filter(Boolean))];\n  return { json: Object.assign({}, r, { learningTagIds: ids }) };\n});"
+      },
+      "id": "b5299b17-e7b3-4b6e-91fc-aa82e6f5d270",
+      "name": "Collect Tag Map",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3120,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "sortFieldsUi": {
+          "sortField": [
+            {
+              "fieldName": "ordering"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "3cca53bc-9339-47d2-9ab4-31ad4e86caa6",
+      "name": "Sort by Order",
+      "type": "n8n-nodes-base.sort",
+      "typeVersion": 1,
+      "position": [
+        3328,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "5a218d2a-3d93-41e7-9e97-09af35faabcd",
+      "name": "Loop Content Rows",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        3536,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const results = $input.all().map(i => i.json);\nconst failed = results.filter(r => !r.success);\nconst folder = $('Folder Ready').first().json;\nreturn [{ json: {\n  success: failed.length === 0,\n  message: failed.length\n    ? failed.length + ' of ' + results.length + ' content item(s) failed. See results.'\n    : 'Created ' + results.length + ' content item(s).',\n  createdCount: results.length - failed.length,\n  failedCount: failed.length,\n  dmsFolderId: folder.dmsFolderGlobalId,\n  dmsFolderPath: folder.dmsFolderPath,\n  folderWasCreated: folder.folderWasCreated,\n  results\n} }];"
+      },
+      "id": "baea1289-015d-4eb9-8e65-ccb74a3d412e",
+      "name": "Build Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3760,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 1
+                },
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "id": "b0f0bfce-78b5-49c9-8744-ff3341ef5c89",
+                    "leftValue": "={{ $json.fileError }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "notEmpty",
+                      "singleValue": true
+                    }
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "Missing File"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 1
+                },
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "id": "7a4936c9-ebf8-4b1e-8938-afc1ffd95412",
+                    "leftValue": "={{ $json.needsFile }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    }
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "File Upload"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra",
+          "renameFallbackOutput": "No Upload"
+        }
+      },
+      "id": "5e4040e2-ca99-460f-bb9d-f5811c7478da",
+      "name": "Route by Type",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        3760,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $('Config').first().json.SMARTSHEET_API_BASE_URL }}/sheets/{{ $('When Called').first().json.smartsheetSheetId }}/attachments/{{ $json.attachmentId }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "options": {}
+      },
+      "id": "aa659684-dd0b-4262-b915-eaaa00b5bb40",
+      "name": "Get Attachment URL",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        3984,
+        400
+      ],
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "",
+          "name": "Bearer Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const row = $('Loop Content Rows').item.json;\nconst config = $('Config').first().json;\nconst attachment = $('Get Attachment URL').item.json || {};\nconst fileName = String(row.contentFile || row.attachmentName || 'content.zip');\n\n/*  Resolved once per call, before the loop. This is the base64 global ID, not the\n    legacyId. Blank omits the field and the file lands in the DMS root  */\nconst folderId = String($('Folder Ready').first().json.dmsFolderGlobalId || '').trim();\n\nconst input = {\n  name: String(row.displayName || fileName),\n  description: String(row.displayName || 'content'),\n  contentType: String(attachment.mimeType || config.DEFAULT_CONTENT_TYPE),\n  fileName\n};\nif (folderId) {\n  input.folderId = folderId;\n}\nreturn { json: { query: 'mutation RequestDocumentUpload($input: DocumentUploadInput!) { documents { requestUpload(input: $input) { document { id name } uploadDetails { url payload } errors { label message value } } } }', variables: { input } } };"
+      },
+      "id": "849e0343-7ce2-44d5-a673-e763758522cf",
+      "name": "Build Upload Body",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4192,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').first().json.GRAPHQL_URL }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { query: $json.query, variables: $json.variables } }}",
+        "options": {}
+      },
+      "id": "b7208231-bcaa-4212-b700-168b0ecceeae",
+      "name": "Request Upload",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        4400,
+        400
+      ],
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const formatErrors = (response, fieldErrors) => {\n  const messages = [];\n  (response.errors || []).forEach(e => messages.push(e.message || JSON.stringify(e)));\n  (fieldErrors || []).forEach(e => messages.push((e.label ? e.label + ': ' : '') + (e.message || JSON.stringify(e))));\n  return messages;\n};\nconst requestUpload = (($json.data || {}).documents || {}).requestUpload || {};\nconst errors = formatErrors($json, requestUpload.errors);\nif (!errors.length && !(requestUpload.document && requestUpload.uploadDetails)) {\n  errors.push('no document or upload details were returned');\n}\nif (errors.length) {\n  return { json: { uploadError: 'requestUpload failed: ' + errors.join('; ') } };\n}\nreturn $input.item;"
+      },
+      "id": "8b2546b9-7aa9-49e7-b33d-20dc94317f60",
+      "name": "Check Upload Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4608,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "7b63a558-b5bf-4484-b13e-59a16f8f005a",
+              "leftValue": "={{ !$json.uploadError }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "c60bcf38-ab43-4456-b10e-4643c2483959",
+      "name": "Upload Ready?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        4816,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $('Get Attachment URL').item.json.url }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file",
+              "outputPropertyName": "file"
+            }
+          }
+        }
+      },
+      "id": "f5dee541-be1a-4363-89f7-fa29b6688b26",
+      "name": "Download Binary",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        5024,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Request Upload').item.json.data.documents.requestUpload.uploadDetails.url }}",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "key",
+              "value": "={{ JSON.parse($('Request Upload').item.json.data.documents.requestUpload.uploadDetails.payload)['key'] }}"
+            },
+            {
+              "name": "acl",
+              "value": "={{ JSON.parse($('Request Upload').item.json.data.documents.requestUpload.uploadDetails.payload)['acl'] }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "={{ JSON.parse($('Request Upload').item.json.data.documents.requestUpload.uploadDetails.payload)['Content-Type'] }}"
+            },
+            {
+              "name": "x-amz-meta-callback",
+              "value": "={{ JSON.parse($('Request Upload').item.json.data.documents.requestUpload.uploadDetails.payload)['x-amz-meta-callback'] }}"
+            },
+            {
+              "name": "x-amz-meta-revisionId",
+              "value": "={{ JSON.parse($('Request Upload').item.json.data.documents.requestUpload.uploadDetails.payload)['x-amz-meta-revisionId'] }}"
+            },
+            {
+              "name": "x-amz-meta-documentId",
+              "value": "={{ JSON.parse($('Request Upload').item.json.data.documents.requestUpload.uploadDetails.payload)['x-amz-meta-documentId'] }}"
+            },
+            {
+              "name": "x-amz-meta-instanceName",
+              "value": "={{ JSON.parse($('Request Upload').item.json.data.documents.requestUpload.uploadDetails.payload)['x-amz-meta-instanceName'] }}"
+            },
+            {
+              "name": "x-amz-meta-uploadType",
+              "value": "={{ JSON.parse($('Request Upload').item.json.data.documents.requestUpload.uploadDetails.payload)['x-amz-meta-uploadType'] }}"
+            },
+            {
+              "name": "x-amz-meta-originalFilename",
+              "value": "={{ JSON.parse($('Request Upload').item.json.data.documents.requestUpload.uploadDetails.payload)['x-amz-meta-originalFilename'] }}"
+            },
+            {
+              "name": "x-amz-algorithm",
+              "value": "={{ JSON.parse($('Request Upload').item.json.data.documents.requestUpload.uploadDetails.payload)['x-amz-algorithm'] }}"
+            },
+            {
+              "name": "x-amz-credential",
+              "value": "={{ JSON.parse($('Request Upload').item.json.data.documents.requestUpload.uploadDetails.payload)['x-amz-credential'] }}"
+            },
+            {
+              "name": "x-amz-date",
+              "value": "={{ JSON.parse($('Request Upload').item.json.data.documents.requestUpload.uploadDetails.payload)['x-amz-date'] }}"
+            },
+            {
+              "name": "x-amz-security-token",
+              "value": "={{ JSON.parse($('Request Upload').item.json.data.documents.requestUpload.uploadDetails.payload)['x-amz-security-token'] }}"
+            },
+            {
+              "name": "policy",
+              "value": "={{ JSON.parse($('Request Upload').item.json.data.documents.requestUpload.uploadDetails.payload)['policy'] }}"
+            },
+            {
+              "name": "x-amz-signature",
+              "value": "={{ JSON.parse($('Request Upload').item.json.data.documents.requestUpload.uploadDetails.payload)['x-amz-signature'] }}"
+            },
+            {
+              "parameterType": "formBinaryData",
+              "name": "file",
+              "inputDataFieldName": "file"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "18dff4f3-b393-4ce4-9ad6-305a3b941d3b",
+      "name": "Upload To DMS",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        5232,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const row = $('Loop Content Rows').item.json;\nconst toBoolean = value => value === true || ['true', 'yes'].includes(String(value).toLowerCase());\nconst isSet = value => value !== undefined && value !== null && value !== '';\nconst input = { eventId: String(row.eventId || ''), resourceType: row.resourceType };\nif (row.displayName) {\n  input.displayName = String(row.displayName);\n}\nif (isSet(row.ordering)) {\n  input.ordering = Number(row.ordering);\n}\nif (isSet(row.isRequired)) {\n  input.isRequired = toBoolean(row.isRequired);\n}\nif (isSet(row.autoComplete)) {\n  input.autoComplete = toBoolean(row.autoComplete);\n}\nif (Array.isArray(row.learningTagIds) && row.learningTagIds.length) {\n  input.learningTags = row.learningTagIds;\n}\ninput.documentId = $('Request Upload').item.json.data.documents.requestUpload.document.id;\nreturn { json: { query: 'mutation CreateLmsResource($input: CreateLmsResourceInput!) { event { createLmsResource(input: $input) { lmsContent { id } errors { label message value } } } }', variables: { input } } };"
+      },
+      "id": "1e4f5742-8876-45ab-9d50-8a9aef6ad69e",
+      "name": "Build Resource Body (File)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5440,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').first().json.GRAPHQL_URL }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { query: $json.query, variables: $json.variables } }}",
+        "options": {}
+      },
+      "id": "b0d5fdee-43e7-41a9-a6dd-74157a87a5bb",
+      "name": "Create Content (File)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        5648,
+        400
+      ],
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const row = $json;\nconst toBoolean = value => value === true || ['true', 'yes'].includes(String(value).toLowerCase());\nconst isSet = value => value !== undefined && value !== null && value !== '';\nconst input = { eventId: String(row.eventId || ''), resourceType: row.resourceType };\nif (row.displayName) {\n  input.displayName = String(row.displayName);\n}\nif (isSet(row.ordering)) {\n  input.ordering = Number(row.ordering);\n}\nif (isSet(row.isRequired)) {\n  input.isRequired = toBoolean(row.isRequired);\n}\nif (isSet(row.autoComplete)) {\n  input.autoComplete = toBoolean(row.autoComplete);\n}\nif (Array.isArray(row.learningTagIds) && row.learningTagIds.length) {\n  input.learningTags = row.learningTagIds;\n}\nif (row.resourceType === 'external' && row.externalActivityURL) {\n  input.externalActivityURL = String(row.externalActivityURL);\n}\nreturn { json: { query: 'mutation CreateLmsResource($input: CreateLmsResourceInput!) { event { createLmsResource(input: $input) { lmsContent { id } errors { label message value } } } }', variables: { input } } };"
+      },
+      "id": "a93360ef-2b07-48e8-a652-0c18eb933c26",
+      "name": "Build Resource Body (No File)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3984,
+        720
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').first().json.GRAPHQL_URL }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { query: $json.query, variables: $json.variables } }}",
+        "options": {}
+      },
+      "id": "f5855f30-4c47-4b93-b0a4-fc73dd558964",
+      "name": "Create Content (No File)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        4192,
+        720
+      ],
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const formatErrors = (response, fieldErrors) => {\n  const messages = [];\n  (response.errors || []).forEach(e => messages.push(e.message || JSON.stringify(e)));\n  (fieldErrors || []).forEach(e => messages.push((e.label ? e.label + ': ' : '') + (e.message || JSON.stringify(e))));\n  return messages;\n};\n/*  One result per content row. Reached after createLmsResource, or directly when\n    the row's file was not found or the upload could not be requested  */\nconst row = $('Loop Content Rows').item.json;\nconst result = {\n  eventId: row.eventId,\n  displayName: row.displayName || '',\n  resourceType: row.resourceType,\n  ordering: row.ordering,\n  success: false,\n  lmsContentId: null,\n  documentId: null,\n  error: ''\n};\n\nif ($json.fileError) {\n  result.error = $json.fileError;\n} else if ($json.uploadError) {\n  result.error = $json.uploadError;\n} else {\n  const createResult = (($json.data || {}).event || {}).createLmsResource || {};\n  const errors = formatErrors($json, createResult.errors);\n  if (!errors.length && !(createResult.lmsContent && createResult.lmsContent.id)) {\n    errors.push('no LMS content ID was returned');\n  }\n  if (row.needsFile) {\n    result.documentId = $('Build Resource Body (File)').item.json.variables.input.documentId;\n  }\n  if (errors.length) {\n    result.error = 'createLmsResource failed: ' + errors.join('; ');\n  } else {\n    result.success = true;\n    result.lmsContentId = createResult.lmsContent.id;\n  }\n}\nreturn { json: result };"
+      },
+      "id": "2e6c9efc-8dc4-4a62-8912-c8b0d622c47b",
+      "name": "Record Row Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5856,
+        640
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When Called": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "List Sheet Attachments",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "List Sheet Attachments": {
+      "main": [
+        [
+          {
+            "node": "Fetch DMS Folders",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch DMS Folders": {
+      "main": [
+        [
+          {
+            "node": "Find Target Folder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Target Folder": {
+      "main": [
+        [
+          {
+            "node": "Folder Missing?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Folder Missing?": {
+      "main": [
+        [
+          {
+            "node": "Create Target Folder",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Folder Ready",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Target Folder": {
+      "main": [
+        [
+          {
+            "node": "Folder Ready",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Folder Ready": {
+      "main": [
+        [
+          {
+            "node": "Match Rows to Attachments",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Match Rows to Attachments": {
+      "main": [
+        [
+          {
+            "node": "Split Unique Tags",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Unique Tags": {
+      "main": [
+        [
+          {
+            "node": "Any Tags?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Any Tags?": {
+      "main": [
+        [
+          {
+            "node": "Find Tag",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Collect Tag Map",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Tag": {
+      "main": [
+        [
+          {
+            "node": "Find Missing Tags",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Missing Tags": {
+      "main": [
+        [
+          {
+            "node": "Any Tags to Create?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Any Tags to Create?": {
+      "main": [
+        [
+          {
+            "node": "Create Tag",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Collect Tag Map",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Tag": {
+      "main": [
+        [
+          {
+            "node": "Collect Tag Map",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collect Tag Map": {
+      "main": [
+        [
+          {
+            "node": "Sort by Order",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sort by Order": {
+      "main": [
+        [
+          {
+            "node": "Loop Content Rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Content Rows": {
+      "main": [
+        [
+          {
+            "node": "Build Result",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Route by Type",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route by Type": {
+      "main": [
+        [
+          {
+            "node": "Record Row Result",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Get Attachment URL",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Resource Body (No File)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Attachment URL": {
+      "main": [
+        [
+          {
+            "node": "Build Upload Body",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Upload Body": {
+      "main": [
+        [
+          {
+            "node": "Request Upload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Request Upload": {
+      "main": [
+        [
+          {
+            "node": "Check Upload Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Upload Request": {
+      "main": [
+        [
+          {
+            "node": "Upload Ready?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload Ready?": {
+      "main": [
+        [
+          {
+            "node": "Download Binary",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Record Row Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Binary": {
+      "main": [
+        [
+          {
+            "node": "Upload To DMS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload To DMS": {
+      "main": [
+        [
+          {
+            "node": "Build Resource Body (File)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Resource Body (File)": {
+      "main": [
+        [
+          {
+            "node": "Create Content (File)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Content (File)": {
+      "main": [
+        [
+          {
+            "node": "Record Row Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Resource Body (No File)": {
+      "main": [
+        [
+          {
+            "node": "Create Content (No File)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Content (No File)": {
+      "main": [
+        [
+          {
+            "node": "Record Row Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Record Row Result": {
+      "main": [
+        [
+          {
+            "node": "Loop Content Rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "tags": []
+}

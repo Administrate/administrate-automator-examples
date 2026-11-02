@@ -93,7 +93,7 @@
           "name": "SMTP"
         }
       },
-      "onError": "continueRegularOutput",
+      "onError": "stopWorkflow",
       "webhookId": "a3f00992-869d-49e3-a928-8e3edd381eb3"
     },
     {
@@ -128,8 +128,8 @@
         400
       ],
       "parameters": {
-        "content": "## 6.0 QR Check-in Failure Handler\n\nSet as the **Error Workflow** (Workflow Settings) on every QR check-in workflow: 1.0, 2.0, 3.0, 4.0 and 5.0. n8n runs it automatically when any of them fails, and it emails ALERT_TO with the workflow name, the failing node, the message and a link to the execution.\n\n**Config:** N8N_BASE_URL (your n8n address, used to build the execution link), ALERT_TO, ALERT_FROM, SUBJECT_PREFIX. Select your SMTP credential on Send Alert Email.\n\n**It fires on production runs only, never on manual ones.** Running a workflow by hand and watching it fail will not reach this handler. That is n8n behaviour, not a wiring fault. To prove the email path, run THIS workflow by hand from Test Alert By Hand: it sends a clearly labelled test email.\n\n**It does not diagnose.** The error payload carries metadata only. The execution link is there instead.\n\n**Keep the leading numbers in the workflow names** (1.0, 2.0 ...). Build Alert uses them to explain what the failure means.",
-        "height": 560,
+        "content": "## 6.0 QR Check-in Failure Handler\n\nSet as the **Error Workflow** (Workflow Settings) on every QR check-in workflow: 1.0, 2.0, 3.0, 4.0 and 5.0. n8n runs it automatically when any of them fails, and it emails ALERT_TO with the workflow name, the failing node, the message and a link to the execution.\n\n**Config:** N8N_BASE_URL (your n8n address, used to build the execution link), ALERT_TO, ALERT_FROM, SUBJECT_PREFIX. Select your SMTP credential on Send Alert Email.\n\n**It fires on production runs only, never on manual ones.** Running a workflow by hand and watching it fail will not reach this handler. That is n8n behaviour, not a wiring fault. To prove the email path, run THIS workflow by hand from Test Alert By Hand: it sends a clearly labelled test email.\n\n**If the alert cannot be sent, this run fails.** Send Alert Email stops the workflow on error instead of continuing, so an SMTP failure shows as a failed execution in 6.0's own list rather than a successful one with the alert silently lost. Nothing calls 6.0 when it fails itself (it has no Error Workflow of its own), so check 6.0's executions list if alerts go quiet.\n\n**It does not diagnose.** The error payload carries metadata only. The execution link is there instead.\n\n**Keep the leading numbers in the workflow names** (1.0, 2.0 ...). Build Alert uses them to explain what the failure means.",
+        "height": 680,
         "width": 520,
         "color": 4
       }

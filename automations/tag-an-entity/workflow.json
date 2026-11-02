@@ -1,0 +1,537 @@
+{
+  "name": "Tag an Entity",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Tag an Entity\nReusable sub-workflow. Call it from an **Execute Workflow** node, once per entity, with:\n- `entityType`: `courseTemplate` or `learningPath`\n- `entityId`: the entity's GraphQL ID\n- `tagsCsv`: comma-separated Learning Tag names\n\nMissing tags are created. Returns one item with `success`, `message`, `learningTagIds`, `createdTagNames` and `errors`.\n\n**Setup:** set `GRAPHQL_URL` in **Config** and select your Administrate OAuth2 credential on **Find Tag**, **Create Tag** and **Add Tags**.",
+        "height": 320,
+        "width": 560,
+        "color": 4
+      },
+      "id": "341ef575-96cf-4de6-9dd2-03b1151389fd",
+      "name": "Sticky Note Setup",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -48,
+        -48
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Find or create tags\nEach tag is looked up by exact name. **Find Missing Tags** always outputs either the missing tags or one placeholder item, so only one branch runs and **Collect Tag Ids** runs once. If any tag cannot be found or created, **Add Tags** is skipped and the errors are returned.",
+        "height": 200,
+        "width": 640,
+        "color": 5
+      },
+      "id": "cb20e7c1-04ab-44df-a5f8-c7f1c12f7ea9",
+      "name": "Sticky Note Tags",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1008,
+        -48
+      ]
+    },
+    {
+      "parameters": {
+        "inputSource": "workflowInputs",
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "entityType",
+              "type": "string"
+            },
+            {
+              "name": "entityId",
+              "type": "string"
+            },
+            {
+              "name": "tagsCsv",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "id": "3c4e5801-6f23-4050-977d-0f94a487e27b",
+      "name": "When Called",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c1",
+              "name": "GRAPHQL_URL",
+              "value": "https://YOUR-INSTANCE.administrateapp.com/graphql",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "5a1bc0df-92dc-45c0-b5dc-d6b19483b476",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        208,
+        400
+      ],
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "jsCode": "/*  Normalises the caller's input. Anything that stops the run early is\n    returned as a result item rather than thrown, so the caller can branch on it  */\nconst SUPPORTED_ENTITY_TYPES = ['courseTemplate', 'learningPath'];\nconst inputs = $('When Called').all().map(i => i.json);\nconst input = inputs[0] || {};\nconst entityType = String(input.entityType || '').trim();\nconst entityId = String(input.entityId || '').trim();\nconst tagNames = [...new Set(String(input.tagsCsv || '').split(',').map(s => s.trim()).filter(Boolean))];\n\nconst result = { success: false, message: '', entityType, entityId, tagNames, learningTagIds: [], createdTagNames: [], errors: [] };\n\nlet error = '';\nif (inputs.length !== 1) {\n  error = 'Expected one item per call but received ' + inputs.length + '. Set the calling Execute Workflow node to run once for each item.';\n} else if (!SUPPORTED_ENTITY_TYPES.includes(entityType)) {\n  error = 'entityType must be one of ' + SUPPORTED_ENTITY_TYPES.join(', ') + ' but was \"' + entityType + '\".';\n} else if (!entityId) {\n  error = 'entityId is required.';\n}\n\nif (error) {\n  return [{ json: Object.assign(result, { proceed: false, message: error, errors: [error] }) }];\n}\nif (!tagNames.length) {\n  return [{ json: Object.assign(result, { proceed: false, success: true, message: 'No tags supplied, so nothing was changed.' }) }];\n}\nreturn [{ json: Object.assign(result, { proceed: true }) }];"
+      },
+      "id": "1403b8a4-e54b-4a67-9621-d2a919ea5416",
+      "name": "Validate Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        416,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "409fa695-84f6-4ddd-a114-abf191b51951",
+              "leftValue": "={{ $json.proceed }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "d469ebe8-c427-4662-baac-d5b069f0c47f",
+      "name": "Ready to Tag?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        624,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const result = Object.assign({}, $json);\ndelete result.proceed;\nreturn { json: result };"
+      },
+      "id": "a489a8c7-d672-4c37-bc6b-fca46b1f341e",
+      "name": "Return Early Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        832,
+        560
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const tagNames = $('Validate Input').first().json.tagNames;\nreturn tagNames.map(tagName => ({ json: { tagName } }));"
+      },
+      "id": "fc3dbb7a-d81f-4f1c-8ff0-212ed9183ea5",
+      "name": "Split Tags",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        832,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').first().json.GRAPHQL_URL }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { query: \"query FindLearningTag($name: String!) { learningTags(filters: [{ field: name, operation: eq, value: $name }]) { edges { node { id name } } } }\", variables: { name: $json.tagName } } }}",
+        "options": {}
+      },
+      "id": "c83a2abb-1576-487e-a41c-248602184c08",
+      "name": "Find Tag",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1040,
+        304
+      ],
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "/*  Lists the tags that do not exist yet. Always returns at least one item so\n    exactly one branch of the next IF runs and Collect Tag Ids runs once  */\nconst tagNames = $('Split Tags').all().map(i => i.json.tagName);\nconst lookups = $('Find Tag').all().map(i => i.json);\nconst missing = tagNames.filter((tagName, index) => {\n  const response = lookups[index] || {};\n  if (Array.isArray(response.errors) && response.errors.length) {\n    return false;\n  }\n  const edges = ((response.data || {}).learningTags || {}).edges || [];\n  return edges.length === 0;\n});\nif (!missing.length) {\n  return [{ json: { nothingToCreate: true } }];\n}\nreturn missing.map(tagName => ({ json: { tagName } }));"
+      },
+      "id": "737f920a-0569-4bfa-81bc-d3dcf8c54e60",
+      "name": "Find Missing Tags",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1248,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "7207072a-6bed-4475-b5e6-d7a3e61d6ba7",
+              "leftValue": "={{ !$json.nothingToCreate }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "e2e936d1-0436-4c95-9a44-103dd52ce55f",
+      "name": "Any Tags to Create?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1456,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').first().json.GRAPHQL_URL }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { query: \"mutation CreateLearningTag($name: String!) { learningTags { create(input: [{ name: $name }]) { learningTags { id name } errors { label message value } } } }\", variables: { name: $json.tagName } } }}",
+        "options": {}
+      },
+      "id": "39569407-ca22-4dca-8666-e8f3a187c6b7",
+      "name": "Create Tag",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1664,
+        208
+      ],
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const formatErrors = (response, fieldErrors) => {\n  const messages = [];\n  (response.errors || []).forEach(e => messages.push(e.message || JSON.stringify(e)));\n  (fieldErrors || []).forEach(e => messages.push((e.label ? e.label + ': ' : '') + (e.message || JSON.stringify(e))));\n  return messages;\n};\nconst input = $('Validate Input').first().json;\nconst tagNames = $('Split Tags').all().map(i => i.json.tagName);\nconst lookups = $('Find Tag').all().map(i => i.json);\nconst tagIds = {};\nconst tagErrors = [];\nconst createdTagNames = [];\n\ntagNames.forEach((tagName, index) => {\n  const response = lookups[index] || {};\n  const errors = formatErrors(response);\n  if (errors.length) {\n    tagErrors.push('Looking up tag \"' + tagName + '\" failed: ' + errors.join('; '));\n    return;\n  }\n  const edges = ((response.data || {}).learningTags || {}).edges || [];\n  if (edges.length) {\n    tagIds[tagName] = edges[0].node.id;\n  }\n});\n\nif ($('Create Tag').isExecuted) {\n  const toCreate = $('Find Missing Tags').all().map(i => i.json.tagName);\n  const created = $('Create Tag').all().map(i => i.json);\n  toCreate.forEach((tagName, index) => {\n    const response = created[index] || {};\n    const createResult = ((response.data || {}).learningTags || {}).create || {};\n    const errors = formatErrors(response, createResult.errors);\n    const tag = (createResult.learningTags || [])[0];\n    if (errors.length || !tag || !tag.id) {\n      tagErrors.push('Creating tag \"' + tagName + '\" failed: ' + (errors.join('; ') || 'no ID was returned'));\n      return;\n    }\n    tagIds[tagName] = tag.id;\n    createdTagNames.push(tagName);\n  });\n}\n\nreturn [{ json: {\n  entityType: input.entityType,\n  entityId: input.entityId,\n  tagNames,\n  learningTagIds: tagNames.map(tagName => tagIds[tagName]).filter(Boolean),\n  createdTagNames,\n  tagErrors\n} }];"
+      },
+      "id": "f56b0cce-f0fd-4aaf-aed7-039bb59b58ba",
+      "name": "Collect Tag Ids",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1872,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "61398b94-126c-488d-b415-7a2efade56e6",
+              "leftValue": "={{ $json.tagErrors.length === 0 }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "a9d85666-5268-45cc-a880-2fa6f8a8523e",
+      "name": "Can Add Tags?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2080,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const MUTATIONS = {\n  courseTemplate: 'mutation AddCourseTemplateTags($input: CourseTemplateAddTagsInput!) { courseTemplate { addTags(input: $input) { courseTemplate { id name } errors { label message value } } } }',\n  learningPath: 'mutation AddLearningPathTags($input: LearningPathAddTagsInput!) { learningPaths { addTags(input: $input) { learningPath { id name } errors { label message value } } } }'\n};\nconst ID_FIELDS = { courseTemplate: 'courseTemplateId', learningPath: 'learningPathId' };\nconst input = { learningTagIds: $json.learningTagIds };\ninput[ID_FIELDS[$json.entityType]] = $json.entityId;\nreturn { json: { query: MUTATIONS[$json.entityType], variables: { input } } };"
+      },
+      "id": "06416d79-e961-44d9-b200-a477af575d76",
+      "name": "Build Add Tags Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2288,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').first().json.GRAPHQL_URL }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "administrateOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { query: $json.query, variables: $json.variables } }}",
+        "options": {}
+      },
+      "id": "44bb2a6e-58bd-4969-9c5c-2d5c5a5977b7",
+      "name": "Add Tags",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        2496,
+        208
+      ],
+      "credentials": {
+        "administrateOAuth2Api": {
+          "id": "",
+          "name": "Administrate OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const formatErrors = (response, fieldErrors) => {\n  const messages = [];\n  (response.errors || []).forEach(e => messages.push(e.message || JSON.stringify(e)));\n  (fieldErrors || []).forEach(e => messages.push((e.label ? e.label + ': ' : '') + (e.message || JSON.stringify(e))));\n  return messages;\n};\nconst ROOT_FIELDS = { courseTemplate: 'courseTemplate', learningPath: 'learningPaths' };\nconst collected = $('Collect Tag Ids').first().json;\nconst errors = collected.tagErrors.slice();\n\n/*  Reached from Add Tags, or straight from Can Add Tags? when a tag could\n    not be found or created (in which case addTags was not called)  */\nif (!errors.length) {\n  const response = $input.first().json;\n  const addTags = ((response.data || {})[ROOT_FIELDS[collected.entityType]] || {}).addTags || {};\n  formatErrors(response, addTags.errors).forEach(message => errors.push('addTags failed: ' + message));\n}\n\nconst success = errors.length === 0;\nreturn [{ json: {\n  success,\n  message: success\n    ? 'Added ' + collected.learningTagIds.length + ' tag(s) to ' + collected.entityType + ' ' + collected.entityId + '.'\n    : 'Tags were not added. See errors.',\n  entityType: collected.entityType,\n  entityId: collected.entityId,\n  tagNames: collected.tagNames,\n  learningTagIds: collected.learningTagIds,\n  createdTagNames: collected.createdTagNames,\n  errors\n} }];"
+      },
+      "id": "4824c643-0c5d-451e-a8d5-c802ae257064",
+      "name": "Build Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2704,
+        304
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When Called": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Validate Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Input": {
+      "main": [
+        [
+          {
+            "node": "Ready to Tag?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ready to Tag?": {
+      "main": [
+        [
+          {
+            "node": "Split Tags",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Return Early Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Tags": {
+      "main": [
+        [
+          {
+            "node": "Find Tag",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Tag": {
+      "main": [
+        [
+          {
+            "node": "Find Missing Tags",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Missing Tags": {
+      "main": [
+        [
+          {
+            "node": "Any Tags to Create?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Any Tags to Create?": {
+      "main": [
+        [
+          {
+            "node": "Create Tag",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Collect Tag Ids",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Tag": {
+      "main": [
+        [
+          {
+            "node": "Collect Tag Ids",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collect Tag Ids": {
+      "main": [
+        [
+          {
+            "node": "Can Add Tags?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Can Add Tags?": {
+      "main": [
+        [
+          {
+            "node": "Build Add Tags Request",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Add Tags Request": {
+      "main": [
+        [
+          {
+            "node": "Add Tags",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add Tags": {
+      "main": [
+        [
+          {
+            "node": "Build Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "tags": []
+}
