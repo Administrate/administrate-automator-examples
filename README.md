@@ -72,6 +72,18 @@ For help with your Administrate instance or Automator access, contact [Administr
 
 This repository is primarily maintained by Administrate to share Automator examples. We also welcome pull requests for bug fixes and useful new examples. Read the [contribution guide](CONTRIBUTING.md) for the layout, documentation and testing expectations.
 
+## 🛠️ Dependency tooling
+
+The CI validators use the root pnpm and uv lockfiles. Install uv with
+`brew install uv` and the pinned pnpm version with:
+
+```sh
+npm install --global "$(node -p "require('./package.json').packageManager")"
+```
+
+For reproducible local installs, use `pnpm install --frozen-lockfile --ignore-scripts`
+and `uv sync --locked`. Dependency changes use `pnpm install` or `uv lock`.
+
 ## 📄 Licence
 
 These examples are licensed under the [BSD 2-Clause Licence](LICENSE). You can use, modify and redistribute them, including commercially and in closed-source projects. When redistributing, retain the copyright notice, licence conditions and disclaimer; for binary distributions, include them in the accompanying documentation or materials. The examples are provided as is, without warranty, and the licence limits the authors' liability.
