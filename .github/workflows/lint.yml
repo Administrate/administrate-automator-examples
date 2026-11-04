@@ -18,13 +18,13 @@ jobs:
           python-version: '3.13'
       - name: Install Python validators
         run: |
-          python -m pip install "uv==$(cat .uv-version)"
+          python -m pip install "$(python -c 'import tomllib; print("uv==" + next(p["version"] for p in tomllib.load(open("uv.lock", "rb"))["package"] if p["name"] == "uv"))')"
           uv sync --locked
       - uses: actions/setup-node@v7
         with:
           node-version: '24'
       - name: Install pnpm
-        run: npm install --global "$(node -p "require('./package.json').packageManager")"
+        run: npm install --global "$(node -p "'pnpm@' + require('./package.json').devDependencies.pnpm")"
       - name: Install n8n validator
         run: pnpm install --frozen-lockfile --ignore-scripts
       - name: Validate JSON

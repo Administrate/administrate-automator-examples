@@ -78,7 +78,7 @@ The CI validators use the root pnpm and uv lockfiles. Install uv with
 `brew install uv` and the pinned pnpm version with:
 
 ```sh
-npm install --global "$(node -p "require('./package.json').packageManager")"
+npm install --global "$(node -p "'pnpm@' + require('./package.json').devDependencies.pnpm")"
 ```
 
 For reproducible local installs, use `pnpm install --frozen-lockfile --ignore-scripts`
