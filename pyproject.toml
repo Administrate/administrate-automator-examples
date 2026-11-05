@@ -9,6 +9,7 @@ dev = [
     "pre-commit-hooks==6.0.0",
     "ruamel-yaml==0.19.1",
 ]
+package-manager = ["uv==0.13.6"]
 
 [tool.uv]
 package = false

@@ -1,6 +1,7 @@
 nodeLinker: hoisted
 minimumReleaseAge: 4320
 allowBuilds:
+  pnpm: true
   "cpu-features": false
   "isolated-vm": false
   "ssh2": false
