@@ -4,11 +4,25 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    groups:
+      github-actions:
+        patterns:
+          - "*"
   - package-ecosystem: uv
     directory: /
     schedule:
       interval: weekly
+    groups:
+      uv:
+        patterns:
+          - "*"
+    cooldown:
+      default-days: 3
   - package-ecosystem: npm
     directory: /
     schedule:
       interval: weekly
+    groups:
+      npm:
+        patterns:
+          - "*"

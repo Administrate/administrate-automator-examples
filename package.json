@@ -2,7 +2,7 @@
   "name": "administrate-automator-examples-ci",
   "private": true,
   "devDependencies": {
-    "@n8n/workflow-sdk": "1.0.1"
-  },
-  "packageManager": "pnpm@12.16.1"
+    "@n8n/workflow-sdk": "1.0.1",
+    "pnpm": "12.16.1"
+  }
 }
